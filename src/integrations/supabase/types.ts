@@ -14,7 +14,149 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agendamentos: {
+        Row: {
+          created_at: string
+          data_agendamento: string
+          data_retorno: string | null
+          hora_agendamento: string
+          id: string
+          nome: string
+          porcentagem_desconto: number | null
+          preco: number
+          preco_retorno: number | null
+          procedimento_id: string | null
+          status: string
+          telefone: string
+          tem_desconto: boolean | null
+          tem_retorno: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_agendamento: string
+          data_retorno?: string | null
+          hora_agendamento: string
+          id?: string
+          nome: string
+          porcentagem_desconto?: number | null
+          preco: number
+          preco_retorno?: number | null
+          procedimento_id?: string | null
+          status?: string
+          telefone: string
+          tem_desconto?: boolean | null
+          tem_retorno?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_agendamento?: string
+          data_retorno?: string | null
+          hora_agendamento?: string
+          id?: string
+          nome?: string
+          porcentagem_desconto?: number | null
+          preco?: number
+          preco_retorno?: number | null
+          procedimento_id?: string | null
+          status?: string
+          telefone?: string
+          tem_desconto?: boolean | null
+          tem_retorno?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_procedimento_id_fkey"
+            columns: ["procedimento_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          telefone: string
+          ultimo_atendimento: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          telefone: string
+          ultimo_atendimento?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          telefone?: string
+          ultimo_atendimento?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      estoque: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          id: string
+          nome_item: string
+          observacoes: string | null
+          quantidade: number
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          nome_item: string
+          observacoes?: string | null
+          quantidade?: number
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          nome_item?: string
+          observacoes?: string | null
+          quantidade?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      servicos: {
+        Row: {
+          created_at: string
+          id: string
+          nome_procedimento: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome_procedimento: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome_procedimento?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
