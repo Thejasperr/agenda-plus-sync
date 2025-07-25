@@ -1,11 +1,70 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import React, { useState } from 'react';
+import { Users, Calendar, Package, Settings } from 'lucide-react';
+import ClientesTab from '@/components/app/ClientesTab';
+import AgendamentosTab from '@/components/app/AgendamentosTab';
+import EstoqueTab from '@/components/app/EstoqueTab';
+import ServicosTab from '@/components/app/ServicosTab';
+
+type TabType = 'clientes' | 'agendamentos' | 'estoque' | 'servicos';
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('agendamentos');
+
+  const tabs = [
+    { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
+    { id: 'agendamentos' as TabType, label: 'Agenda', icon: Calendar },
+    { id: 'estoque' as TabType, label: 'Estoque', icon: Package },
+    { id: 'servicos' as TabType, label: 'Serviços', icon: Settings },
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'clientes':
+        return <ClientesTab />;
+      case 'agendamentos':
+        return <AgendamentosTab />;
+      case 'estoque':
+        return <EstoqueTab />;
+      case 'servicos':
+        return <ServicosTab />;
+      default:
+        return <AgendamentosTab />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="mobile-container">
+      {/* Header */}
+      <div className="mobile-header flex items-center justify-center">
+        <h1 className="text-xl font-bold">Agenda Plus</h1>
+      </div>
+
+      {/* Content */}
+      <div className="mobile-content">
+        {renderTabContent()}
+      </div>
+
+      {/* Navigation */}
+      <div className="mobile-nav flex items-center justify-around">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
+                isActive 
+                  ? 'text-primary bg-primary/10' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon size={20} />
+              <span className="text-xs mt-1 font-medium">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
