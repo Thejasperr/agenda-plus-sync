@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, DollarSign, Edit2 } from 'lucide-react';
+import { Plus, Search, DollarSign, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
@@ -121,6 +122,31 @@ const ServicosTab = () => {
     setDialogOpen(true);
   };
 
+  const handleDelete = async (servico: Servico) => {
+    try {
+      const { error } = await supabase
+        .from('servicos')
+        .delete()
+        .eq('id', servico.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Serviço excluído com sucesso!",
+      });
+
+      fetchServicos();
+    } catch (error) {
+      console.error('Erro ao excluir serviço:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o serviço",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredServicos = servicos.filter(servico =>
     servico.nome_procedimento.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -226,14 +252,45 @@ const ServicosTab = () => {
                     </div>
                   </div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(servico)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(servico)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir Serviço</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o serviço "{servico.nome_procedimento}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(servico)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CardContent>
             </Card>
