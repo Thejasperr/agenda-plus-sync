@@ -22,6 +22,7 @@ export type Database = {
           hora_agendamento: string
           id: string
           nome: string
+          observacoes: string | null
           porcentagem_desconto: number | null
           preco: number
           preco_retorno: number | null
@@ -39,6 +40,7 @@ export type Database = {
           hora_agendamento: string
           id?: string
           nome: string
+          observacoes?: string | null
           porcentagem_desconto?: number | null
           preco: number
           preco_retorno?: number | null
@@ -56,6 +58,7 @@ export type Database = {
           hora_agendamento?: string
           id?: string
           nome?: string
+          observacoes?: string | null
           porcentagem_desconto?: number | null
           preco?: number
           preco_retorno?: number | null
