@@ -160,6 +160,50 @@ export type Database = {
         }
         Relationships: []
       }
+      transacoes: {
+        Row: {
+          agendamento_id: string | null
+          created_at: string
+          data_transacao: string
+          id: string
+          observacoes: string | null
+          tipo: string
+          tipo_operacao: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          agendamento_id?: string | null
+          created_at?: string
+          data_transacao?: string
+          id?: string
+          observacoes?: string | null
+          tipo: string
+          tipo_operacao: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          agendamento_id?: string | null
+          created_at?: string
+          data_transacao?: string
+          id?: string
+          observacoes?: string | null
+          tipo?: string
+          tipo_operacao?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transacoes_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
