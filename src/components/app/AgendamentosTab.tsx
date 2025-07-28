@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { format, isToday, startOfDay, isSameDay, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -52,21 +46,8 @@ const AgendamentosTab = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
   const { toast } = useToast();
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -224,29 +205,6 @@ const AgendamentosTab = () => {
     setDialogOpen(true);
   };
 
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    // Determinar o novo status baseado na zona de drop
-    let newStatus = '';
-    if (overId === 'agendado-zone' || over.data?.current?.status === 'Agendado') {
-      newStatus = 'Agendado';
-    } else if (overId === 'concluido-zone' || over.data?.current?.status === 'Concluído') {
-      newStatus = 'Concluído';
-    } else if (overId === 'cancelado-zone' || over.data?.current?.status === 'Cancelado') {
-      newStatus = 'Cancelado';
-    }
-
-    if (newStatus) {
-      updateAgendamentoStatus(activeId, newStatus);
-    }
-  };
-
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -278,23 +236,6 @@ const AgendamentosTab = () => {
     window.open(`https://wa.me/55${phoneNumber}?text=${message}`, '_blank');
   };
 
-  const getAgendamentosPorData = () => {
-    const agendamentosPorData: {[key: string]: Agendamento[]} = {};
-    agendamentos.forEach(agendamento => {
-      const dataKey = agendamento.data_agendamento;
-      if (!agendamentosPorData[dataKey]) {
-        agendamentosPorData[dataKey] = [];
-      }
-      agendamentosPorData[dataKey].push(agendamento);
-    });
-    return agendamentosPorData;
-  };
-
-  const getAgendamentosData = (date: Date) => {
-    const dateString = format(date, 'yyyy-MM-dd');
-    return agendamentos.filter(a => a.data_agendamento === dateString);
-  };
-
   const navigateDate = (direction: 'prev' | 'next') => {
     if (direction === 'prev') {
       setSelectedDate(prev => subDays(prev, 1));
@@ -321,16 +262,23 @@ const AgendamentosTab = () => {
     return preco * (1 - porcentagemDesconto / 100);
   };
 
-  const filteredAgendamentos = agendamentos.filter(agendamento =>
-    agendamento.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agendamento.telefone.includes(searchTerm) ||
-    (agendamento.observacoes && agendamento.observacoes.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (statusFilter && statusFilter !== 'todos' ? agendamento.status === statusFilter : true)
-  );
-
-  const agendadoList = filteredAgendamentos.filter(a => a.status === 'Agendado');
-  const concluidoList = filteredAgendamentos.filter(a => a.status === 'Concluído');
-  const canceladoList = filteredAgendamentos.filter(a => a.status === 'Cancelado');
+  // Filtrar apenas agendamentos do dia selecionado
+  const agendamentosDodia = agendamentos.filter(agendamento => {
+    const agendamentoDate = new Date(agendamento.data_agendamento);
+    return isSameDay(agendamentoDate, selectedDate);
+  }).filter(agendamento => {
+    if (searchTerm) {
+      return agendamento.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             agendamento.telefone.includes(searchTerm) ||
+             (agendamento.observacoes && agendamento.observacoes.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    return true;
+  }).filter(agendamento => {
+    if (statusFilter !== 'todos') {
+      return agendamento.status === statusFilter;
+    }
+    return true;
+  });
 
   if (loading) {
     return (
@@ -342,30 +290,36 @@ const AgendamentosTab = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header com busca e filtros */}
-      <div className="space-y-3">
-        {/* Toggle de visualização */}
-        <div className="flex gap-2">
-          <div className="flex bg-muted rounded-lg p-1">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="text-xs"
-            >
-              Lista
-            </Button>
-            <Button
-              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('calendar')}
-              className="text-xs"
-            >
-              Calendário
-            </Button>
+      {/* Header com navegação de data */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigateDate('prev')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        
+        <div className="text-center">
+          <div className="font-semibold">
+            {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {isToday(selectedDate) && '(Hoje)'}
           </div>
         </div>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigateDate('next')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
 
+      {/* Busca e filtros */}
+      <div className="space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -540,202 +494,43 @@ const AgendamentosTab = () => {
         </div>
       </div>
 
-      {/* Conteúdo baseado no modo de visualização */}
-      {viewMode === 'calendar' ? (
-        <div className="space-y-4">
-          {/* Navegação de data */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigateDate('prev')}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            <div className="text-center">
-              <div className="font-semibold">
-                {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {isToday(selectedDate) && '(Hoje)'}
-              </div>
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigateDate('next')}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Calendário */}
+      {/* Lista de agendamentos do dia */}
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground mb-2">
+          Agendamentos do dia ({agendamentosDodia.length})
+        </h3>
+        {agendamentosDodia.length === 0 ? (
           <Card className="mobile-card">
             <CardContent className="p-4">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="w-full pointer-events-auto"
-                modifiers={{
-                  hasAppointments: (date) => {
-                    const dateString = format(date, 'yyyy-MM-dd');
-                    return agendamentos.some(a => a.data_agendamento === dateString);
-                  }
-                }}
-                modifiersStyles={{
-                  hasAppointments: {
-                    position: 'relative',
-                  }
-                }}
-              />
+              <div className="text-center text-muted-foreground">
+                Nenhum agendamento para este dia
+              </div>
             </CardContent>
           </Card>
-
-          {/* Agendamentos do dia selecionado */}
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Agendamentos do dia ({getAgendamentosData(selectedDate).length})
-            </h3>
-            {getAgendamentosData(selectedDate).length === 0 ? (
-              <Card className="mobile-card">
-                <CardContent className="p-4">
-                  <div className="text-center text-muted-foreground">
-                    Nenhum agendamento para este dia
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {getAgendamentosData(selectedDate).map((agendamento) => (
-                  <AgendamentoCard
-                    key={agendamento.id}
-                    agendamento={agendamento}
-                    onEdit={handleEdit}
-                    onOpenWhatsApp={openWhatsApp}
-                  />
-                ))}
-              </div>
-            )}
+        ) : (
+          <div className="space-y-2">
+            {agendamentosDodia.map((agendamento) => (
+              <AgendamentoCard
+                key={agendamento.id}
+                agendamento={agendamento}
+                onEdit={handleEdit}
+                onOpenWhatsApp={openWhatsApp}
+                onUpdateStatus={updateAgendamentoStatus}
+              />
+            ))}
           </div>
-        </div>
-      ) : (
-        // Vista de lista com drag and drop
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          {filteredAgendamentos.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchTerm || statusFilter ? 'Nenhum agendamento encontrado' : 'Nenhum agendamento cadastrado'}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Agendado */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  Agendado ({agendadoList.length})
-                </h3>
-                <SortableContext items={agendadoList.map(a => a.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-2">
-                    {agendadoList.map((agendamento) => (
-                      <SortableAgendamentoCard
-                        key={agendamento.id}
-                        agendamento={agendamento}
-                        onEdit={handleEdit}
-                        onOpenWhatsApp={openWhatsApp}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </div>
-
-              {/* Concluído */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  Concluído ({concluidoList.length})
-                </h3>
-                <SortableContext items={concluidoList.map(a => a.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-2">
-                    {concluidoList.map((agendamento) => (
-                      <SortableAgendamentoCard
-                        key={agendamento.id}
-                        agendamento={agendamento}
-                        onEdit={handleEdit}
-                        onOpenWhatsApp={openWhatsApp}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </div>
-
-              {/* Cancelado */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  Cancelado ({canceladoList.length})
-                </h3>
-                <SortableContext items={canceladoList.map(a => a.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-2">
-                    {canceladoList.map((agendamento) => (
-                      <SortableAgendamentoCard
-                        key={agendamento.id}
-                        agendamento={agendamento}
-                        onEdit={handleEdit}
-                        onOpenWhatsApp={openWhatsApp}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </div>
-            </div>
-          )}
-        </DndContext>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-// Componente do card de agendamento sortable
-const SortableAgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp }: {
+// Componente do card de agendamento
+const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus }: {
   agendamento: Agendamento;
   onEdit: (agendamento: Agendamento) => void;
   onOpenWhatsApp: (telefone: string, nome: string, data: string, hora: string) => void;
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: agendamento.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <AgendamentoCard 
-        agendamento={agendamento} 
-        onEdit={onEdit} 
-        onOpenWhatsApp={onOpenWhatsApp} 
-      />
-    </div>
-  );
-};
-
-// Componente base do card de agendamento
-const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp }: {
-  agendamento: Agendamento;
-  onEdit: (agendamento: Agendamento) => void;
-  onOpenWhatsApp: (telefone: string, nome: string, data: string, hora: string) => void;
+  onUpdateStatus: (id: string, status: string) => void;
 }) => {
   const calcularPrecoFinal = (preco: number, temDesconto: boolean, porcentagemDesconto: number | null) => {
     if (!temDesconto || !porcentagemDesconto) return preco;
@@ -766,7 +561,7 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp }: {
   );
 
   return (
-    <Card className="mobile-card cursor-grab active:cursor-grabbing">
+    <Card className="mobile-card">
       <CardContent className="p-4">
         <div className="space-y-3">
           {/* Cabeçalho */}
@@ -820,6 +615,40 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp }: {
               <strong>Obs:</strong> {agendamento.observacoes}
             </div>
           )}
+
+          {/* Botões de Status */}
+          <div className="flex gap-2">
+            <Button
+              variant={agendamento.status === 'Agendado' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onUpdateStatus(agendamento.id, 'Agendado')}
+              className="flex-1"
+              disabled={agendamento.status === 'Agendado'}
+            >
+              <Clock4 className="h-3 w-3 mr-1" />
+              Agendado
+            </Button>
+            <Button
+              variant={agendamento.status === 'Concluído' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onUpdateStatus(agendamento.id, 'Concluído')}
+              className="flex-1"
+              disabled={agendamento.status === 'Concluído'}
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Concluído
+            </Button>
+            <Button
+              variant={agendamento.status === 'Cancelado' ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => onUpdateStatus(agendamento.id, 'Cancelado')}
+              className="flex-1"
+              disabled={agendamento.status === 'Cancelado'}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Cancelado
+            </Button>
+          </div>
 
           {/* Ações */}
           <div className="flex gap-2 pt-2">

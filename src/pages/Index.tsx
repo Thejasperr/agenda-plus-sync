@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Package, Settings, History, TrendingUp } from 'lucide-react';
+import { Users, Calendar, Package, Settings, History, TrendingUp, CalendarDays } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import AgendamentosTab from '@/components/app/AgendamentosTab';
+import CalendarioPage from '@/pages/CalendarioPage';
 import EstoqueTab from '@/components/app/EstoqueTab';
 import ServicosTab from '@/components/app/ServicosTab';
 import HistoricoTab from '@/components/app/HistoricoTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
 
-type TabType = 'clientes' | 'agendamentos' | 'estoque' | 'servicos' | 'historico' | 'transacoes';
+type TabType = 'clientes' | 'agendamentos' | 'calendario' | 'estoque' | 'servicos' | 'historico' | 'transacoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('agendamentos');
@@ -15,6 +16,7 @@ const Index = () => {
   const tabs = [
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
     { id: 'agendamentos' as TabType, label: 'Agenda', icon: Calendar },
+    { id: 'calendario' as TabType, label: 'Calendário', icon: CalendarDays },
     { id: 'historico' as TabType, label: 'Histórico', icon: History },
     { id: 'transacoes' as TabType, label: 'Transações', icon: TrendingUp },
     { id: 'estoque' as TabType, label: 'Estoque', icon: Package },
@@ -27,6 +29,8 @@ const Index = () => {
         return <ClientesTab />;
       case 'agendamentos':
         return <AgendamentosTab />;
+      case 'calendario':
+        return <CalendarioPage />;
       case 'historico':
         return <HistoricoTab />;
       case 'transacoes':
