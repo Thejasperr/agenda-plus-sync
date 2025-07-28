@@ -325,7 +325,7 @@ const AgendamentosTab = () => {
     agendamento.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     agendamento.telefone.includes(searchTerm) ||
     (agendamento.observacoes && agendamento.observacoes.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (statusFilter ? agendamento.status === statusFilter : true)
+    (statusFilter && statusFilter !== 'todos' ? agendamento.status === statusFilter : true)
   );
 
   const agendadoList = filteredAgendamentos.filter(a => a.status === 'Agendado');
@@ -531,7 +531,7 @@ const AgendamentosTab = () => {
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="Agendado">Agendado</SelectItem>
               <SelectItem value="Concluído">Concluído</SelectItem>
               <SelectItem value="Cancelado">Cancelado</SelectItem>
