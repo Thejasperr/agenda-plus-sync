@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -279,6 +280,31 @@ const CalendarioPage = () => {
     }
   };
 
+  const deleteAgendamento = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Agendamento excluído com sucesso!",
+      });
+
+      fetchAgendamentos();
+    } catch (error) {
+      console.error('Erro ao excluir agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o agendamento",
+        variant: "destructive",
+      });
+    }
+  };
+
   const openWhatsApp = (telefone: string, nome: string, data: string, hora: string) => {
     const message = encodeURIComponent(`Olá ${nome}! Confirmando seu agendamento para ${data} às ${hora}. Aguardamos você!`);
     const phoneNumber = telefone.replace(/\D/g, '');
@@ -505,6 +531,7 @@ const CalendarioPage = () => {
                     onEdit={handleEdit}
                     onOpenWhatsApp={openWhatsApp}
                     onUpdateStatus={updateAgendamentoStatus}
+                    onDelete={deleteAgendamento}
                   />
                 ))}
               </div>
@@ -517,11 +544,12 @@ const CalendarioPage = () => {
 };
 
 // Componente do card de agendamento
-const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus }: {
+const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, onDelete }: {
   agendamento: Agendamento;
   onEdit: (agendamento: Agendamento) => void;
   onOpenWhatsApp: (telefone: string, nome: string, data: string, hora: string) => void;
   onUpdateStatus: (id: string, status: string) => void;
+  onDelete: (id: string) => void;
 }) => {
   const calcularPrecoFinal = (preco: number, temDesconto: boolean, porcentagemDesconto: number | null) => {
     if (!temDesconto || !porcentagemDesconto) return preco;
@@ -666,6 +694,35 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus }
               <MessageCircle className="h-3 w-3 mr-1" />
               WhatsApp
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => onDelete(agendamento.id)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>
