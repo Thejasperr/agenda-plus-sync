@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift } from 'lucide-react';
+import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -194,6 +194,35 @@ const ClientesTab = () => {
     setHistoricoDialogOpen(true);
   };
 
+  const handleDelete = async (clienteId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este cliente?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', clienteId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cliente excluído com sucesso!",
+      });
+
+      fetchClientes();
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o cliente",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredClientes = clientes.filter(cliente =>
     cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cliente.telefone.includes(searchTerm)
@@ -357,28 +386,37 @@ const ClientesTab = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(cliente)}
-                        className="flex-1"
+                        className="flex-1 md:flex-auto"
                       >
-                        <Edit2 className="h-3 w-3 mr-1" />
-                        Editar
+                        <Edit2 className="h-3 w-3 md:mr-1" />
+                        <span className="hidden md:inline">Editar</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => openHistorico(cliente.id)}
-                        className="flex-1"
+                        className="flex-1 md:flex-auto"
                       >
-                        <History className="h-3 w-3 mr-1" />
-                        Histórico
+                        <History className="h-3 w-3 md:mr-1" />
+                        <span className="hidden md:inline">Histórico</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => openWhatsApp(cliente.telefone, cliente.nome)}
-                        className="flex-1 text-green-600 hover:text-green-700"
+                        className="flex-1 md:flex-auto text-green-600 hover:text-green-700"
                       >
-                        <MessageCircle className="h-3 w-3 mr-1" />
-                        WhatsApp
+                        <MessageCircle className="h-3 w-3 md:mr-1" />
+                        <span className="hidden md:inline">WhatsApp</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(cliente.id)}
+                        className="flex-1 md:flex-auto text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-3 w-3 md:mr-1" />
+                        <span className="hidden md:inline">Excluir</span>
                       </Button>
                     </div>
                   </div>

@@ -41,6 +41,7 @@ interface Servico {
 const AgendamentosTab = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [clientes, setClientes] = useState<{telefone: string, nome: string}[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [loading, setLoading] = useState(true);
@@ -68,6 +69,7 @@ const AgendamentosTab = () => {
   useEffect(() => {
     fetchAgendamentos();
     fetchServicos();
+    fetchClientes();
   }, []);
 
   const fetchAgendamentos = async () => {
@@ -106,6 +108,19 @@ const AgendamentosTab = () => {
     }
   };
 
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('telefone, nome');
+
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar clientes:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -127,6 +142,23 @@ const AgendamentosTab = () => {
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
         observacoes: formData.observacoes || null
       };
+
+      // Criar cliente se não existir
+      const clienteExistente = clientes.find(c => c.telefone === formData.telefone);
+      if (!clienteExistente) {
+        const { error: clienteError } = await supabase
+          .from('clientes')
+          .insert([{ 
+            nome: formData.nome, 
+            telefone: formData.telefone 
+          }]);
+
+        if (clienteError) {
+          console.warn('Erro ao criar cliente:', clienteError);
+        } else {
+          fetchClientes(); // Atualizar lista de clientes
+        }
+      }
 
       if (editingAgendamento) {
         const { error } = await supabase
@@ -280,6 +312,17 @@ const AgendamentosTab = () => {
     return true;
   });
 
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const telefone = e.target.value;
+    setFormData({ ...formData, telefone });
+    
+    // Buscar cliente existente
+    const clienteExistente = clientes.find(c => c.telefone === telefone);
+    if (clienteExistente) {
+      setFormData(prev => ({ ...prev, nome: clienteExistente.nome }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -354,21 +397,21 @@ const AgendamentosTab = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <Label htmlFor="telefone">Telefone *</Label>
+                    <Input
+                      id="telefone"
+                      value={formData.telefone}
+                      onChange={handleTelefoneChange}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="nome">Nome *</Label>
                     <Input
                       id="nome"
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                       placeholder="Nome do cliente"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="telefone">Telefone *</Label>
-                    <Input
-                      id="telefone"
-                      value={formData.telefone}
-                      onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                      placeholder="(11) 99999-9999"
                     />
                   </div>
                 </div>
