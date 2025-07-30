@@ -48,7 +48,7 @@ const Index = () => {
     <div className="mobile-container">
       {/* Header */}
       <div className="mobile-header flex items-center justify-center">
-        <h1 className="text-xl font-bold">Agenda Plus</h1>
+        <h1 className="text-xl font-bold">Espaço Gabriela Aimola</h1>
       </div>
 
       {/* Content */}
