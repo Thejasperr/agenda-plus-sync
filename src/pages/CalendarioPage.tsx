@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Agendamento {
@@ -50,7 +50,7 @@ const CalendarioPage = () => {
     preco: 0,
     tem_desconto: false,
     porcentagem_desconto: 0,
-    data_agendamento: format(new Date(), 'yyyy-MM-dd'),
+    data_agendamento: format(addDays(new Date(), 0), 'yyyy-MM-dd'),
     hora_agendamento: '',
     tem_retorno: false,
     data_retorno: '',
@@ -223,7 +223,7 @@ const CalendarioPage = () => {
       preco: 0,
       tem_desconto: false,
       porcentagem_desconto: 0,
-      data_agendamento: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      data_agendamento: selectedDate ? format(addDays(selectedDate, 0), 'yyyy-MM-dd') : format(addDays(new Date(), 0), 'yyyy-MM-dd'),
       hora_agendamento: '',
       tem_retorno: false,
       data_retorno: '',
@@ -509,12 +509,12 @@ const CalendarioPage = () => {
         </Card>
 
         {/* Agendamentos do dia selecionado */}
-        <Card>
+        <Card id="agendamentos-list">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4">
               {selectedDate 
                 ? `Agendamentos de ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
-                : 'Selecione uma data'
+                : 'Selecione uma data no calendário'
               }
             </h3>
             
