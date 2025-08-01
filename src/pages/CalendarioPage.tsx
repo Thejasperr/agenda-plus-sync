@@ -476,7 +476,18 @@ const CalendarioPage = () => {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(date) => {
+                if (date) {
+                  setSelectedDate(date);
+                  // Scroll para a lista de agendamentos
+                  setTimeout(() => {
+                    const agendamentosSection = document.getElementById('agendamentos-list');
+                    if (agendamentosSection) {
+                      agendamentosSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }, 100);
+                }
+              }}
               locale={ptBR}
               modifiers={{
                 hasEvent: (date) => hasAgendamentos(date)
@@ -492,7 +503,7 @@ const CalendarioPage = () => {
                 Day: ({ date, ...props }) => {
                   const count = getAgendadosCount(date);
                   return (
-                    <div className="relative" {...props}>
+                    <div className="relative cursor-pointer hover:bg-accent rounded" {...props}>
                       <div>{date.getDate()}</div>
                       {count > 0 && (
                         <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
