@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -41,7 +42,9 @@ const CalendarioPage = () => {
   const [clientes, setClientes] = useState<{telefone: string, nome: string}[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -139,6 +142,50 @@ const CalendarioPage = () => {
     ).length;
   };
 
+  // Gerar horários disponíveis
+  const generateTimeSlots = () => {
+    const slots = [];
+    
+    // Horários normais (11:00 - 20:00)
+    for (let hour = 11; hour <= 20; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push({ time: timeString, isSpecial: false });
+      }
+    }
+    
+    // Horários especiais (antes de 11:00 e depois de 20:00)
+    for (let hour = 8; hour < 11; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push({ time: timeString, isSpecial: true });
+      }
+    }
+    
+    for (let hour = 21; hour <= 22; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push({ time: timeString, isSpecial: true });
+      }
+    }
+    
+    return slots.sort((a, b) => a.time.localeCompare(b.time));
+  };
+
+  const getAvailableTimeSlots = () => {
+    if (!selectedDate) return generateTimeSlots();
+    
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const bookedTimes = agendamentos
+      .filter(ag => ag.data_agendamento === dateStr)
+      .map(ag => ag.hora_agendamento);
+    
+    return generateTimeSlots().map(slot => ({
+      ...slot,
+      isBooked: bookedTimes.includes(slot.time)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -224,7 +271,7 @@ const CalendarioPage = () => {
       tem_desconto: false,
       porcentagem_desconto: 0,
       data_agendamento: selectedDate ? format(addDays(selectedDate, 0), 'yyyy-MM-dd') : format(addDays(new Date(), 0), 'yyyy-MM-dd'),
-      hora_agendamento: '',
+      hora_agendamento: selectedTimeSlot,
       tem_retorno: false,
       data_retorno: '',
       preco_retorno: 0,
@@ -232,6 +279,7 @@ const CalendarioPage = () => {
       observacoes: ''
     });
     setEditingAgendamento(null);
+    setSelectedTimeSlot('');
     setDialogOpen(false);
   };
 
@@ -252,6 +300,7 @@ const CalendarioPage = () => {
       observacoes: agendamento.observacoes || ''
     });
     setEditingAgendamento(agendamento);
+    setSelectedTimeSlot(agendamento.hora_agendamento);
     setDialogOpen(true);
   };
 
@@ -333,8 +382,9 @@ const CalendarioPage = () => {
                 resetForm();
                 setDialogOpen(true);
               }}
+              className={isMobile ? "px-2" : ""}
             >
-              Novo Agendamento
+              {isMobile ? <Plus className="h-4 w-4" /> : "Novo Agendamento"}
             </Button>
           </DialogTrigger>
           <DialogContent className="w-[95%] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
@@ -377,12 +427,31 @@ const CalendarioPage = () => {
                 </div>
                 <div>
                   <Label htmlFor="hora">Hora *</Label>
-                  <Input
-                    id="hora"
-                    type="time"
-                    value={formData.hora_agendamento}
-                    onChange={(e) => setFormData({ ...formData, hora_agendamento: e.target.value })}
-                  />
+                  <Select 
+                    value={selectedTimeSlot} 
+                    onValueChange={(value) => {
+                      setSelectedTimeSlot(value);
+                      setFormData({ ...formData, hora_agendamento: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um horário" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {getAvailableTimeSlots().map((slot) => (
+                        <SelectItem 
+                          key={slot.time} 
+                          value={slot.time}
+                          disabled={slot.isBooked && !editingAgendamento}
+                          className={slot.isSpecial ? "text-orange-600 font-medium" : ""}
+                        >
+                          {slot.time} 
+                          {slot.isSpecial && " (Especial)"}
+                          {slot.isBooked && " (Ocupado)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -469,9 +538,12 @@ const CalendarioPage = () => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendário */}
         <Card>
+          <CardHeader>
+            <CardTitle>Calendário</CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
             <Calendar
               mode="single"
@@ -479,13 +551,7 @@ const CalendarioPage = () => {
               onSelect={(date) => {
                 if (date) {
                   setSelectedDate(date);
-                  // Scroll para a lista de agendamentos
-                  setTimeout(() => {
-                    const agendamentosSection = document.getElementById('agendamentos-list');
-                    if (agendamentosSection) {
-                      agendamentosSection.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }, 100);
+                  setSelectedTimeSlot('');
                 }
               }}
               locale={ptBR}
@@ -514,36 +580,169 @@ const CalendarioPage = () => {
                   );
                 }
               }}
-              className="rounded-md border"
+              className="mx-auto"
             />
           </CardContent>
         </Card>
 
+        {/* Horários Disponíveis */}
+        {selectedDate && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Horários para {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
+                {getAvailableTimeSlots().map((slot) => (
+                  <Button
+                    key={slot.time}
+                    variant={slot.isBooked ? "secondary" : selectedTimeSlot === slot.time ? "default" : "outline"}
+                    size="sm"
+                    disabled={slot.isBooked}
+                    onClick={() => {
+                      setSelectedTimeSlot(slot.time);
+                      setFormData({ ...formData, hora_agendamento: slot.time });
+                      setDialogOpen(true);
+                    }}
+                    className={`${slot.isSpecial ? 'border-orange-500 text-orange-600' : ''} ${slot.isBooked ? 'opacity-50' : ''}`}
+                  >
+                    {slot.time}
+                    {slot.isSpecial && "*"}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                * Horários especiais (fora do horário padrão 11h-20h)
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Agendamentos do dia selecionado */}
         <Card id="agendamentos-list">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              {selectedDate 
-                ? `Agendamentos de ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
-                : 'Selecione uma data no calendário'
-              }
-            </h3>
-            
+          <CardHeader>
+            <CardTitle className="text-lg">
+              Agendamentos de {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : 'hoje'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             {agendamentosDodia.length === 0 ? (
-              <p className="text-muted-foreground">
-                Nenhum agendamento para esta data.
-              </p>
+              <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {agendamentosDodia.map((agendamento) => (
-                  <AgendamentoCard
-                    key={agendamento.id}
-                    agendamento={agendamento}
-                    onEdit={handleEdit}
-                    onOpenWhatsApp={openWhatsApp}
-                    onUpdateStatus={updateAgendamentoStatus}
-                    onDelete={deleteAgendamento}
-                  />
+                  <div key={agendamento.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium">{agendamento.nome}</h4>
+                        <p className="text-sm text-muted-foreground">{agendamento.telefone}</p>
+                      </div>
+                      <Badge className={getStatusColor(agendamento.status)}>{agendamento.status}</Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-3">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{agendamento.hora_agendamento}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4" />
+                        <span>R$ {agendamento.preco.toFixed(2)}</span>
+                        {agendamento.tem_desconto && agendamento.porcentagem_desconto && (
+                          <span className="text-green-600 text-xs">
+                            (-{agendamento.porcentagem_desconto}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {agendamento.observacoes && (
+                      <p className="text-sm text-muted-foreground mb-3">{agendamento.observacoes}</p>
+                    )}
+
+                    <div className="flex gap-2 flex-wrap">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEdit(agendamento)}
+                        className={isMobile ? "px-2" : ""}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        {!isMobile && <span className="ml-1">Editar</span>}
+                      </Button>
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => openWhatsApp(
+                          agendamento.telefone, 
+                          agendamento.nome, 
+                          format(new Date(agendamento.data_agendamento), 'dd/MM/yyyy'),
+                          agendamento.hora_agendamento
+                        )}
+                        className={isMobile ? "px-2" : ""}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        {!isMobile && <span className="ml-1">WhatsApp</span>}
+                      </Button>
+
+                      {agendamento.status === 'Agendado' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
+                          className={`text-green-600 border-green-600 ${isMobile ? "px-2" : ""}`}
+                        >
+                          <Check className="w-4 h-4" />
+                          {!isMobile && <span className="ml-1">Concluir</span>}
+                        </Button>
+                      )}
+
+                      {agendamento.status === 'Agendado' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateAgendamentoStatus(agendamento.id, 'Cancelado')}
+                          className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}
+                        >
+                          <X className="w-4 h-4" />
+                          {!isMobile && <span className="ml-1">Cancelar</span>}
+                        </Button>
+                      )}
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            {!isMobile && <span className="ml-1">Excluir</span>}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir Agendamento</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => deleteAgendamento(agendamento.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -554,191 +753,5 @@ const CalendarioPage = () => {
   );
 };
 
-// Componente do card de agendamento
-const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, onDelete }: {
-  agendamento: Agendamento;
-  onEdit: (agendamento: Agendamento) => void;
-  onOpenWhatsApp: (telefone: string, nome: string, data: string, hora: string) => void;
-  onUpdateStatus: (id: string, status: string) => void;
-  onDelete: (id: string) => void;
-}) => {
-  const calcularPrecoFinal = (preco: number, temDesconto: boolean, porcentagemDesconto: number | null) => {
-    if (!temDesconto || !porcentagemDesconto) return preco;
-    return preco * (1 - porcentagemDesconto / 100);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Agendado':
-        return 'bg-blue-500/10 text-blue-700 border-blue-200';
-      case 'Concluído':
-        return 'bg-green-500/10 text-green-700 border-green-200';
-      case 'Cancelado':
-        return 'bg-red-500/10 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-500/10 text-gray-700 border-gray-200';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  const precoFinal = calcularPrecoFinal(
-    agendamento.preco,
-    agendamento.tem_desconto,
-    agendamento.porcentagem_desconto
-  );
-
-  return (
-    <Card className="mobile-card">
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          {/* Cabeçalho */}
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">{agendamento.nome}</h3>
-              <div className="text-sm text-muted-foreground">{agendamento.telefone}</div>
-            </div>
-            <Badge className={getStatusColor(agendamento.status)}>
-              {agendamento.status}
-            </Badge>
-          </div>
-
-          {/* Data e Hora */}
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center text-muted-foreground">
-              <CalendarIcon className="h-3 w-3 mr-1" />
-              <span>{formatDate(agendamento.data_agendamento)}</span>
-            </div>
-            <div className="flex items-center text-muted-foreground">
-              <Clock className="h-3 w-3 mr-1" />
-              <span>{agendamento.hora_agendamento}</span>
-            </div>
-          </div>
-
-          {/* Preço */}
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-3 w-3 text-success" />
-            {agendamento.tem_desconto && agendamento.porcentagem_desconto ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground line-through">
-                  R$ {agendamento.preco.toFixed(2)}
-                </span>
-                <span className="font-semibold text-success">
-                  R$ {precoFinal.toFixed(2)}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  -{agendamento.porcentagem_desconto}%
-                </Badge>
-              </div>
-            ) : (
-              <span className="font-semibold text-success">
-                R$ {agendamento.preco.toFixed(2)}
-              </span>
-            )}
-          </div>
-
-          {/* Observações */}
-          {agendamento.observacoes && (
-            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-              <strong>Obs:</strong> {agendamento.observacoes}
-            </div>
-          )}
-
-          {/* Botões de Status */}
-          <div className="flex gap-2">
-            <Button
-              variant={agendamento.status === 'Agendado' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onUpdateStatus(agendamento.id, 'Agendado')}
-              className="flex-1"
-              disabled={agendamento.status === 'Agendado'}
-            >
-              <Clock4 className="h-3 w-3 mr-1" />
-              Agendado
-            </Button>
-            <Button
-              variant={agendamento.status === 'Concluído' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onUpdateStatus(agendamento.id, 'Concluído')}
-              className="flex-1"
-              disabled={agendamento.status === 'Concluído'}
-            >
-              <Check className="h-3 w-3 mr-1" />
-              Concluído
-            </Button>
-            <Button
-              variant={agendamento.status === 'Cancelado' ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={() => onUpdateStatus(agendamento.id, 'Cancelado')}
-              className="flex-1"
-              disabled={agendamento.status === 'Cancelado'}
-            >
-              <X className="h-3 w-3 mr-1" />
-              Cancelado
-            </Button>
-          </div>
-
-          {/* Ações */}
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onEdit(agendamento)}
-              className="flex-1"
-            >
-              <Edit2 className="h-3 w-3 mr-1" />
-              Editar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenWhatsApp(
-                agendamento.telefone,
-                agendamento.nome,
-                formatDate(agendamento.data_agendamento),
-                agendamento.hora_agendamento
-              )}
-              className="flex-1 text-green-600 hover:text-green-700"
-            >
-              <MessageCircle className="h-3 w-3 mr-1" />
-              WhatsApp
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Excluir
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(agendamento.id)}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 export default CalendarioPage;
