@@ -146,27 +146,21 @@ const CalendarioPage = () => {
   const generateTimeSlots = () => {
     const slots = [];
     
-    // Horários normais (11:00 - 20:00)
+    // Horários normais (11:00 - 20:00) - apenas hora em hora
     for (let hour = 11; hour <= 20; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push({ time: timeString, isSpecial: false });
-      }
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      slots.push({ time: timeString, isSpecial: false });
     }
     
-    // Horários especiais (antes de 11:00 e depois de 20:00)
+    // Horários especiais (antes de 11:00 e depois de 20:00) - apenas hora em hora
     for (let hour = 8; hour < 11; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push({ time: timeString, isSpecial: true });
-      }
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      slots.push({ time: timeString, isSpecial: true });
     }
     
     for (let hour = 21; hour <= 22; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push({ time: timeString, isSpecial: true });
-      }
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      slots.push({ time: timeString, isSpecial: true });
     }
     
     return slots.sort((a, b) => a.time.localeCompare(b.time));
@@ -384,7 +378,8 @@ const CalendarioPage = () => {
               }}
               className={isMobile ? "px-2" : ""}
             >
-              {isMobile ? <Plus className="h-4 w-4" /> : "Novo Agendamento"}
+              <Plus className="h-4 w-4" />
+              {!isMobile && <span className="ml-2">Novo Agendamento</span>}
             </Button>
           </DialogTrigger>
           <DialogContent className="w-[95%] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
@@ -442,7 +437,7 @@ const CalendarioPage = () => {
                         <SelectItem 
                           key={slot.time} 
                           value={slot.time}
-                          disabled={slot.isBooked && !editingAgendamento}
+                          disabled={slot.isBooked && (!editingAgendamento || editingAgendamento.hora_agendamento !== slot.time)}
                           className={slot.isSpecial ? "text-orange-600 font-medium" : ""}
                         >
                           {slot.time} 

@@ -409,8 +409,8 @@ const AgendamentosTab = () => {
                   setDialogOpen(true);
                 }}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Novo
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Novo</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95%] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">

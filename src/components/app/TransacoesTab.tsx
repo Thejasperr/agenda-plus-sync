@@ -273,8 +273,8 @@ const TransacoesTab = () => {
                   setDialogOpen(true);
                 }}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Nova
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Nova</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[90%] max-w-md mx-auto">
@@ -425,14 +425,14 @@ const TransacoesTab = () => {
                       onClick={() => handleEdit(transacao)}
                       className="flex-1"
                     >
-                      <Edit2 className="h-3 w-3 mr-1" />
-                      Editar
+                      <Edit2 className="h-3 w-3" />
+                      <span className="hidden sm:inline ml-1">Editar</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700">
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Excluir
+                          <Trash2 className="h-3 w-3" />
+                          <span className="hidden sm:inline ml-1">Excluir</span>
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
