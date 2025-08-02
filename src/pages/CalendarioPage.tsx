@@ -172,7 +172,7 @@ const CalendarioPage = () => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const bookedTimes = agendamentos
       .filter(ag => ag.data_agendamento === dateStr)
-      .map(ag => ag.hora_agendamento);
+      .map(ag => ag.hora_agendamento.substring(0, 5)); // Apenas HH:MM
     
     return generateTimeSlots().map(slot => ({
       ...slot,
@@ -257,6 +257,10 @@ const CalendarioPage = () => {
   };
 
   const resetForm = () => {
+    // Fix timezone issue by ensuring correct date formatting
+    const targetDate = selectedDate || new Date();
+    const formattedDate = format(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()), 'yyyy-MM-dd');
+    
     setFormData({
       nome: '',
       telefone: '',
@@ -264,7 +268,7 @@ const CalendarioPage = () => {
       preco: 0,
       tem_desconto: false,
       porcentagem_desconto: 0,
-      data_agendamento: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      data_agendamento: formattedDate,
       hora_agendamento: selectedTimeSlot,
       tem_retorno: false,
       data_retorno: '',
@@ -558,10 +562,10 @@ const CalendarioPage = () => {
                 }}
                 locale={ptBR}
                 modifiers={{
-                  hasEvent: (date) => hasAgendamentos(date)
+                  hasAgendamentos: (date) => hasAgendamentos(date)
                 }}
                 modifiersStyles={{
-                  hasEvent: {
+                  hasAgendamentos: {
                     backgroundColor: 'hsl(var(--primary))',
                     color: 'hsl(var(--primary-foreground))',
                     fontWeight: 'bold'
@@ -571,22 +575,8 @@ const CalendarioPage = () => {
                   Day: ({ date, ...props }) => {
                     const count = getAgendadosCount(date);
                     return (
-                      <div 
-                        className="relative cursor-pointer hover:bg-accent rounded p-2 w-full h-full flex flex-col items-center justify-center" 
-                        onClick={() => {
-                          setSelectedDate(date);
-                          setSelectedTimeSlot('');
-                          // Scroll suave para a seção de agendamentos
-                          setTimeout(() => {
-                            const agendamentosSection = document.getElementById('agendamentos-list');
-                            if (agendamentosSection) {
-                              agendamentosSection.scrollIntoView({ behavior: 'smooth' });
-                            }
-                          }, 100);
-                        }}
-                        {...props}
-                      >
-                        <div>{date.getDate()}</div>
+                      <div className="relative w-full h-full flex flex-col items-center justify-center">
+                        <span>{date.getDate()}</span>
                         {count > 0 && (
                           <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                             {count}
@@ -618,9 +608,18 @@ const CalendarioPage = () => {
                     size="sm"
                     disabled={slot.isBooked}
                     onClick={() => {
-                      setSelectedTimeSlot(slot.time);
-                      setFormData({ ...formData, hora_agendamento: slot.time });
-                      setDialogOpen(true);
+                      if (!slot.isBooked) {
+                        setSelectedTimeSlot(slot.time);
+                        // Fix timezone issue by ensuring correct date formatting
+                        const targetDate = selectedDate || new Date();
+                        const formattedDate = format(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()), 'yyyy-MM-dd');
+                        setFormData({ 
+                          ...formData, 
+                          hora_agendamento: slot.time, 
+                          data_agendamento: formattedDate 
+                        });
+                        setDialogOpen(true);
+                      }
                     }}
                     className={`${slot.isSpecial ? 'border-orange-500 text-orange-600' : ''} ${slot.isBooked ? 'opacity-50' : ''}`}
                   >

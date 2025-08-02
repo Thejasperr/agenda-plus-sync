@@ -403,7 +403,7 @@ const AgendamentosTab = () => {
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button 
-                className="mobile-button shrink-0"
+                className="shrink-0"
                 onClick={() => {
                   resetForm();
                   setDialogOpen(true);
@@ -696,8 +696,8 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
               className="flex-1"
               disabled={agendamento.status === 'Agendado'}
             >
-              <Clock4 className="h-3 w-3 mr-1" />
-              Agendado
+              <Clock4 className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Agendado</span>
             </Button>
             <Button
               variant={agendamento.status === 'Concluído' ? 'default' : 'outline'}
@@ -706,8 +706,8 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
               className="flex-1"
               disabled={agendamento.status === 'Concluído'}
             >
-              <Check className="h-3 w-3 mr-1" />
-              Concluído
+              <Check className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Concluído</span>
             </Button>
             <Button
               variant={agendamento.status === 'Cancelado' ? 'destructive' : 'outline'}
@@ -716,8 +716,8 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
               className="flex-1"
               disabled={agendamento.status === 'Cancelado'}
             >
-              <X className="h-3 w-3 mr-1" />
-              Cancelado
+              <X className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Cancelado</span>
             </Button>
           </div>
 
@@ -729,8 +729,8 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
               onClick={() => onEdit(agendamento)}
               className="flex-1"
             >
-              <Edit2 className="h-3 w-3 mr-1" />
-              Editar
+              <Edit2 className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Editar</span>
             </Button>
             <Button
               variant="outline"
@@ -743,8 +743,8 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
               )}
               className="flex-1 text-green-600 hover:text-green-700"
             >
-              <MessageCircle className="h-3 w-3 mr-1" />
-              WhatsApp
+              <MessageCircle className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">WhatsApp</span>
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -753,8 +753,8 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
                   size="sm"
                   className="flex-1 text-red-600 hover:text-red-700"
                 >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Excluir
+                  <Trash2 className="h-3 w-3" />
+                  <span className="hidden sm:inline ml-1">Excluir</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
