@@ -259,7 +259,8 @@ const CalendarioPage = () => {
   const resetForm = () => {
     // Fix timezone issue by ensuring correct date formatting
     const targetDate = selectedDate || new Date();
-    const formattedDate = format(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()), 'yyyy-MM-dd');
+    // Using toISOString().split('T')[0] to ensure correct date without timezone offset
+    const formattedDate = new Date(targetDate.getTime() - targetDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     
     setFormData({
       nome: '',
