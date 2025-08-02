@@ -53,7 +53,7 @@ const CalendarioPage = () => {
     preco: 0,
     tem_desconto: false,
     porcentagem_desconto: 0,
-    data_agendamento: format(addDays(new Date(), 0), 'yyyy-MM-dd'),
+    data_agendamento: format(new Date(), 'yyyy-MM-dd'),
     hora_agendamento: '',
     tem_retorno: false,
     data_retorno: '',
@@ -264,7 +264,7 @@ const CalendarioPage = () => {
       preco: 0,
       tem_desconto: false,
       porcentagem_desconto: 0,
-      data_agendamento: selectedDate ? format(addDays(selectedDate, 0), 'yyyy-MM-dd') : format(addDays(new Date(), 0), 'yyyy-MM-dd'),
+      data_agendamento: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       hora_agendamento: selectedTimeSlot,
       tem_retorno: false,
       data_retorno: '',
@@ -540,43 +540,64 @@ const CalendarioPage = () => {
             <CardTitle>Calendário</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => {
-                if (date) {
-                  setSelectedDate(date);
-                  setSelectedTimeSlot('');
-                }
-              }}
-              locale={ptBR}
-              modifiers={{
-                hasEvent: (date) => hasAgendamentos(date)
-              }}
-              modifiersStyles={{
-                hasEvent: {
-                  backgroundColor: 'hsl(var(--primary))',
-                  color: 'hsl(var(--primary-foreground))',
-                  fontWeight: 'bold'
-                }
-              }}
-              components={{
-                Day: ({ date, ...props }) => {
-                  const count = getAgendadosCount(date);
-                  return (
-                    <div className="relative cursor-pointer hover:bg-accent rounded" {...props}>
-                      <div>{date.getDate()}</div>
-                      {count > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {count}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-              }}
-              className="mx-auto"
-            />
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    setSelectedTimeSlot('');
+                    // Scroll suave para a seção de agendamentos
+                    setTimeout(() => {
+                      const agendamentosSection = document.getElementById('agendamentos-list');
+                      if (agendamentosSection) {
+                        agendamentosSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 100);
+                  }
+                }}
+                locale={ptBR}
+                modifiers={{
+                  hasEvent: (date) => hasAgendamentos(date)
+                }}
+                modifiersStyles={{
+                  hasEvent: {
+                    backgroundColor: 'hsl(var(--primary))',
+                    color: 'hsl(var(--primary-foreground))',
+                    fontWeight: 'bold'
+                  }
+                }}
+                components={{
+                  Day: ({ date, ...props }) => {
+                    const count = getAgendadosCount(date);
+                    return (
+                      <div 
+                        className="relative cursor-pointer hover:bg-accent rounded p-2 w-full h-full flex flex-col items-center justify-center" 
+                        onClick={() => {
+                          setSelectedDate(date);
+                          setSelectedTimeSlot('');
+                          // Scroll suave para a seção de agendamentos
+                          setTimeout(() => {
+                            const agendamentosSection = document.getElementById('agendamentos-list');
+                            if (agendamentosSection) {
+                              agendamentosSection.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }, 100);
+                        }}
+                        {...props}
+                      >
+                        <div>{date.getDate()}</div>
+                        {count > 0 && (
+                          <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            {count}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                }}
+                className="mx-auto"
+              />
           </CardContent>
         </Card>
 
