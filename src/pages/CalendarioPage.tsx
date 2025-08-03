@@ -259,8 +259,7 @@ const CalendarioPage = () => {
   const resetForm = () => {
     // Fix timezone issue by ensuring correct date formatting
     const targetDate = selectedDate || new Date();
-    // Using toISOString().split('T')[0] to ensure correct date without timezone offset
-    const formattedDate = new Date(targetDate.getTime() - targetDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const formattedDate = format(targetDate, 'yyyy-MM-dd');
     
     setFormData({
       nome: '',
@@ -552,6 +551,14 @@ const CalendarioPage = () => {
                   if (date) {
                     setSelectedDate(date);
                     setSelectedTimeSlot('');
+                    
+                    // Atualizar data no formulário ao selecionar no calendário
+                    const formattedDate = format(date, 'yyyy-MM-dd');
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      data_agendamento: formattedDate 
+                    }));
+                    
                     // Scroll suave para a seção de agendamentos
                     setTimeout(() => {
                       const agendamentosSection = document.getElementById('agendamentos-list');
@@ -611,9 +618,9 @@ const CalendarioPage = () => {
                     onClick={() => {
                       if (!slot.isBooked) {
                         setSelectedTimeSlot(slot.time);
-                        // Fix timezone issue by ensuring correct date formatting
+                        // Usar a data selecionada corretamente
                         const targetDate = selectedDate || new Date();
-                        const formattedDate = format(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()), 'yyyy-MM-dd');
+                        const formattedDate = format(targetDate, 'yyyy-MM-dd');
                         setFormData({ 
                           ...formData, 
                           hora_agendamento: slot.time, 
