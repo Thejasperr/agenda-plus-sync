@@ -125,9 +125,11 @@ const CalendarioPage = () => {
 
   const agendamentosDodia = selectedDate
     ? agendamentos.filter(agendamento => {
-        // Corrigir comparação de datas
-        const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
-        return isSameDay(agendamentoDate, selectedDate);
+        // Corrigir comparação de datas garantindo que seja local
+        const agendamentoDateStr = agendamento.data_agendamento;
+        const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+        console.log('Comparando datas:', agendamentoDateStr, 'vs', selectedDateStr);
+        return agendamentoDateStr === selectedDateStr;
       })
     : [];
 
