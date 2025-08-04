@@ -322,7 +322,7 @@ const AgendamentosTab = () => {
 
   // Filtrar apenas agendamentos do dia selecionado
   const agendamentosDodia = agendamentos.filter(agendamento => {
-    const agendamentoDate = new Date(agendamento.data_agendamento);
+    const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
     return isSameDay(agendamentoDate, selectedDate);
   }).filter(agendamento => {
     if (searchTerm) {
