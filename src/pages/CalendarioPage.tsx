@@ -544,16 +544,28 @@ const CalendarioPage = () => {
             <CardTitle>Calendário</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-              <Calendar
+            <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => {
                   if (date) {
-                    setSelectedDate(date);
+                    console.log('Data selecionada no calendário:', date);
+                    
+                    // Criar nova data sem problemas de timezone
+                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    console.log('Data local criada:', localDate);
+                    
+                    setSelectedDate(localDate);
                     setSelectedTimeSlot('');
                     
-                    // Atualizar data no formulário ao selecionar no calendário
-                    const formattedDate = format(date, 'yyyy-MM-dd');
+                    // Formatar data para o formato YYYY-MM-DD
+                    const year = localDate.getFullYear();
+                    const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
+                    const day = localDate.getDate().toString().padStart(2, '0');
+                    const formattedDate = `${year}-${month}-${day}`;
+                    
+                    console.log('Data formatada para salvar:', formattedDate);
+                    
                     setFormData(prev => ({ 
                       ...prev, 
                       data_agendamento: formattedDate 
@@ -568,6 +580,8 @@ const CalendarioPage = () => {
                     }, 100);
                   }
                 }}
+                disabled={(date) => date < new Date()}
+                className="rounded-md border mx-auto"
                 locale={ptBR}
                 modifiers={{
                   hasAgendamentos: (date) => hasAgendamentos(date)
@@ -594,7 +608,6 @@ const CalendarioPage = () => {
                     );
                   }
                 }}
-                className="mx-auto"
               />
           </CardContent>
         </Card>
