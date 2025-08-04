@@ -124,22 +124,25 @@ const CalendarioPage = () => {
   };
 
   const agendamentosDodia = selectedDate
-    ? agendamentos.filter(agendamento =>
-        isSameDay(new Date(agendamento.data_agendamento), selectedDate)
-      )
+    ? agendamentos.filter(agendamento => {
+        // Corrigir comparação de datas
+        const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
+        return isSameDay(agendamentoDate, selectedDate);
+      })
     : [];
 
   const hasAgendamentos = (date: Date) => {
-    return agendamentos.some(agendamento =>
-      isSameDay(new Date(agendamento.data_agendamento), date)
-    );
+    return agendamentos.some(agendamento => {
+      const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
+      return isSameDay(agendamentoDate, date);
+    });
   };
 
   const getAgendadosCount = (date: Date) => {
-    return agendamentos.filter(agendamento =>
-      isSameDay(new Date(agendamento.data_agendamento), date) && 
-      agendamento.status === 'Agendado'
-    ).length;
+    return agendamentos.filter(agendamento => {
+      const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
+      return isSameDay(agendamentoDate, date) && agendamento.status === 'Agendado';
+    }).length;
   };
 
   // Gerar horários disponíveis
@@ -553,18 +556,12 @@ const CalendarioPage = () => {
                   if (date) {
                     console.log('Data selecionada no calendário:', date);
                     
-                    // Criar nova data sem problemas de timezone
-                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                    console.log('Data local criada:', localDate);
-                    
-                    setSelectedDate(localDate);
+                    // Usar a data exatamente como vem do calendário
+                    setSelectedDate(date);
                     setSelectedTimeSlot('');
                     
-                    // Formatar data para o formato YYYY-MM-DD
-                    const year = localDate.getFullYear();
-                    const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
-                    const day = localDate.getDate().toString().padStart(2, '0');
-                    const formattedDate = `${year}-${month}-${day}`;
+                    // Formatar data para o formato YYYY-MM-DD usando a data selecionada
+                    const formattedDate = format(date, 'yyyy-MM-dd');
                     
                     console.log('Data formatada para salvar:', formattedDate);
                     
@@ -582,8 +579,7 @@ const CalendarioPage = () => {
                     }, 100);
                   }
                 }}
-                
-                className="rounded-md border mx-auto"
+                className="rounded-md border mx-auto cursor-pointer"
                 locale={ptBR}
                 modifiers={{
                   hasAgendamentos: (date) => hasAgendamentos(date)
