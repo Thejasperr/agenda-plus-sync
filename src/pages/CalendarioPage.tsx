@@ -199,7 +199,9 @@ const CalendarioPage = () => {
         porcentagem_desconto: formData.tem_desconto ? formData.porcentagem_desconto : null,
         data_retorno: formData.tem_retorno ? formData.data_retorno : null,
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
-        observacoes: formData.observacoes || null
+        observacoes: formData.observacoes || null,
+        // Garantir que a data seja salva corretamente
+        data_agendamento: formData.data_agendamento
       };
 
       // Criar cliente se não existir
@@ -580,7 +582,7 @@ const CalendarioPage = () => {
                     }, 100);
                   }
                 }}
-                disabled={(date) => date < new Date()}
+                
                 className="rounded-md border mx-auto"
                 locale={ptBR}
                 modifiers={{
