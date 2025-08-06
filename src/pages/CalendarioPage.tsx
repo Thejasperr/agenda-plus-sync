@@ -581,7 +581,7 @@ const CalendarioPage = () => {
                     }, 100);
                   }
                 }}
-                className="rounded-md border mx-auto cursor-pointer pointer-events-auto"
+                className="rounded-md border mx-auto cursor-pointer [&_button]:cursor-pointer [&_button]:pointer-events-auto [&_table]:pointer-events-auto"
                 locale={ptBR}
                 modifiers={{
                   hasAgendamentos: (date) => hasAgendamentos(date)
