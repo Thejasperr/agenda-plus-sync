@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -42,13 +42,14 @@ interface Servico {
 const AgendamentosTab = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [clientes, setClientes] = useState<{telefone: string, nome: string}[]>([]);
+  const [clientes, setClientes] = useState<{id: string, telefone: string, nome: string}[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -113,7 +114,7 @@ const AgendamentosTab = () => {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('telefone, nome');
+        .select('id, telefone, nome');
 
       if (error) throw error;
       setClientes(data || []);
@@ -215,6 +216,7 @@ const AgendamentosTab = () => {
       observacoes: ''
     });
     setEditingAgendamento(null);
+    setShowSuggestions(false);
     setDialogOpen(false);
   };
 
@@ -235,6 +237,7 @@ const AgendamentosTab = () => {
       observacoes: agendamento.observacoes || ''
     });
     setEditingAgendamento(agendamento);
+    setShowSuggestions(false);
     setDialogOpen(true);
   };
 
@@ -351,6 +354,25 @@ const AgendamentosTab = () => {
     }
   };
 
+  // Filtrar clientes para autocomplete
+  const filteredClientes = clientes.filter(cliente =>
+    cliente.nome.toLowerCase().includes(formData.nome.toLowerCase()) && 
+    formData.nome.length > 0
+  ).slice(0, 5); // Limitar a 5 sugestões
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-autocomplete]')) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -433,14 +455,42 @@ const AgendamentosTab = () => {
                       placeholder="(11) 99999-9999"
                     />
                   </div>
-                  <div>
+                  <div className="relative" data-autocomplete>
                     <Label htmlFor="nome">Nome *</Label>
                     <Input
                       id="nome"
                       value={formData.nome}
-                      onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, nome: e.target.value });
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
                       placeholder="Nome do cliente"
+                      autoComplete="off"
                     />
+                    
+                    {/* Dropdown de sugestões */}
+                    {showSuggestions && formData.nome && filteredClientes.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                        {filteredClientes.map((cliente) => (
+                          <div
+                            key={cliente.id}
+                            className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground text-sm"
+                            onClick={() => {
+                              setFormData({ 
+                                ...formData, 
+                                nome: cliente.nome,
+                                telefone: cliente.telefone 
+                              });
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            <div className="font-medium">{cliente.nome}</div>
+                            <div className="text-xs text-muted-foreground">{cliente.telefone}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
