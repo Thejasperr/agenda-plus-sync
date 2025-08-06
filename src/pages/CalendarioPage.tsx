@@ -43,6 +43,8 @@ const CalendarioPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredClientes, setFilteredClientes] = useState<{telefone: string, nome: string}[]>([]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -376,6 +378,46 @@ const CalendarioPage = () => {
     }
   };
 
+  const handleNomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nome = e.target.value;
+    setFormData({ ...formData, nome });
+    
+    if (nome.length > 0) {
+      const filtered = clientes.filter(cliente => 
+        cliente.nome.toLowerCase().includes(nome.toLowerCase())
+      );
+      setFilteredClientes(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+      setFilteredClientes([]);
+    }
+  };
+
+  const handleClienteSelect = (cliente: {telefone: string, nome: string}) => {
+    setFormData({ 
+      ...formData, 
+      nome: cliente.nome, 
+      telefone: cliente.telefone 
+    });
+    setShowSuggestions(false);
+    setFilteredClientes([]);
+  };
+
+  const handleClickOutside = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.suggestions-container')) {
+      setShowSuggestions(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -410,14 +452,29 @@ const CalendarioPage = () => {
                     placeholder="(11) 99999-9999"
                   />
                 </div>
-                <div>
+                <div className="suggestions-container relative">
                   <Label htmlFor="nome">Nome *</Label>
                   <Input
                     id="nome"
                     value={formData.nome}
-                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    onChange={handleNomeChange}
                     placeholder="Nome do cliente"
+                    autoComplete="off"
                   />
+                  {showSuggestions && filteredClientes.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredClientes.map((cliente, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground text-sm"
+                          onClick={() => handleClienteSelect(cliente)}
+                        >
+                          <div className="font-medium">{cliente.nome}</div>
+                          <div className="text-xs text-muted-foreground">{cliente.telefone}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
