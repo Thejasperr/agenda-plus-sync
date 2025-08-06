@@ -137,7 +137,11 @@ const HistoricoTab = () => {
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Calendar className="h-3 w-3 mr-1" />
                       <span>
-                        {format(new Date(agendamento.data_agendamento), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} às {agendamento.hora_agendamento}
+                        {(() => {
+                          const [year, month, day] = agendamento.data_agendamento.split('-').map(Number);
+                          const date = new Date(year, month - 1, day);
+                          return format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+                        })()} às {agendamento.hora_agendamento}
                       </span>
                     </div>
 
