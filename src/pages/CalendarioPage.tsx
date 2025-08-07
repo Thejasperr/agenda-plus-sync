@@ -540,40 +540,50 @@ const CalendarioPage = () => {
         <Card>
           
           <CardContent className="p-6">
-            <Calendar mode="single" selected={selectedDate} onSelect={date => {
-            console.log('Calendar clicked, date received:', date);
-            if (date) {
-              setSelectedDate(date);
-              setSelectedTimeSlot('');
-              const formattedDate = format(date, 'yyyy-MM-dd');
-              console.log('Setting formData with date:', formattedDate);
-              setFormData(prev => ({
-                ...prev,
-                data_agendamento: formattedDate
-              }));
-            }
-          }} className="rounded-md border mx-auto" locale={ptBR} modifiers={{
-            hasAgendamentos: date => hasAgendamentos(date)
-          }} modifiersStyles={{
-            hasAgendamentos: {
-              backgroundColor: 'hsl(var(--primary))',
-              color: 'hsl(var(--primary-foreground))',
-              fontWeight: 'bold'
-            }
-          }} components={{
-            Day: ({
-              date,
-              ...props
-            }) => {
-              const count = getAgendadosCount(date);
-              return <div className="relative w-full h-full flex flex-col items-center justify-center">
-                        <span>{date.getDate()}</span>
-                        {count > 0 && <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {count}
-                          </div>}
-                      </div>;
-            }
-          }} />
+            <Calendar 
+              mode="single" 
+              selected={selectedDate} 
+              onSelect={(date) => {
+                console.log('Calendar clicked, date received:', date);
+                if (date) {
+                  setSelectedDate(date);
+                  setSelectedTimeSlot('');
+                  const formattedDate = format(date, 'yyyy-MM-dd');
+                  console.log('Setting formData with date:', formattedDate);
+                  setFormData(prev => ({
+                    ...prev,
+                    data_agendamento: formattedDate
+                  }));
+                }
+              }} 
+              className="rounded-md border mx-auto pointer-events-auto" 
+              locale={ptBR} 
+              modifiers={{
+                hasAgendamentos: date => hasAgendamentos(date)
+              }} 
+              modifiersStyles={{
+                hasAgendamentos: {
+                  backgroundColor: 'hsl(var(--primary))',
+                  color: 'hsl(var(--primary-foreground))',
+                  fontWeight: 'bold'
+                }
+              }} 
+              components={{
+                Day: ({ date, ...props }) => {
+                  const count = getAgendadosCount(date);
+                  return (
+                    <div className="relative w-full h-full flex flex-col items-center justify-center pointer-events-auto">
+                      <span>{date.getDate()}</span>
+                      {count > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {count}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              }} 
+            />
           </CardContent>
         </Card>
 
