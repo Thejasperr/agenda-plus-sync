@@ -612,26 +612,18 @@ const CalendarioPage = () => {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => {
-                  console.log('Calendar onSelect chamado com:', date);
+                  console.log('Calendar clicked, date received:', date);
                   if (date) {
-                    console.log('Data selecionada no calendário:', date);
                     setSelectedDate(date);
                     setSelectedTimeSlot('');
                     
                     const formattedDate = format(date, 'yyyy-MM-dd');
-                    console.log('Data formatada para salvar:', formattedDate);
+                    console.log('Setting formData with date:', formattedDate);
                     
                     setFormData(prev => ({ 
                       ...prev, 
                       data_agendamento: formattedDate 
                     }));
-                    
-                    setTimeout(() => {
-                      const agendamentosSection = document.getElementById('agendamentos-list');
-                      if (agendamentosSection) {
-                        agendamentosSection.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }, 100);
                   }
                 }}
                 className="rounded-md border mx-auto"
