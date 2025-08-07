@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
 interface Agendamento {
   id: string;
   nome: string;
@@ -33,30 +34,20 @@ interface Agendamento {
   observacoes: string | null;
   created_at: string;
 }
+
 const CalendarioPage = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [servicos, setServicos] = useState<{
-    id: string;
-    nome_procedimento: string;
-    valor: number;
-  }[]>([]);
-  const [clientes, setClientes] = useState<{
-    telefone: string;
-    nome: string;
-  }[]>([]);
+  const [servicos, setServicos] = useState<{id: string, nome_procedimento: string, valor: number}[]>([]);
+  const [clientes, setClientes] = useState<{telefone: string, nome: string}[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredClientes, setFilteredClientes] = useState<{
-    telefone: string;
-    nome: string;
-  }[]>([]);
-  const {
-    toast
-  } = useToast();
+  const [filteredClientes, setFilteredClientes] = useState<{telefone: string, nome: string}[]>([]);
+  const { toast } = useToast();
   const isMobile = useIsMobile();
+
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
@@ -72,51 +63,55 @@ const CalendarioPage = () => {
     status: 'Agendado',
     observacoes: ''
   });
+
   const fetchAgendamentos = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('agendamentos').select('*').order('data_agendamento', {
-        ascending: true
-      }).order('hora_agendamento', {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('*')
+        .order('data_agendamento', { ascending: true })
+        .order('hora_agendamento', { ascending: true });
+
       if (error) throw error;
       setAgendamentos(data || []);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
     }
   };
+
   const fetchServicos = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('servicos').select('*').order('nome_procedimento');
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('*')
+        .order('nome_procedimento');
+
       if (error) throw error;
       setServicos(data || []);
     } catch (error) {
       console.error('Erro ao buscar serviços:', error);
     }
   };
+
   const fetchClientes = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('clientes').select('telefone, nome');
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('telefone, nome');
+
       if (error) throw error;
       setClientes(data || []);
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
     }
   };
+
   useEffect(() => {
     fetchAgendamentos();
     fetchServicos();
     fetchClientes();
   }, []);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Agendado':
@@ -129,19 +124,24 @@ const CalendarioPage = () => {
         return 'bg-gray-500';
     }
   };
-  const agendamentosDodia = selectedDate ? agendamentos.filter(agendamento => {
-    // Corrigir comparação de datas garantindo que seja local
-    const agendamentoDateStr = agendamento.data_agendamento;
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    console.log('Comparando datas:', agendamentoDateStr, 'vs', selectedDateStr);
-    return agendamentoDateStr === selectedDateStr;
-  }) : [];
+
+  const agendamentosDodia = selectedDate
+    ? agendamentos.filter(agendamento => {
+        // Corrigir comparação de datas garantindo que seja local
+        const agendamentoDateStr = agendamento.data_agendamento;
+        const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+        console.log('Comparando datas:', agendamentoDateStr, 'vs', selectedDateStr);
+        return agendamentoDateStr === selectedDateStr;
+      })
+    : [];
+
   const hasAgendamentos = (date: Date) => {
     return agendamentos.some(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
       return isSameDay(agendamentoDate, date);
     });
   };
+
   const getAgendadosCount = (date: Date) => {
     return agendamentos.filter(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
@@ -152,53 +152,53 @@ const CalendarioPage = () => {
   // Gerar horários disponíveis
   const generateTimeSlots = () => {
     const slots = [];
-
+    
     // Horários normais (11:00 - 20:00) - apenas hora em hora
     for (let hour = 11; hour <= 20; hour++) {
       const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      slots.push({
-        time: timeString,
-        isSpecial: false
-      });
+      slots.push({ time: timeString, isSpecial: false });
     }
-
+    
     // Horários especiais (antes de 11:00 e depois de 20:00) - apenas hora em hora
     for (let hour = 8; hour < 11; hour++) {
       const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      slots.push({
-        time: timeString,
-        isSpecial: true
-      });
+      slots.push({ time: timeString, isSpecial: true });
     }
+    
     for (let hour = 21; hour <= 22; hour++) {
       const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      slots.push({
-        time: timeString,
-        isSpecial: true
-      });
+      slots.push({ time: timeString, isSpecial: true });
     }
+    
     return slots.sort((a, b) => a.time.localeCompare(b.time));
   };
+
   const getAvailableTimeSlots = () => {
     if (!selectedDate) return generateTimeSlots();
+    
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const bookedTimes = agendamentos.filter(ag => ag.data_agendamento === dateStr).map(ag => ag.hora_agendamento.substring(0, 5)); // Apenas HH:MM
-
+    const bookedTimes = agendamentos
+      .filter(ag => ag.data_agendamento === dateStr)
+      .map(ag => ag.hora_agendamento.substring(0, 5)); // Apenas HH:MM
+    
     return generateTimeSlots().map(slot => ({
       ...slot,
       isBooked: bookedTimes.includes(slot.time)
     }));
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!formData.nome || !formData.telefone || !formData.data_agendamento || !formData.hora_agendamento || formData.preco <= 0) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
+
     try {
       const agendamentoData = {
         ...formData,
@@ -214,37 +214,45 @@ const CalendarioPage = () => {
       // Criar cliente se não existir
       const clienteExistente = clientes.find(c => c.telefone === formData.telefone);
       if (!clienteExistente) {
-        const {
-          error: clienteError
-        } = await supabase.from('clientes').insert([{
-          nome: formData.nome,
-          telefone: formData.telefone
-        }]);
+        const { error: clienteError } = await supabase
+          .from('clientes')
+          .insert([{ 
+            nome: formData.nome, 
+            telefone: formData.telefone 
+          }]);
+
         if (clienteError) {
           console.warn('Erro ao criar cliente:', clienteError);
         } else {
           fetchClientes();
         }
       }
+
       if (editingAgendamento) {
-        const {
-          error
-        } = await supabase.from('agendamentos').update(agendamentoData).eq('id', editingAgendamento.id);
+        const { error } = await supabase
+          .from('agendamentos')
+          .update(agendamentoData)
+          .eq('id', editingAgendamento.id);
+
         if (error) throw error;
+
         toast({
           title: "Sucesso",
-          description: "Agendamento atualizado com sucesso!"
+          description: "Agendamento atualizado com sucesso!",
         });
       } else {
-        const {
-          error
-        } = await supabase.from('agendamentos').insert([agendamentoData]);
+        const { error } = await supabase
+          .from('agendamentos')
+          .insert([agendamentoData]);
+
         if (error) throw error;
+
         toast({
           title: "Sucesso",
-          description: "Agendamento criado com sucesso!"
+          description: "Agendamento criado com sucesso!",
         });
       }
+
       resetForm();
       fetchAgendamentos();
     } catch (error) {
@@ -252,14 +260,16 @@ const CalendarioPage = () => {
       toast({
         title: "Erro",
         description: "Não foi possível salvar o agendamento",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
+
   const resetForm = () => {
     // Fix timezone issue by ensuring correct date formatting
     const targetDate = selectedDate || new Date();
     const formattedDate = format(targetDate, 'yyyy-MM-dd');
+    
     setFormData({
       nome: '',
       telefone: '',
@@ -279,6 +289,7 @@ const CalendarioPage = () => {
     setSelectedTimeSlot('');
     setDialogOpen(false);
   };
+
   const handleEdit = (agendamento: Agendamento) => {
     setFormData({
       nome: agendamento.nome,
@@ -299,77 +310,82 @@ const CalendarioPage = () => {
     setSelectedTimeSlot(agendamento.hora_agendamento);
     setDialogOpen(true);
   };
+
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
     try {
-      const {
-        error
-      } = await supabase.from('agendamentos').update({
-        status: newStatus
-      }).eq('id', id);
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ status: newStatus })
+        .eq('id', id);
+
       if (error) throw error;
+
       toast({
         title: "Sucesso",
-        description: `Status atualizado para ${newStatus}`
+        description: `Status atualizado para ${newStatus}`,
       });
+
       fetchAgendamentos();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
+
   const deleteAgendamento = async (id: string) => {
     try {
-      const {
-        error
-      } = await supabase.from('agendamentos').delete().eq('id', id);
+      const { error } = await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
+
       toast({
         title: "Sucesso",
-        description: "Agendamento excluído com sucesso!"
+        description: "Agendamento excluído com sucesso!",
       });
+
       fetchAgendamentos();
     } catch (error) {
       console.error('Erro ao excluir agendamento:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o agendamento",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
+
   const openWhatsApp = (telefone: string, nome: string, data: string, hora: string) => {
     const message = encodeURIComponent(`Olá ${nome}! Confirmando seu agendamento para ${data} às ${hora}. Aguardamos você!`);
     const phoneNumber = telefone.replace(/\D/g, '');
     window.open(`https://wa.me/55${phoneNumber}?text=${message}`, '_blank');
   };
+
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const telefone = e.target.value;
-    setFormData({
-      ...formData,
-      telefone
-    });
-
+    setFormData({ ...formData, telefone });
+    
     // Buscar cliente existente
     const clienteExistente = clientes.find(c => c.telefone === telefone);
     if (clienteExistente) {
-      setFormData(prev => ({
-        ...prev,
-        nome: clienteExistente.nome
-      }));
+      setFormData(prev => ({ ...prev, nome: clienteExistente.nome }));
     }
   };
+
   const handleNomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nome = e.target.value;
-    setFormData({
-      ...formData,
-      nome
-    });
+    setFormData({ ...formData, nome });
+    
     if (nome.length > 0) {
-      const filtered = clientes.filter(cliente => cliente.nome.toLowerCase().includes(nome.toLowerCase()));
+      const filtered = clientes.filter(cliente => 
+        cliente.nome.toLowerCase().includes(nome.toLowerCase())
+      );
       setFilteredClientes(filtered);
       setShowSuggestions(filtered.length > 0);
     } else {
@@ -377,39 +393,44 @@ const CalendarioPage = () => {
       setFilteredClientes([]);
     }
   };
-  const handleClienteSelect = (cliente: {
-    telefone: string;
-    nome: string;
-  }) => {
-    setFormData({
-      ...formData,
-      nome: cliente.nome,
-      telefone: cliente.telefone
+
+  const handleClienteSelect = (cliente: {telefone: string, nome: string}) => {
+    setFormData({ 
+      ...formData, 
+      nome: cliente.nome, 
+      telefone: cliente.telefone 
     });
     setShowSuggestions(false);
     setFilteredClientes([]);
   };
+
   const handleClickOutside = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.closest('.suggestions-container')) {
       setShowSuggestions(false);
     }
   };
+
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Calendário</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => {
-            resetForm();
-            setDialogOpen(true);
-          }} className={isMobile ? "px-2" : ""}>
+            <Button 
+              onClick={() => {
+                resetForm();
+                setDialogOpen(true);
+              }}
+              className={isMobile ? "px-2" : ""}
+            >
               <Plus className="h-4 w-4" />
               {!isMobile && <span className="ml-2">Novo Agendamento</span>}
             </Button>
@@ -424,46 +445,74 @@ const CalendarioPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="telefone">Telefone *</Label>
-                  <Input id="telefone" value={formData.telefone} onChange={handleTelefoneChange} placeholder="(11) 99999-9999" />
+                  <Input
+                    id="telefone"
+                    value={formData.telefone}
+                    onChange={handleTelefoneChange}
+                    placeholder="(11) 99999-9999"
+                  />
                 </div>
                 <div className="suggestions-container relative">
                   <Label htmlFor="nome">Nome *</Label>
-                  <Input id="nome" value={formData.nome} onChange={handleNomeChange} placeholder="Nome do cliente" autoComplete="off" />
-                  {showSuggestions && filteredClientes.length > 0 && <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {filteredClientes.map((cliente, index) => <div key={index} className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground text-sm" onClick={() => handleClienteSelect(cliente)}>
+                  <Input
+                    id="nome"
+                    value={formData.nome}
+                    onChange={handleNomeChange}
+                    placeholder="Nome do cliente"
+                    autoComplete="off"
+                  />
+                  {showSuggestions && filteredClientes.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredClientes.map((cliente, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground text-sm"
+                          onClick={() => handleClienteSelect(cliente)}
+                        >
                           <div className="font-medium">{cliente.nome}</div>
                           <div className="text-xs text-muted-foreground">{cliente.telefone}</div>
-                        </div>)}
-                    </div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="data">Data *</Label>
-                  <Input id="data" type="date" value={formData.data_agendamento} onChange={e => setFormData({
-                  ...formData,
-                  data_agendamento: e.target.value
-                })} />
+                  <Input
+                    id="data"
+                    type="date"
+                    value={formData.data_agendamento}
+                    onChange={(e) => setFormData({ ...formData, data_agendamento: e.target.value })}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="hora">Hora *</Label>
-                  <Select value={selectedTimeSlot} onValueChange={value => {
-                  setSelectedTimeSlot(value);
-                  setFormData({
-                    ...formData,
-                    hora_agendamento: value
-                  });
-                }}>
+                  <Select 
+                    value={selectedTimeSlot} 
+                    onValueChange={(value) => {
+                      setSelectedTimeSlot(value);
+                      setFormData({ ...formData, hora_agendamento: value });
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um horário" />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
-                      {getAvailableTimeSlots().map(slot => <SelectItem key={slot.time} value={slot.time} disabled={slot.isBooked && (!editingAgendamento || editingAgendamento.hora_agendamento !== slot.time)} className={slot.isSpecial ? "text-orange-600 font-medium" : ""}>
+                      {getAvailableTimeSlots().map((slot) => (
+                        <SelectItem 
+                          key={slot.time} 
+                          value={slot.time}
+                          disabled={slot.isBooked && (!editingAgendamento || editingAgendamento.hora_agendamento !== slot.time)}
+                          className={slot.isSpecial ? "text-orange-600 font-medium" : ""}
+                        >
                           {slot.time} 
                           {slot.isSpecial && " (Especial)"}
                           {slot.isBooked && " (Ocupado)"}
-                        </SelectItem>)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -472,54 +521,71 @@ const CalendarioPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="procedimento">Serviço</Label>
-                  <Select value={formData.procedimento_id} onValueChange={value => {
-                  const servico = servicos.find(s => s.id === value);
-                  setFormData({
-                    ...formData,
-                    procedimento_id: value,
-                    preco: servico ? servico.valor : formData.preco
-                  });
-                }}>
+                  <Select value={formData.procedimento_id} onValueChange={(value) => {
+                    const servico = servicos.find(s => s.id === value);
+                    setFormData({ 
+                      ...formData, 
+                      procedimento_id: value,
+                      preco: servico ? servico.valor : formData.preco
+                    });
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um serviço" />
                     </SelectTrigger>
                     <SelectContent>
-                      {servicos.map(servico => <SelectItem key={servico.id} value={servico.id}>
+                      {servicos.map((servico) => (
+                        <SelectItem key={servico.id} value={servico.id}>
                           {servico.nome_procedimento} - R$ {servico.valor.toFixed(2)}
-                        </SelectItem>)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="preco">Preço (R$) *</Label>
-                  <Input id="preco" type="number" step="0.01" min="0" value={formData.preco} onChange={e => setFormData({
-                  ...formData,
-                  preco: parseFloat(e.target.value) || 0
-                })} placeholder="0.00" />
+                  <Input
+                    id="preco"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.preco}
+                    onChange={(e) => setFormData({ ...formData, preco: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
-                <Checkbox id="desconto" checked={formData.tem_desconto} onCheckedChange={checked => setFormData({
-                ...formData,
-                tem_desconto: !!checked
-              })} />
+                <Checkbox
+                  id="desconto"
+                  checked={formData.tem_desconto}
+                  onCheckedChange={(checked) => setFormData({ ...formData, tem_desconto: !!checked })}
+                />
                 <Label htmlFor="desconto">Aplicar desconto</Label>
-                {formData.tem_desconto && <div className="flex items-center gap-2 ml-4">
-                    <Input type="number" min="0" max="100" value={formData.porcentagem_desconto} onChange={e => setFormData({
-                  ...formData,
-                  porcentagem_desconto: parseFloat(e.target.value) || 0
-                })} className="w-20" placeholder="0" />
+                {formData.tem_desconto && (
+                  <div className="flex items-center gap-2 ml-4">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.porcentagem_desconto}
+                      onChange={(e) => setFormData({ ...formData, porcentagem_desconto: parseFloat(e.target.value) || 0 })}
+                      className="w-20"
+                      placeholder="0"
+                    />
                     <span className="text-sm">%</span>
-                  </div>}
+                  </div>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="observacoes">Observações</Label>
-                <Textarea id="observacoes" value={formData.observacoes} onChange={e => setFormData({
-                ...formData,
-                observacoes: e.target.value
-              })} placeholder="Observações sobre o agendamento..." />
+                <Textarea
+                  id="observacoes"
+                  value={formData.observacoes}
+                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                  placeholder="Observações sobre o agendamento..."
+                />
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -538,92 +604,117 @@ const CalendarioPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendário */}
         <Card>
-          
+          <CardHeader>
+            <CardTitle>Calendário</CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
-            <Calendar mode="single" selected={selectedDate} onSelect={date => {
-            console.log('Calendar clicked, date received:', date);
-            if (date) {
-              setSelectedDate(date);
-              setSelectedTimeSlot('');
-              const formattedDate = format(date, 'yyyy-MM-dd');
-              console.log('Setting formData with date:', formattedDate);
-              setFormData(prev => ({
-                ...prev,
-                data_agendamento: formattedDate
-              }));
-            }
-          }} className="rounded-md border mx-auto" locale={ptBR} modifiers={{
-            hasAgendamentos: date => hasAgendamentos(date)
-          }} modifiersStyles={{
-            hasAgendamentos: {
-              backgroundColor: 'hsl(var(--primary))',
-              color: 'hsl(var(--primary-foreground))',
-              fontWeight: 'bold'
-            }
-          }} components={{
-            Day: ({
-              date,
-              ...props
-            }) => {
-              const count = getAgendadosCount(date);
-              return <div className="relative w-full h-full flex flex-col items-center justify-center">
+            <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  console.log('Calendar clicked, date received:', date);
+                  if (date) {
+                    setSelectedDate(date);
+                    setSelectedTimeSlot('');
+                    
+                    const formattedDate = format(date, 'yyyy-MM-dd');
+                    console.log('Setting formData with date:', formattedDate);
+                    
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      data_agendamento: formattedDate 
+                    }));
+                  }
+                }}
+                className="rounded-md border mx-auto"
+                locale={ptBR}
+                modifiers={{
+                  hasAgendamentos: (date) => hasAgendamentos(date)
+                }}
+                modifiersStyles={{
+                  hasAgendamentos: {
+                    backgroundColor: 'hsl(var(--primary))',
+                    color: 'hsl(var(--primary-foreground))',
+                    fontWeight: 'bold'
+                  }
+                }}
+                components={{
+                  Day: ({ date, ...props }) => {
+                    const count = getAgendadosCount(date);
+                    return (
+                      <div className="relative w-full h-full flex flex-col items-center justify-center">
                         <span>{date.getDate()}</span>
-                        {count > 0 && <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {count > 0 && (
+                          <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                             {count}
-                          </div>}
-                      </div>;
-            }
-          }} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                }}
+              />
           </CardContent>
         </Card>
 
         {/* Horários Disponíveis */}
-        {selectedDate && <Card>
+        {selectedDate && (
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg">
-                Horários para {format(selectedDate, 'dd/MM/yyyy', {
-              locale: ptBR
-            })}
+                Horários para {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-                {getAvailableTimeSlots().map(slot => <Button key={slot.time} variant={slot.isBooked ? "secondary" : selectedTimeSlot === slot.time ? "default" : "outline"} size="sm" disabled={slot.isBooked} onClick={() => {
-              if (!slot.isBooked) {
-                setSelectedTimeSlot(slot.time);
-                // Usar a data selecionada corretamente
-                const targetDate = selectedDate || new Date();
-                const formattedDate = format(targetDate, 'yyyy-MM-dd');
-                setFormData({
-                  ...formData,
-                  hora_agendamento: slot.time,
-                  data_agendamento: formattedDate
-                });
-                setDialogOpen(true);
-              }
-            }} className={`${slot.isSpecial ? 'border-orange-500 text-orange-600' : ''} ${slot.isBooked ? 'opacity-50' : ''}`}>
+                {getAvailableTimeSlots().map((slot) => (
+                  <Button
+                    key={slot.time}
+                    variant={slot.isBooked ? "secondary" : selectedTimeSlot === slot.time ? "default" : "outline"}
+                    size="sm"
+                    disabled={slot.isBooked}
+                    onClick={() => {
+                      if (!slot.isBooked) {
+                        setSelectedTimeSlot(slot.time);
+                        // Usar a data selecionada corretamente
+                        const targetDate = selectedDate || new Date();
+                        const formattedDate = format(targetDate, 'yyyy-MM-dd');
+                        setFormData({ 
+                          ...formData, 
+                          hora_agendamento: slot.time, 
+                          data_agendamento: formattedDate 
+                        });
+                        setDialogOpen(true);
+                      }
+                    }}
+                    className={`${slot.isSpecial ? 'border-orange-500 text-orange-600' : ''} ${slot.isBooked ? 'opacity-50' : ''}`}
+                  >
                     {slot.time}
                     {slot.isSpecial && "*"}
-                  </Button>)}
+                  </Button>
+                ))}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
                 * Horários especiais (fora do horário padrão 11h-20h)
               </p>
             </CardContent>
-          </Card>}
+          </Card>
+        )}
 
         {/* Agendamentos do dia selecionado */}
         <Card id="agendamentos-list">
           <CardHeader>
             <CardTitle className="text-lg">
-              Agendamentos de {selectedDate ? format(selectedDate, 'dd/MM/yyyy', {
-              locale: ptBR
-            }) : 'hoje'}
+              Agendamentos de {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : 'hoje'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : <div className="space-y-4">
-                {agendamentosDodia.map(agendamento => <div key={agendamento.id} className="border rounded-lg p-4">
+            {agendamentosDodia.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p>
+            ) : (
+              <div className="space-y-4">
+                {agendamentosDodia.map((agendamento) => (
+                  <div key={agendamento.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h4 className="font-medium">{agendamento.nome}</h4>
@@ -640,38 +731,75 @@ const CalendarioPage = () => {
                       <div className="flex items-center gap-1">
                         <DollarSign className="w-4 h-4" />
                         <span>R$ {agendamento.preco.toFixed(2)}</span>
-                        {agendamento.tem_desconto && agendamento.porcentagem_desconto && <span className="text-green-600 text-xs">
+                        {agendamento.tem_desconto && agendamento.porcentagem_desconto && (
+                          <span className="text-green-600 text-xs">
                             (-{agendamento.porcentagem_desconto}%)
-                          </span>}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {agendamento.observacoes && <p className="text-sm text-muted-foreground mb-3">{agendamento.observacoes}</p>}
+                    {agendamento.observacoes && (
+                      <p className="text-sm text-muted-foreground mb-3">{agendamento.observacoes}</p>
+                    )}
 
                     <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(agendamento)} className={isMobile ? "px-2" : ""}>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEdit(agendamento)}
+                        className={isMobile ? "px-2" : ""}
+                      >
                         <Edit2 className="w-4 h-4" />
                         {!isMobile && <span className="ml-1">Editar</span>}
                       </Button>
                       
-                      <Button size="sm" variant="outline" onClick={() => openWhatsApp(agendamento.telefone, agendamento.nome, format(new Date(agendamento.data_agendamento), 'dd/MM/yyyy'), agendamento.hora_agendamento)} className={isMobile ? "px-2" : ""}>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => openWhatsApp(
+                          agendamento.telefone, 
+                          agendamento.nome, 
+                          format(new Date(agendamento.data_agendamento), 'dd/MM/yyyy'),
+                          agendamento.hora_agendamento
+                        )}
+                        className={isMobile ? "px-2" : ""}
+                      >
                         <MessageCircle className="w-4 h-4" />
                         {!isMobile && <span className="ml-1">WhatsApp</span>}
                       </Button>
 
-                      {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')} className={`text-green-600 border-green-600 ${isMobile ? "px-2" : ""}`}>
+                      {agendamento.status === 'Agendado' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
+                          className={`text-green-600 border-green-600 ${isMobile ? "px-2" : ""}`}
+                        >
                           <Check className="w-4 h-4" />
                           {!isMobile && <span className="ml-1">Concluir</span>}
-                        </Button>}
+                        </Button>
+                      )}
 
-                      {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Cancelado')} className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}>
+                      {agendamento.status === 'Agendado' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateAgendamentoStatus(agendamento.id, 'Cancelado')}
+                          className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}
+                        >
                           <X className="w-4 h-4" />
                           {!isMobile && <span className="ml-1">Cancelar</span>}
-                        </Button>}
+                        </Button>
+                      )}
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}
+                          >
                             <Trash2 className="w-4 h-4" />
                             {!isMobile && <span className="ml-1">Excluir</span>}
                           </Button>
@@ -685,18 +813,26 @@ const CalendarioPage = () => {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteAgendamento(agendamento.id)} className="bg-red-600 hover:bg-red-700">
+                            <AlertDialogAction 
+                              onClick={() => deleteAgendamento(agendamento.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
                               Excluir
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </div>)}
-              </div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-    </div>;
+    </div>
+  );
 };
+
+
 export default CalendarioPage;
