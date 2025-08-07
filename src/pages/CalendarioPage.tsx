@@ -612,16 +612,13 @@ const CalendarioPage = () => {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => {
+                  console.log('Calendar onSelect chamado com:', date);
                   if (date) {
                     console.log('Data selecionada no calendário:', date);
-                    
-                    // Usar a data exatamente como vem do calendário
                     setSelectedDate(date);
                     setSelectedTimeSlot('');
                     
-                    // Formatar data para o formato YYYY-MM-DD usando a data selecionada
                     const formattedDate = format(date, 'yyyy-MM-dd');
-                    
                     console.log('Data formatada para salvar:', formattedDate);
                     
                     setFormData(prev => ({ 
@@ -629,7 +626,6 @@ const CalendarioPage = () => {
                       data_agendamento: formattedDate 
                     }));
                     
-                    // Scroll suave para a seção de agendamentos
                     setTimeout(() => {
                       const agendamentosSection = document.getElementById('agendamentos-list');
                       if (agendamentosSection) {
@@ -638,7 +634,7 @@ const CalendarioPage = () => {
                     }, 100);
                   }
                 }}
-                className="rounded-md border mx-auto cursor-pointer [&_button]:cursor-pointer [&_button]:pointer-events-auto [&_table]:pointer-events-auto"
+                className="rounded-md border mx-auto"
                 locale={ptBR}
                 modifiers={{
                   hasAgendamentos: (date) => hasAgendamentos(date)
