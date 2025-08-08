@@ -578,27 +578,37 @@ const CalendarioPage = () => {
               locale={ptBR} 
               modifiers={{
                 hasAgendamentosPast: date => hasAgendamentosPast(date),
-                hasAgendamentosFuture: date => hasAgendamentosFuture(date)
+                hasAgendamentosFuture: date => hasAgendamentosFuture(date),
+                selected: selectedDate
               }} 
               modifiersStyles={{
                 hasAgendamentosPast: {
                   backgroundColor: 'hsl(var(--muted))',
                   color: 'hsl(var(--muted-foreground))',
-                  fontWeight: 'bold'
+                  opacity: 0.5,
+                  fontWeight: 'normal'
                 },
                 hasAgendamentosFuture: {
                   backgroundColor: 'hsl(var(--primary))',
                   color: 'hsl(var(--primary-foreground))',
+                  fontWeight: 'bold'
+                },
+                selected: {
+                  border: '2px solid hsl(var(--primary))',
+                  backgroundColor: 'hsl(var(--background))',
+                  color: 'hsl(var(--foreground))',
                   fontWeight: 'bold'
                 }
               }}
               components={{
                 Day: ({ date, ...props }) => {
                   const count = getAgendadosCount(date);
+                  const isSelected = selectedDate && isSameDay(date, selectedDate);
+                  
                   return (
                     <button 
                       {...props} 
-                      className="relative w-full h-full flex flex-col items-center justify-center p-0 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+                      className={`relative w-full h-full flex flex-col items-center justify-center p-0 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition-colors ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                       onClick={() => {
                         console.log('Day clicked:', date);
                         if (date) {
