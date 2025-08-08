@@ -142,10 +142,28 @@ const CalendarioPage = () => {
       return isSameDay(agendamentoDate, date);
     });
   };
+
+  const hasAgendamentosPast = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    
+    return compareDate < today && hasAgendamentos(date);
+  };
+
+  const hasAgendamentosFuture = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    
+    return compareDate >= today && hasAgendamentos(date);
+  };
   const getAgendadosCount = (date: Date) => {
     return agendamentos.filter(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
-      return isSameDay(agendamentoDate, date) && agendamento.status === 'Agendado';
+      return isSameDay(agendamentoDate, date);
     }).length;
   };
 
@@ -559,15 +577,51 @@ const CalendarioPage = () => {
               className="rounded-md border mx-auto" 
               locale={ptBR} 
               modifiers={{
-                hasAgendamentos: date => hasAgendamentos(date)
+                hasAgendamentosPast: date => hasAgendamentosPast(date),
+                hasAgendamentosFuture: date => hasAgendamentosFuture(date)
               }} 
               modifiersStyles={{
-                hasAgendamentos: {
+                hasAgendamentosPast: {
+                  backgroundColor: 'hsl(var(--muted))',
+                  color: 'hsl(var(--muted-foreground))',
+                  fontWeight: 'bold'
+                },
+                hasAgendamentosFuture: {
                   backgroundColor: 'hsl(var(--primary))',
                   color: 'hsl(var(--primary-foreground))',
                   fontWeight: 'bold'
                 }
-              }} 
+              }}
+              components={{
+                Day: ({ date, ...props }) => {
+                  const count = getAgendadosCount(date);
+                  return (
+                    <button 
+                      {...props} 
+                      className="relative w-full h-full flex flex-col items-center justify-center p-0 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+                      onClick={() => {
+                        console.log('Day clicked:', date);
+                        if (date) {
+                          setSelectedDate(date);
+                          setSelectedTimeSlot('');
+                          const formattedDate = format(date, 'yyyy-MM-dd');
+                          setFormData(prev => ({
+                            ...prev,
+                            data_agendamento: formattedDate
+                          }));
+                        }
+                      }}
+                    >
+                      <span>{date.getDate()}</span>
+                      {count > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {count}
+                        </div>
+                      )}
+                    </button>
+                  );
+                }
+              }}
             />
           </CardContent>
         </Card>
