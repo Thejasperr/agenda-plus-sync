@@ -556,7 +556,7 @@ const CalendarioPage = () => {
                   }));
                 }
               }} 
-              className="rounded-md border mx-auto pointer-events-auto" 
+              className="rounded-md border mx-auto" 
               locale={ptBR} 
               modifiers={{
                 hasAgendamentos: date => hasAgendamentos(date)
@@ -566,21 +566,6 @@ const CalendarioPage = () => {
                   backgroundColor: 'hsl(var(--primary))',
                   color: 'hsl(var(--primary-foreground))',
                   fontWeight: 'bold'
-                }
-              }} 
-              components={{
-                Day: ({ date, ...props }) => {
-                  const count = getAgendadosCount(date);
-                  return (
-                    <div className="relative w-full h-full flex flex-col items-center justify-center pointer-events-auto">
-                      <span>{date.getDate()}</span>
-                      {count > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {count}
-                        </div>
-                      )}
-                    </div>
-                  );
                 }
               }} 
             />
