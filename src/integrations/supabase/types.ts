@@ -35,6 +35,7 @@ export type Database = {
           tem_desconto: boolean | null
           tem_retorno: boolean | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           confirm_atendi?: boolean | null
@@ -56,6 +57,7 @@ export type Database = {
           tem_desconto?: boolean | null
           tem_retorno?: boolean | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           confirm_atendi?: boolean | null
@@ -77,6 +79,7 @@ export type Database = {
           tem_desconto?: boolean | null
           tem_retorno?: boolean | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -98,6 +101,7 @@ export type Database = {
           telefone: string
           ultimo_atendimento: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -108,6 +112,7 @@ export type Database = {
           telefone: string
           ultimo_atendimento?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -118,6 +123,7 @@ export type Database = {
           telefone?: string
           ultimo_atendimento?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -130,6 +136,7 @@ export type Database = {
           observacoes: string | null
           quantidade: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           categoria?: string | null
@@ -139,6 +146,7 @@ export type Database = {
           observacoes?: string | null
           quantidade?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           categoria?: string | null
@@ -148,6 +156,7 @@ export type Database = {
           observacoes?: string | null
           quantidade?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -157,6 +166,7 @@ export type Database = {
           id: string
           nome_procedimento: string
           updated_at: string
+          user_id: string | null
           valor: number
         }
         Insert: {
@@ -164,6 +174,7 @@ export type Database = {
           id?: string
           nome_procedimento: string
           updated_at?: string
+          user_id?: string | null
           valor: number
         }
         Update: {
@@ -171,6 +182,7 @@ export type Database = {
           id?: string
           nome_procedimento?: string
           updated_at?: string
+          user_id?: string | null
           valor?: number
         }
         Relationships: []
@@ -185,6 +197,7 @@ export type Database = {
           tipo: string
           tipo_operacao: string
           updated_at: string
+          user_id: string | null
           valor: number
         }
         Insert: {
@@ -196,6 +209,7 @@ export type Database = {
           tipo: string
           tipo_operacao: string
           updated_at?: string
+          user_id?: string | null
           valor: number
         }
         Update: {
@@ -207,6 +221,7 @@ export type Database = {
           tipo?: string
           tipo_operacao?: string
           updated_at?: string
+          user_id?: string | null
           valor?: number
         }
         Relationships: [
