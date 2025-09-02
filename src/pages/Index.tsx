@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Package, Settings, History, TrendingUp, CalendarDays, Menu } from 'lucide-react';
+import { Users, Calendar, Package, Settings, History, TrendingUp, CalendarDays, Menu, LogOut, User } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import AgendamentosTab from '@/components/app/AgendamentosTab';
 import CalendarioPage from '@/pages/CalendarioPage';
@@ -7,12 +7,33 @@ import EstoqueTab from '@/components/app/EstoqueTab';
 import ServicosTab from '@/components/app/ServicosTab';
 import HistoricoTab from '@/components/app/HistoricoTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 type TabType = 'clientes' | 'agendamentos' | 'calendario' | 'estoque' | 'servicos' | 'historico' | 'transacoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('agendamentos');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer logout.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const tabs = [
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
@@ -48,8 +69,23 @@ const Index = () => {
   return (
     <div className="mobile-container">
       {/* Header */}
-      <div className="mobile-header flex items-center justify-center">
+      <div className="mobile-header flex items-center justify-between px-4">
         <h1 className="text-xl font-bold">Espaço Gabriela Aimola</h1>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User size={16} />
+            <span className="hidden sm:inline">{user?.email}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:ml-2 sm:inline">Sair</span>
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
