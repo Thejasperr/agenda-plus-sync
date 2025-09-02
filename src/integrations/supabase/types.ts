@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
+  // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -16,14 +16,11 @@ export type Database = {
     Tables: {
       agendamentos: {
         Row: {
-          confirm_atendi: boolean | null
           created_at: string
           data_agendamento: string
           data_retorno: string | null
           hora_agendamento: string
           id: string
-          mensagem_av_google: boolean | null
-          mensagem_enviada: boolean | null
           nome: string
           observacoes: string | null
           porcentagem_desconto: number | null
@@ -35,17 +32,13 @@ export type Database = {
           tem_desconto: boolean | null
           tem_retorno: boolean | null
           updated_at: string
-          user_id: string | null
         }
         Insert: {
-          confirm_atendi?: boolean | null
           created_at?: string
           data_agendamento: string
           data_retorno?: string | null
           hora_agendamento: string
           id?: string
-          mensagem_av_google?: boolean | null
-          mensagem_enviada?: boolean | null
           nome: string
           observacoes?: string | null
           porcentagem_desconto?: number | null
@@ -57,17 +50,13 @@ export type Database = {
           tem_desconto?: boolean | null
           tem_retorno?: boolean | null
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
-          confirm_atendi?: boolean | null
           created_at?: string
           data_agendamento?: string
           data_retorno?: string | null
           hora_agendamento?: string
           id?: string
-          mensagem_av_google?: boolean | null
-          mensagem_enviada?: boolean | null
           nome?: string
           observacoes?: string | null
           porcentagem_desconto?: number | null
@@ -79,7 +68,6 @@ export type Database = {
           tem_desconto?: boolean | null
           tem_retorno?: boolean | null
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: [
           {
@@ -96,34 +84,25 @@ export type Database = {
           created_at: string
           id: string
           nome: string
-          retorno_at: string | null
-          status: string | null
           telefone: string
           ultimo_atendimento: string | null
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           nome: string
-          retorno_at?: string | null
-          status?: string | null
           telefone: string
           ultimo_atendimento?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           nome?: string
-          retorno_at?: string | null
-          status?: string | null
           telefone?: string
           ultimo_atendimento?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -136,7 +115,6 @@ export type Database = {
           observacoes: string | null
           quantidade: number
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           categoria?: string | null
@@ -146,7 +124,6 @@ export type Database = {
           observacoes?: string | null
           quantidade?: number
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           categoria?: string | null
@@ -156,7 +133,6 @@ export type Database = {
           observacoes?: string | null
           quantidade?: number
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -166,7 +142,6 @@ export type Database = {
           id: string
           nome_procedimento: string
           updated_at: string
-          user_id: string | null
           valor: number
         }
         Insert: {
@@ -174,7 +149,6 @@ export type Database = {
           id?: string
           nome_procedimento: string
           updated_at?: string
-          user_id?: string | null
           valor: number
         }
         Update: {
@@ -182,7 +156,6 @@ export type Database = {
           id?: string
           nome_procedimento?: string
           updated_at?: string
-          user_id?: string | null
           valor?: number
         }
         Relationships: []
@@ -197,7 +170,6 @@ export type Database = {
           tipo: string
           tipo_operacao: string
           updated_at: string
-          user_id: string | null
           valor: number
         }
         Insert: {
@@ -209,7 +181,6 @@ export type Database = {
           tipo: string
           tipo_operacao: string
           updated_at?: string
-          user_id?: string | null
           valor: number
         }
         Update: {
@@ -221,7 +192,6 @@ export type Database = {
           tipo?: string
           tipo_operacao?: string
           updated_at?: string
-          user_id?: string | null
           valor?: number
         }
         Relationships: [
