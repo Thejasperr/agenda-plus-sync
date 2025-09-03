@@ -6,28 +6,58 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Mail, User } from 'lucide-react';
+import { Lock, Mail, User, AlertCircle } from 'lucide-react';
+import { validateEmail, validatePassword, getSecureErrorMessage, checkRateLimit, sanitizeInput } from '@/lib/security';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setEmailError('');
+    setPasswordError('');
+    
+    // Validate inputs
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.error || 'Email inválido');
+      return;
+    }
+    
+    if (!password) {
+      setPasswordError('Senha é obrigatória');
+      return;
+    }
+    
+    // Rate limiting
+    if (!checkRateLimit(email, 5, 15 * 60 * 1000)) {
+      toast({
+        title: "Muitas tentativas",
+        description: "Aguarde 15 minutos antes de tentar novamente",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: sanitizeInput(email),
         password,
       });
 
       if (error) {
         toast({
           title: "Erro no login",
-          description: error.message,
+          description: getSecureErrorMessage(error, 'login'),
           variant: "destructive",
         });
         return;
@@ -38,12 +68,11 @@ export default function AuthPage() {
           title: "Login realizado com sucesso!",
           description: "Bem-vindo de volta!",
         });
-        // A navegação será automática através do useAuth
       }
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Ocorreu um erro inesperado.",
+        description: getSecureErrorMessage(error, 'login'),
         variant: "destructive",
       });
     } finally {
@@ -53,11 +82,39 @@ export default function AuthPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setEmailError('');
+    setPasswordError('');
+    
+    // Validate inputs
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.error || 'Email inválido');
+      return;
+    }
+    
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.error || 'Senha inválida');
+      return;
+    }
+    
+    // Rate limiting
+    if (!checkRateLimit(email, 3, 15 * 60 * 1000)) {
+      toast({
+        title: "Muitas tentativas",
+        description: "Aguarde 15 minutos antes de tentar novamente",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: sanitizeInput(email),
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`
@@ -67,7 +124,7 @@ export default function AuthPage() {
       if (error) {
         toast({
           title: "Erro no cadastro",
-          description: error.message,
+          description: getSecureErrorMessage(error, 'cadastro'),
           variant: "destructive",
         });
         return;
@@ -82,7 +139,7 @@ export default function AuthPage() {
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Ocorreu um erro inesperado.",
+        description: getSecureErrorMessage(error, 'cadastro'),
         variant: "destructive",
       });
     } finally {
@@ -124,9 +181,19 @@ export default function AuthPage() {
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setEmailError('');
+                    }}
+                    className={emailError ? 'border-destructive' : ''}
                     required
                   />
+                  {emailError && (
+                    <div className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
@@ -135,9 +202,19 @@ export default function AuthPage() {
                     type="password"
                     placeholder="Sua senha"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError('');
+                    }}
+                    className={passwordError ? 'border-destructive' : ''}
                     required
                   />
+                  {passwordError && (
+                    <div className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {passwordError}
+                    </div>
+                  )}
                 </div>
                 <Button
                   type="submit"
@@ -158,21 +235,44 @@ export default function AuthPage() {
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setEmailError('');
+                    }}
+                    className={emailError ? 'border-destructive' : ''}
                     required
                   />
+                  {emailError && (
+                    <div className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="8+ caracteres, maiúscula, minúscula e número"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError('');
+                    }}
+                    className={passwordError ? 'border-destructive' : ''}
                     required
-                    minLength={6}
+                    minLength={8}
                   />
+                  {passwordError && (
+                    <div className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {passwordError}
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    A senha deve conter: 8+ caracteres, maiúscula, minúscula e número
+                  </div>
                 </div>
                 <Button
                   type="submit"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format, isToday, startOfDay, isSameDay, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, agendamentoSchema } from '@/lib/security';
 
 interface Agendamento {
   id: string;
@@ -50,6 +51,9 @@ const AgendamentosTab = () => {
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    nome: '', telefone: '', preco: '', data_agendamento: '', hora_agendamento: ''
+  });
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -85,10 +89,9 @@ const AgendamentosTab = () => {
       if (error) throw error;
       setAgendamentos(data || []);
     } catch (error) {
-      console.error('Erro ao buscar agendamentos:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os agendamentos",
+        description: getSecureErrorMessage(error, 'carregamento de agendamentos'),
         variant: "destructive",
       });
     } finally {
@@ -106,7 +109,7 @@ const AgendamentosTab = () => {
       if (error) throw error;
       setServicos(data || []);
     } catch (error) {
-      console.error('Erro ao buscar serviços:', error);
+      // Silently handle services loading errors - not critical for main functionality
     }
   };
 
@@ -119,14 +122,34 @@ const AgendamentosTab = () => {
       if (error) throw error;
       setClientes(data || []);
     } catch (error) {
-      console.error('Erro ao buscar clientes:', error);
+      // Silently handle clients loading errors - not critical for main functionality
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome || !formData.telefone || !formData.data_agendamento || !formData.hora_agendamento || formData.preco <= 0) {
+    // Clear previous errors
+    setFormErrors({ nome: '', telefone: '', preco: '', data_agendamento: '', hora_agendamento: '' });
+    
+    // Sanitize inputs
+    const sanitizedData = {
+      ...formData,
+      nome: sanitizeInput(formData.nome),
+      observacoes: formData.observacoes ? sanitizeInput(formData.observacoes) : ''
+    };
+    
+    // Validate phone
+    const phoneValidation = validateAndFormatPhone(sanitizedData.telefone);
+    if (!phoneValidation.isValid) {
+      setFormErrors(prev => ({ ...prev, telefone: phoneValidation.error || 'Telefone inválido' }));
+      return;
+    }
+    sanitizedData.telefone = phoneValidation.formatted;
+    
+    // Basic validation
+    if (!sanitizedData.nome || !sanitizedData.telefone || !sanitizedData.data_agendamento || 
+        !sanitizedData.hora_agendamento || sanitizedData.preco <= 0) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -137,26 +160,26 @@ const AgendamentosTab = () => {
 
     try {
       const agendamentoData = {
-        ...formData,
-        procedimento_id: formData.procedimento_id || null,
-        porcentagem_desconto: formData.tem_desconto ? formData.porcentagem_desconto : null,
-        data_retorno: formData.tem_retorno ? formData.data_retorno : null,
-        preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
-        observacoes: formData.observacoes || null
+        ...sanitizedData,
+        procedimento_id: sanitizedData.procedimento_id || null,
+        porcentagem_desconto: sanitizedData.tem_desconto ? sanitizedData.porcentagem_desconto : null,
+        data_retorno: sanitizedData.tem_retorno ? sanitizedData.data_retorno : null,
+        preco_retorno: sanitizedData.tem_retorno ? sanitizedData.preco_retorno : null,
+        observacoes: sanitizedData.observacoes || null
       };
 
       // Criar cliente se não existir
-      const clienteExistente = clientes.find(c => c.telefone === formData.telefone);
+      const clienteExistente = clientes.find(c => c.telefone === sanitizedData.telefone);
       if (!clienteExistente) {
         const { error: clienteError } = await supabase
           .from('clientes')
           .insert([{ 
-            nome: formData.nome, 
-            telefone: formData.telefone 
+            nome: sanitizedData.nome, 
+            telefone: sanitizedData.telefone 
           }]);
 
         if (clienteError) {
-          console.warn('Erro ao criar cliente:', clienteError);
+          // Warn but don't fail - client creation is not critical
         } else {
           fetchClientes(); // Atualizar lista de clientes
         }
@@ -190,10 +213,9 @@ const AgendamentosTab = () => {
       resetForm();
       fetchAgendamentos();
     } catch (error) {
-      console.error('Erro ao salvar agendamento:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar o agendamento",
+        description: getSecureErrorMessage(error, 'salvamento do agendamento'),
         variant: "destructive",
       });
     }
@@ -215,6 +237,7 @@ const AgendamentosTab = () => {
       status: 'Agendado',
       observacoes: ''
     });
+    setFormErrors({ nome: '', telefone: '', preco: '', data_agendamento: '', hora_agendamento: '' });
     setEditingAgendamento(null);
     setShowSuggestions(false);
     setDialogOpen(false);
@@ -257,10 +280,9 @@ const AgendamentosTab = () => {
 
       fetchAgendamentos();
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o status",
+        description: getSecureErrorMessage(error, 'atualização de status'),
         variant: "destructive",
       });
     }
@@ -282,10 +304,9 @@ const AgendamentosTab = () => {
 
       fetchAgendamentos();
     } catch (error) {
-      console.error('Erro ao excluir agendamento:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível excluir o agendamento",
+        description: getSecureErrorMessage(error, 'exclusão do agendamento'),
         variant: "destructive",
       });
     }
@@ -327,7 +348,6 @@ const AgendamentosTab = () => {
   const agendamentosDodia = agendamentos.filter(agendamento => {
     const agendamentoDateStr = agendamento.data_agendamento;
     const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    console.log('AgendamentosTab - Comparando:', agendamentoDateStr, 'vs', selectedDateStr);
     return agendamentoDateStr === selectedDateStr;
   }).filter(agendamento => {
     if (searchTerm) {

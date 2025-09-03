@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, DollarSign, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, DollarSign, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeInput, getSecureErrorMessage, servicoSchema } from '@/lib/security';
 
 interface Servico {
   id: string;
@@ -22,6 +23,7 @@ const ServicosTab = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingServico, setEditingServico] = useState<Servico | null>(null);
+  const [formErrors, setFormErrors] = useState({ nome_procedimento: '', valor: '' });
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -43,10 +45,9 @@ const ServicosTab = () => {
       if (error) throw error;
       setServicos(data || []);
     } catch (error) {
-      console.error('Erro ao buscar serviços:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os serviços",
+        description: getSecureErrorMessage(error, 'carregamento de serviços'),
         variant: "destructive",
       });
     } finally {
@@ -57,12 +58,24 @@ const ServicosTab = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome_procedimento || formData.valor <= 0) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos corretamente",
-        variant: "destructive",
-      });
+    // Clear previous errors
+    setFormErrors({ nome_procedimento: '', valor: '' });
+    
+    // Sanitize inputs
+    const sanitizedData = {
+      nome_procedimento: sanitizeInput(formData.nome_procedimento),
+      valor: formData.valor
+    };
+    
+    // Validate with schema
+    try {
+      servicoSchema.parse(sanitizedData);
+    } catch (error: any) {
+      if (error.errors?.[0]) {
+        const field = error.errors[0].path[0];
+        const message = error.errors[0].message;
+        setFormErrors(prev => ({ ...prev, [field]: message }));
+      }
       return;
     }
 
@@ -70,7 +83,7 @@ const ServicosTab = () => {
       if (editingServico) {
         const { error } = await supabase
           .from('servicos')
-          .update(formData)
+          .update(sanitizedData)
           .eq('id', editingServico.id);
 
         if (error) throw error;
@@ -82,7 +95,7 @@ const ServicosTab = () => {
       } else {
         const { error } = await supabase
           .from('servicos')
-          .insert([formData]);
+          .insert([sanitizedData]);
 
         if (error) throw error;
 
@@ -95,10 +108,9 @@ const ServicosTab = () => {
       resetForm();
       fetchServicos();
     } catch (error) {
-      console.error('Erro ao salvar serviço:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar o serviço",
+        description: getSecureErrorMessage(error, 'salvamento do serviço'),
         variant: "destructive",
       });
     }
@@ -109,6 +121,7 @@ const ServicosTab = () => {
       nome_procedimento: '',
       valor: 0
     });
+    setFormErrors({ nome_procedimento: '', valor: '' });
     setEditingServico(null);
     setDialogOpen(false);
   };
@@ -138,10 +151,9 @@ const ServicosTab = () => {
 
       fetchServicos();
     } catch (error) {
-      console.error('Erro ao excluir serviço:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível excluir o serviço",
+        description: getSecureErrorMessage(error, 'exclusão do serviço'),
         variant: "destructive",
       });
     }
@@ -198,9 +210,19 @@ const ServicosTab = () => {
                 <Input
                   id="nome_procedimento"
                   value={formData.nome_procedimento}
-                  onChange={(e) => setFormData({ ...formData, nome_procedimento: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, nome_procedimento: e.target.value });
+                    setFormErrors({ ...formErrors, nome_procedimento: '' });
+                  }}
                   placeholder="Ex: Corte Masculino, Manicure..."
+                  className={formErrors.nome_procedimento ? 'border-destructive' : ''}
                 />
+                {formErrors.nome_procedimento && (
+                  <div className="text-sm text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.nome_procedimento}
+                  </div>
+                )}
               </div>
               
               <div>
@@ -211,9 +233,19 @@ const ServicosTab = () => {
                   step="0.01"
                   min="0"
                   value={formData.valor}
-                  onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 });
+                    setFormErrors({ ...formErrors, valor: '' });
+                  }}
                   placeholder="0.00"
+                  className={formErrors.valor ? 'border-destructive' : ''}
                 />
+                {formErrors.valor && (
+                  <div className="text-sm text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.valor}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2">
