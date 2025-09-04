@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, TrendingUp, TrendingDown, DollarSign, Filter, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, TrendingUp, TrendingDown, DollarSign, Filter, Edit2, Trash2, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -30,6 +30,9 @@ const TransacoesTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [operacaoFilter, setOperacaoFilter] = useState<string>('todos');
+  const [periodoFilter, setPeriodoFilter] = useState<string>('todos');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTransacao, setEditingTransacao] = useState<Transacao | null>(null);
@@ -178,6 +181,35 @@ const TransacoesTab = () => {
       : 'bg-red-500/10 text-red-700 border-red-200';
   };
 
+  const getDateRangeForFilter = (filter: string) => {
+    const hoje = new Date();
+    
+    switch (filter) {
+      case 'hoje':
+        return {
+          inicio: format(startOfDay(hoje), 'yyyy-MM-dd'),
+          fim: format(endOfDay(hoje), 'yyyy-MM-dd')
+        };
+      case 'semana':
+        return {
+          inicio: format(startOfWeek(hoje), 'yyyy-MM-dd'),
+          fim: format(endOfWeek(hoje), 'yyyy-MM-dd')
+        };
+      case 'mes':
+        return {
+          inicio: format(startOfMonth(hoje), 'yyyy-MM-dd'),
+          fim: format(endOfMonth(hoje), 'yyyy-MM-dd')
+        };
+      case 'personalizado':
+        return {
+          inicio: dataInicio,
+          fim: dataFim
+        };
+      default:
+        return { inicio: '', fim: '' };
+    }
+  };
+
   const filteredTransacoes = transacoes.filter(transacao => {
     const matchesSearch = transacao.tipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (transacao.observacoes && transacao.observacoes.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -185,7 +217,17 @@ const TransacoesTab = () => {
     const matchesTipo = tipoFilter === 'todos' || transacao.tipo === tipoFilter;
     const matchesOperacao = operacaoFilter === 'todos' || transacao.tipo_operacao === operacaoFilter;
     
-    return matchesSearch && matchesTipo && matchesOperacao;
+    // Filtro por período
+    let matchesPeriodo = true;
+    if (periodoFilter !== 'todos') {
+      const { inicio, fim } = getDateRangeForFilter(periodoFilter);
+      if (inicio && fim) {
+        const transacaoDate = transacao.data_transacao;
+        matchesPeriodo = transacaoDate >= inicio && transacaoDate <= fim;
+      }
+    }
+    
+    return matchesSearch && matchesTipo && matchesOperacao && matchesPeriodo;
   });
 
   const totalEntradas = filteredTransacoes
@@ -348,9 +390,41 @@ const TransacoesTab = () => {
         </div>
 
         {/* Filtros */}
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Select value={periodoFilter} onValueChange={setPeriodoFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="hoje">Hoje</SelectItem>
+              <SelectItem value="semana">Esta semana</SelectItem>
+              <SelectItem value="mes">Este mês</SelectItem>
+              <SelectItem value="personalizado">Personalizado</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {periodoFilter === 'personalizado' && (
+            <>
+              <Input
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                className="w-full sm:w-32"
+                placeholder="Data início"
+              />
+              <Input
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                className="w-full sm:w-32"
+                placeholder="Data fim"
+              />
+            </>
+          )}
+
           <Select value={operacaoFilter} onValueChange={setOperacaoFilter}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="Operação" />
             </SelectTrigger>
             <SelectContent>
@@ -361,7 +435,7 @@ const TransacoesTab = () => {
           </Select>
 
           <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>

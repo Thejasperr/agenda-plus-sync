@@ -734,7 +734,8 @@ const CalendarioPage = () => {
                 </Card>
               )}
 
-              {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : <div className="space-y-4">
+              {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : (
+                <div className="space-y-4">
                 {agendamentosDodia.map(agendamento => <div key={agendamento.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
@@ -805,7 +806,8 @@ const CalendarioPage = () => {
                       </AlertDialog>
                     </div>
                   </div>)}
-              </div>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

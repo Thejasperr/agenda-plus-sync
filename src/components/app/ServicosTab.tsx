@@ -14,6 +14,7 @@ interface Servico {
   id: string;
   nome_procedimento: string;
   valor: number;
+  duracao_minutos?: number;
   created_at: string;
 }
 
@@ -28,7 +29,8 @@ const ServicosTab = () => {
 
   const [formData, setFormData] = useState({
     nome_procedimento: '',
-    valor: 0
+    valor: 0,
+    duracao_minutos: 0
   });
 
   useEffect(() => {
@@ -64,7 +66,8 @@ const ServicosTab = () => {
     // Sanitize inputs
     const sanitizedData = {
       nome_procedimento: sanitizeInput(formData.nome_procedimento),
-      valor: formData.valor
+      valor: formData.valor,
+      duracao_minutos: formData.duracao_minutos || null
     };
     
     // Validate with schema
@@ -119,7 +122,8 @@ const ServicosTab = () => {
   const resetForm = () => {
     setFormData({
       nome_procedimento: '',
-      valor: 0
+      valor: 0,
+      duracao_minutos: 0
     });
     setFormErrors({ nome_procedimento: '', valor: '' });
     setEditingServico(null);
@@ -129,7 +133,8 @@ const ServicosTab = () => {
   const handleEdit = (servico: Servico) => {
     setFormData({
       nome_procedimento: servico.nome_procedimento,
-      valor: servico.valor
+      valor: servico.valor,
+      duracao_minutos: servico.duracao_minutos || 0
     });
     setEditingServico(servico);
     setDialogOpen(true);
@@ -247,6 +252,18 @@ const ServicosTab = () => {
                   </div>
                 )}
               </div>
+              
+              <div>
+                <Label htmlFor="duracao_minutos">Duração (minutos)</Label>
+                <Input
+                  id="duracao_minutos"
+                  type="number"
+                  min="0"
+                  value={formData.duracao_minutos}
+                  onChange={(e) => setFormData({ ...formData, duracao_minutos: parseInt(e.target.value) || 0 })}
+                  placeholder="Ex: 60"
+                />
+              </div>
 
               <div className="flex gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
@@ -281,6 +298,11 @@ const ServicosTab = () => {
                       <span className="font-medium text-lg">
                         R$ {servico.valor.toFixed(2)}
                       </span>
+                      {servico.duracao_minutos && (
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          • {servico.duracao_minutos} min
+                        </span>
+                      )}
                     </div>
                   </div>
                   

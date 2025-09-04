@@ -195,6 +195,24 @@ const ClientesTab = () => {
     return clienteAgendamentos[telefone] || [];
   };
 
+  const getClienteGastoTotal = (telefone: string) => {
+    const agendamentos = getClienteAgendamentos(telefone);
+    return agendamentos
+      .filter(ag => ag.status === 'Concluído')
+      .reduce((total, agendamento) => {
+        let valor = agendamento.preco;
+        if (agendamento.tem_desconto && agendamento.porcentagem_desconto) {
+          valor = valor * (1 - agendamento.porcentagem_desconto / 100);
+        }
+        return total + valor;
+      }, 0);
+  };
+
+  const getClienteAtendimentosTotal = (telefone: string) => {
+    const agendamentos = getClienteAgendamentos(telefone);
+    return agendamentos.filter(ag => ag.status === 'Concluído').length;
+  };
+
   const getUltimos6Agendamentos = (telefone: string) => {
     const agendamentos = getClienteAgendamentos(telefone);
     return agendamentos.slice(0, 6);
@@ -353,6 +371,8 @@ const ClientesTab = () => {
           {filteredClientes.map((cliente) => {
             const agendamentos = getUltimos6Agendamentos(cliente.telefone);
             const direitoGratis = temDireitoGratis(cliente.telefone);
+            const gastoTotal = getClienteGastoTotal(cliente.telefone);
+            const atendimentosTotal = getClienteAtendimentosTotal(cliente.telefone);
             
             return (
               <Card key={cliente.id} className="mobile-card">
@@ -382,6 +402,18 @@ const ClientesTab = () => {
                       </div>
                       <div className="text-right text-xs text-muted-foreground">
                         Cadastrado em {formatDate(cliente.created_at)}
+                      </div>
+                    </div>
+
+                    {/* Estatísticas do cliente */}
+                    <div className="grid grid-cols-2 gap-2 p-2 bg-muted/30 rounded-lg">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-600">R$ {gastoTotal.toFixed(2)}</div>
+                        <div className="text-xs text-muted-foreground">Gasto Total</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-blue-600">{atendimentosTotal}</div>
+                        <div className="text-xs text-muted-foreground">Atendimentos</div>
                       </div>
                     </div>
 
