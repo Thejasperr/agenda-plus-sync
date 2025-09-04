@@ -171,30 +171,56 @@ const CalendarioPage = () => {
   const generateTimeSlots = () => {
     const slots = [];
 
-    // Horários normais (11:00 - 20:00) - apenas hora em hora
+    // Horários normais (11:00 - 20:00) - hora em hora e meia hora
     for (let hour = 11; hour <= 20; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      // Hora exata
+      const timeStringHour = `${hour.toString().padStart(2, '0')}:00`;
       slots.push({
-        time: timeString,
+        time: timeStringHour,
         isSpecial: false
       });
+      
+      // Meia hora (apenas se não for o último horário)
+      if (hour < 20) {
+        const timeStringHalf = `${hour.toString().padStart(2, '0')}:30`;
+        slots.push({
+          time: timeStringHalf,
+          isSpecial: false
+        });
+      }
     }
 
-    // Horários especiais (antes de 11:00 e depois de 20:00) - apenas hora em hora
+    // Horários especiais (antes de 11:00 e depois de 20:00) - hora em hora e meia hora
     for (let hour = 8; hour < 11; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      const timeStringHour = `${hour.toString().padStart(2, '0')}:00`;
       slots.push({
-        time: timeString,
+        time: timeStringHour,
+        isSpecial: true
+      });
+      
+      const timeStringHalf = `${hour.toString().padStart(2, '0')}:30`;
+      slots.push({
+        time: timeStringHalf,
         isSpecial: true
       });
     }
+    
     for (let hour = 21; hour <= 22; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      const timeStringHour = `${hour.toString().padStart(2, '0')}:00`;
       slots.push({
-        time: timeString,
+        time: timeStringHour,
         isSpecial: true
       });
+      
+      if (hour < 22) {
+        const timeStringHalf = `${hour.toString().padStart(2, '0')}:30`;
+        slots.push({
+          time: timeStringHalf,
+          isSpecial: true
+        });
+      }
     }
+    
     return slots.sort((a, b) => a.time.localeCompare(b.time));
   };
   const getAvailableTimeSlots = () => {
@@ -681,7 +707,34 @@ const CalendarioPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : <div className="space-y-4">
+            <div className="space-y-4">
+              {/* Faturamento do dia */}
+              {selectedDate && (
+                <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                      <div>
+                        <div className="text-sm text-green-800 font-medium">Faturamento do Dia</div>
+                        <div className="text-xl font-bold text-green-700">
+                          R$ {agendamentosDodia
+                            .filter(agendamento => agendamento.status === 'Concluído')
+                            .reduce((total, agendamento) => {
+                              let valor = agendamento.preco;
+                              if (agendamento.tem_desconto && agendamento.porcentagem_desconto) {
+                                valor = valor * (1 - agendamento.porcentagem_desconto / 100);
+                              }
+                              return total + valor;
+                            }, 0)
+                            .toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : <div className="space-y-4">
                 {agendamentosDodia.map(agendamento => <div key={agendamento.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
@@ -753,6 +806,7 @@ const CalendarioPage = () => {
                     </div>
                   </div>)}
               </div>}
+            </div>
           </CardContent>
         </Card>
       </div>
