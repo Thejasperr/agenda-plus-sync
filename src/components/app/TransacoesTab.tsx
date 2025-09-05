@@ -192,8 +192,8 @@ const TransacoesTab = () => {
         };
       case 'semana':
         return {
-          inicio: format(startOfWeek(hoje), 'yyyy-MM-dd'),
-          fim: format(endOfWeek(hoje), 'yyyy-MM-dd')
+          inicio: format(startOfWeek(hoje, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+          fim: format(endOfWeek(hoje, { weekStartsOn: 1 }), 'yyyy-MM-dd')
         };
       case 'mes':
         return {

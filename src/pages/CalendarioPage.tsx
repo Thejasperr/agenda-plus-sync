@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
 interface Agendamento {
   id: string;
   nome: string;
@@ -40,6 +41,7 @@ const CalendarioPage = () => {
     id: string;
     nome_procedimento: string;
     valor: number;
+    duracao_minutos: number | null;
   }[]>([]);
   const [clientes, setClientes] = useState<{
     telefone: string;
@@ -53,6 +55,8 @@ const CalendarioPage = () => {
     telefone: string;
     nome: string;
   }[]>([]);
+  const [formaPagamentoDialogOpen, setFormaPagamentoDialogOpen] = useState(false);
+  const [agendamentoConcluindo, setAgendamentoConcluindo] = useState<string | null>(null);
   const {
     toast
   } = useToast();
@@ -223,15 +227,41 @@ const CalendarioPage = () => {
     
     return slots.sort((a, b) => a.time.localeCompare(b.time));
   };
+  // Gerar horários disponíveis considerando duração dos serviços
   const getAvailableTimeSlots = () => {
     if (!selectedDate) return generateTimeSlots();
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const bookedTimes = agendamentos.filter(ag => ag.data_agendamento === dateStr).map(ag => ag.hora_agendamento.substring(0, 5)); // Apenas HH:MM
-
-    return generateTimeSlots().map(slot => ({
-      ...slot,
-      isBooked: bookedTimes.includes(slot.time)
-    }));
+    const agendamentosDodia = agendamentos.filter(ag => ag.data_agendamento === dateStr);
+    
+    return generateTimeSlots().map(slot => {
+      let isOccupied = false;
+      
+      // Verificar se este horário está ocupado por algum agendamento
+      for (const agendamento of agendamentosDodia) {
+        const agendamentoHora = agendamento.hora_agendamento.substring(0, 5);
+        const servicoSelecionado = servicos.find(s => s.id === agendamento.procedimento_id);
+        const duracaoMinutos = servicoSelecionado?.duracao_minutos || 60; // Default 60 minutos
+        
+        // Calcular horário de fim do agendamento
+        const [horaInicio, minutoInicio] = agendamentoHora.split(':').map(Number);
+        const inicioTotalMinutos = horaInicio * 60 + minutoInicio;
+        const fimTotalMinutos = inicioTotalMinutos + duracaoMinutos;
+        
+        // Verificar se o slot atual colide com este agendamento
+        const [horaSlot, minutoSlot] = slot.time.split(':').map(Number);
+        const slotTotalMinutos = horaSlot * 60 + minutoSlot;
+        
+        if (slotTotalMinutos >= inicioTotalMinutos && slotTotalMinutos < fimTotalMinutos) {
+          isOccupied = true;
+          break;
+        }
+      }
+      
+      return {
+        ...slot,
+        isBooked: isOccupied
+      };
+    });
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,23 +374,64 @@ const CalendarioPage = () => {
     setDialogOpen(true);
   };
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
+    if (newStatus === 'Concluído') {
+      // Abrir dialog de forma de pagamento
+      setAgendamentoConcluindo(id);
+      setFormaPagamentoDialogOpen(true);
+      return;
+    }
+    
     try {
-      const {
-        error
-      } = await supabase.from('agendamentos').update({
-        status: newStatus
-      }).eq('id', id);
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ status: newStatus })
+        .eq('id', id);
+      
       if (error) throw error;
+      
       toast({
         title: "Sucesso",
         description: `Status atualizado para ${newStatus}`
       });
+      
       fetchAgendamentos();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFormaPagamentoConfirm = async (formaPagamento: string) => {
+    if (!agendamentoConcluindo) return;
+    
+    try {
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ 
+          status: 'Concluído',
+          forma_pagamento: formaPagamento 
+        })
+        .eq('id', agendamentoConcluindo);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sucesso",
+        description: "Agendamento concluído com sucesso!"
+      });
+      
+      setFormaPagamentoDialogOpen(false);
+      setAgendamentoConcluindo(null);
+      fetchAgendamentos();
+    } catch (error) {
+      console.error('Erro ao concluir agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível concluir o agendamento",
         variant: "destructive"
       });
     }
@@ -391,7 +462,13 @@ const CalendarioPage = () => {
     window.open(`https://wa.me/55${phoneNumber}?text=${message}`, '_blank');
   };
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const telefone = e.target.value;
+    let telefone = e.target.value.replace(/\D/g, ''); // Remove todos os caracteres não numéricos
+    
+    // Limita a 11 dígitos
+    if (telefone.length > 11) {
+      telefone = telefone.substring(0, 11);
+    }
+    
     setFormData({
       ...formData,
       telefone
@@ -748,7 +825,24 @@ const CalendarioPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-3">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        <span>{agendamento.hora_agendamento}</span>
+                        <span>
+                          {(() => {
+                            const servicoSelecionado = servicos.find(s => s.id === agendamento.procedimento_id);
+                            const duracaoMinutos = servicoSelecionado?.duracao_minutos || 60;
+                            
+                            const [horaInicio, minutoInicio] = agendamento.hora_agendamento.split(':').map(Number);
+                            const inicioTotalMinutos = horaInicio * 60 + minutoInicio;
+                            const fimTotalMinutos = inicioTotalMinutos + duracaoMinutos;
+                            
+                            const horaFim = Math.floor(fimTotalMinutos / 60);
+                            const minutoFim = fimTotalMinutos % 60;
+                            
+                            const horaFimStr = horaFim.toString().padStart(2, '0');
+                            const minutoFimStr = minutoFim.toString().padStart(2, '0');
+                            
+                            return `${agendamento.hora_agendamento.substring(0, 5)} - ${horaFimStr}:${minutoFimStr}`;
+                          })()}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <DollarSign className="w-4 h-4" />
@@ -758,35 +852,37 @@ const CalendarioPage = () => {
                           </span>}
                       </div>
                     </div>
+                    
+                    {/* Mostrar nome do procedimento */}
+                    {agendamento.procedimento_id && (
+                      <div className="text-sm text-muted-foreground mb-3">
+                        <strong>Procedimento:</strong> {servicos.find(s => s.id === agendamento.procedimento_id)?.nome_procedimento || 'Não encontrado'}
+                      </div>
+                    )}
 
                     {agendamento.observacoes && <p className="text-sm text-muted-foreground mb-3">{agendamento.observacoes}</p>}
 
                     <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(agendamento)} className={isMobile ? "px-2" : ""}>
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(agendamento)}>
                         <Edit2 className="w-4 h-4" />
-                        {!isMobile && <span className="ml-1">Editar</span>}
                       </Button>
                       
-                      <Button size="sm" variant="outline" onClick={() => openWhatsApp(agendamento.telefone, agendamento.nome, format(new Date(agendamento.data_agendamento), 'dd/MM/yyyy'), agendamento.hora_agendamento)} className={isMobile ? "px-2" : ""}>
+                      <Button size="sm" variant="outline" onClick={() => openWhatsApp(agendamento.telefone, agendamento.nome, format(new Date(agendamento.data_agendamento), 'dd/MM/yyyy'), agendamento.hora_agendamento)}>
                         <MessageCircle className="w-4 h-4" />
-                        {!isMobile && <span className="ml-1">WhatsApp</span>}
                       </Button>
 
-                      {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')} className={`text-green-600 border-green-600 ${isMobile ? "px-2" : ""}`}>
+                      {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')} className="text-green-600 border-green-600">
                           <Check className="w-4 h-4" />
-                          {!isMobile && <span className="ml-1">Concluir</span>}
                         </Button>}
 
-                      {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Cancelado')} className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}>
+                      {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Cancelado')} className="text-red-600 border-red-600">
                           <X className="w-4 h-4" />
-                          {!isMobile && <span className="ml-1">Cancelar</span>}
                         </Button>}
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className={`text-red-600 border-red-600 ${isMobile ? "px-2" : ""}`}>
+                          <Button size="sm" variant="outline" className="text-red-600 border-red-600">
                             <Trash2 className="w-4 h-4" />
-                            {!isMobile && <span className="ml-1">Excluir</span>}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -812,6 +908,14 @@ const CalendarioPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Forma de Pagamento */}
+      <FormaPagamentoDialog
+        open={formaPagamentoDialogOpen}
+        onOpenChange={setFormaPagamentoDialogOpen}
+        onConfirm={handleFormaPagamentoConfirm}
+        agendamentoId={agendamentoConcluindo || ''}
+      />
     </div>;
 };
 export default CalendarioPage;

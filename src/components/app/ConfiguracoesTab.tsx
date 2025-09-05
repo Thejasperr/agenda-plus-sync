@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import ServicosTab from './ServicosTab';
 import HorariosTab from './HorariosTab';
+import FormasPagamentoTab from './FormasPagamentoTab';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
@@ -113,7 +114,7 @@ const ConfiguracoesTab = () => {
       <h2 className="text-2xl font-bold">Configurações</h2>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="servicos" className="flex items-center gap-2">
             <Wrench className="h-4 w-4" />
             Serviços
@@ -121,6 +122,10 @@ const ConfiguracoesTab = () => {
           <TabsTrigger value="horarios" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Horários
+          </TabsTrigger>
+          <TabsTrigger value="pagamentos" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Pagamentos
           </TabsTrigger>
         </TabsList>
 
@@ -130,6 +135,10 @@ const ConfiguracoesTab = () => {
 
         <TabsContent value="horarios">
           <HorariosTab />
+        </TabsContent>
+
+        <TabsContent value="pagamentos">
+          <FormasPagamentoTab />
         </TabsContent>
       </Tabs>
 

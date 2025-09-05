@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           data_agendamento: string
           data_retorno: string | null
+          forma_pagamento: string | null
           hora_agendamento: string
           id: string
           mensagem_av_google: boolean | null
@@ -42,6 +43,7 @@ export type Database = {
           created_at?: string
           data_agendamento: string
           data_retorno?: string | null
+          forma_pagamento?: string | null
           hora_agendamento: string
           id?: string
           mensagem_av_google?: boolean | null
@@ -64,6 +66,7 @@ export type Database = {
           created_at?: string
           data_agendamento?: string
           data_retorno?: string | null
+          forma_pagamento?: string | null
           hora_agendamento?: string
           id?: string
           mensagem_av_google?: boolean | null
@@ -155,6 +158,36 @@ export type Database = {
           nome_item?: string
           observacoes?: string | null
           quantidade?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      formas_pagamento: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          id: string
+          nome: string
+          qr_code_pix: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          qr_code_pix?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          qr_code_pix?: string | null
           updated_at?: string
           user_id?: string | null
         }

@@ -45,8 +45,8 @@ const DashboardTab = () => {
     try {
       const hoje = format(new Date(), 'yyyy-MM-dd');
       const amanha = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-      const inicioSemana = format(startOfWeek(new Date()), 'yyyy-MM-dd');
-      const fimSemana = format(endOfWeek(new Date()), 'yyyy-MM-dd');
+      const inicioSemana = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      const fimSemana = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const inicioMes = format(startOfMonth(new Date()), 'yyyy-MM-dd');
       const fimMes = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
@@ -248,82 +248,85 @@ const DashboardTab = () => {
         </CardContent>
       </Card>
 
-      {/* Agendamentos de hoje */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5" />
-            Agendamentos de Hoje
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {agendamentosHoje.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              Nenhum agendamento para hoje
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {agendamentosHoje.map((agendamento) => (
-                <div key={agendamento.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">{agendamento.nome}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {agendamento.hora_agendamento.substring(0, 5)} - R$ {agendamento.preco.toFixed(2)}
+      {/* Agendamentos lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Agendamentos de hoje */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarCheck className="h-5 w-5" />
+              Agendamentos de Hoje
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {agendamentosHoje.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                Nenhum agendamento para hoje
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {agendamentosHoje.map((agendamento) => (
+                  <div key={agendamento.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-medium">{agendamento.nome}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {agendamento.hora_agendamento.substring(0, 5)} - R$ {agendamento.preco.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(agendamento.status)}>
+                        {agendamento.status}
+                      </Badge>
+                      {agendamento.status === 'Agendado' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
+                        >
+                          Concluir
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Agendamentos de amanhã */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" />
+              Agendamentos de Amanhã
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {agendamentosAmanha.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                Nenhum agendamento para amanhã
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {agendamentosAmanha.map((agendamento) => (
+                  <div key={agendamento.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-medium">{agendamento.nome}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {agendamento.hora_agendamento.substring(0, 5)} - R$ {agendamento.preco.toFixed(2)}
+                      </div>
+                    </div>
                     <Badge className={getStatusColor(agendamento.status)}>
                       {agendamento.status}
                     </Badge>
-                    {agendamento.status === 'Agendado' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
-                      >
-                        Concluir
-                      </Button>
-                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Agendamentos de amanhã */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5" />
-            Agendamentos de Amanhã
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {agendamentosAmanha.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              Nenhum agendamento para amanhã
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {agendamentosAmanha.map((agendamento) => (
-                <div key={agendamento.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">{agendamento.nome}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {agendamento.hora_agendamento.substring(0, 5)} - R$ {agendamento.preco.toFixed(2)}
-                    </div>
-                  </div>
-                  <Badge className={getStatusColor(agendamento.status)}>
-                    {agendamento.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
