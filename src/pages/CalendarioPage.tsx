@@ -32,6 +32,7 @@ interface Agendamento {
   preco_retorno: number | null;
   status: string;
   observacoes: string | null;
+  forma_pagamento: string | null;
   created_at: string;
 }
 const CalendarioPage = () => {
@@ -57,10 +58,29 @@ const CalendarioPage = () => {
   }[]>([]);
   const [formaPagamentoDialogOpen, setFormaPagamentoDialogOpen] = useState(false);
   const [agendamentoConcluindo, setAgendamentoConcluindo] = useState<string | null>(null);
-  const {
-    toast
-  } = useToast();
+  const [formasPagamento, setFormasPagamento] = useState<{
+    id: string;
+    nome: string;
+    ativa: boolean;
+  }[]>([]);
+  
+  const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  const fetchFormasPagamento = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('formas_pagamento')
+        .select('*')
+        .eq('ativa', true)
+        .order('nome');
+      
+      if (error) throw error;
+      setFormasPagamento(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar formas de pagamento:', error);
+    }
+  };
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
@@ -120,6 +140,7 @@ const CalendarioPage = () => {
     fetchAgendamentos();
     fetchServicos();
     fetchClientes();
+    fetchFormasPagamento();
   }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -227,7 +248,42 @@ const CalendarioPage = () => {
     
     return slots.sort((a, b) => a.time.localeCompare(b.time));
   };
-  // Gerar horários disponíveis considerando duração dos serviços
+  // Filtrar serviços que cabem no horário disponível
+  const getServicosDisponiveis = () => {
+    if (!selectedTimeSlot || !selectedDate) return servicos;
+    
+    const [horaSlot, minutoSlot] = selectedTimeSlot.split(':').map(Number);
+    const slotTotalMinutos = horaSlot * 60 + minutoSlot;
+    
+    return servicos.filter(servico => {
+      const duracaoMinutos = servico.duracao_minutos || 60;
+      const fimServicoMinutos = slotTotalMinutos + duracaoMinutos;
+      
+      // Verificar se o serviço termina antes das 23:00 (1380 minutos)
+      if (fimServicoMinutos > 1380) return false;
+      
+      // Verificar se não colide com outros agendamentos
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const agendamentosDodia = agendamentos.filter(ag => ag.data_agendamento === dateStr);
+      
+      for (const agendamento of agendamentosDodia) {
+        const agendamentoHora = agendamento.hora_agendamento.substring(0, 5);
+        const servicoAgendado = servicos.find(s => s.id === agendamento.procedimento_id);
+        const duracaoAgendado = servicoAgendado?.duracao_minutos || 60;
+        
+        const [horaAgendado, minutoAgendado] = agendamentoHora.split(':').map(Number);
+        const inicioAgendado = horaAgendado * 60 + minutoAgendado;
+        const fimAgendado = inicioAgendado + duracaoAgendado;
+        
+        // Verificar se há sobreposição
+        if (!(fimServicoMinutos <= inicioAgendado || slotTotalMinutos >= fimAgendado)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  };
   const getAvailableTimeSlots = () => {
     if (!selectedDate) return generateTimeSlots();
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -408,33 +464,15 @@ const CalendarioPage = () => {
   const handleFormaPagamentoConfirm = async (formaPagamento: string) => {
     if (!agendamentoConcluindo) return;
     
-    try {
-      const { error } = await supabase
-        .from('agendamentos')
-        .update({ 
-          status: 'Concluído',
-          forma_pagamento: formaPagamento 
-        })
-        .eq('id', agendamentoConcluindo);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Sucesso",
-        description: "Agendamento concluído com sucesso!"
-      });
-      
-      setFormaPagamentoDialogOpen(false);
-      setAgendamentoConcluindo(null);
-      fetchAgendamentos();
-    } catch (error) {
-      console.error('Erro ao concluir agendamento:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível concluir o agendamento",
-        variant: "destructive"
-      });
-    }
+    // O agendamento e a transação já foram atualizados no FormaPagamentoDialog
+    toast({
+      title: "Sucesso",
+      description: "Agendamento concluído com sucesso!"
+    });
+    
+    setFormaPagamentoDialogOpen(false);
+    setAgendamentoConcluindo(null);
+    fetchAgendamentos();
   };
   const deleteAgendamento = async (id: string) => {
     try {
@@ -462,7 +500,15 @@ const CalendarioPage = () => {
     window.open(`https://wa.me/55${phoneNumber}?text=${message}`, '_blank');
   };
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let telefone = e.target.value.replace(/\D/g, ''); // Remove todos os caracteres não numéricos
+    let telefone = e.target.value;
+    
+    // Remove todos os caracteres não numéricos
+    telefone = telefone.replace(/\D/g, '');
+    
+    // Remove +55 se começar com isso
+    if (telefone.startsWith('55') && telefone.length > 11) {
+      telefone = telefone.substring(2);
+    }
     
     // Limita a 11 dígitos
     if (telefone.length > 11) {
@@ -605,8 +651,9 @@ const CalendarioPage = () => {
                       <SelectValue placeholder="Selecione um serviço" />
                     </SelectTrigger>
                     <SelectContent>
-                      {servicos.map(servico => <SelectItem key={servico.id} value={servico.id}>
+                      {getServicosDisponiveis().map(servico => <SelectItem key={servico.id} value={servico.id}>
                           {servico.nome_procedimento} - R$ {servico.valor.toFixed(2)}
+                          {servico.duracao_minutos && ` (${servico.duracao_minutos}min)`}
                         </SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -742,11 +789,41 @@ const CalendarioPage = () => {
         {/* Horários Disponíveis */}
         {selectedDate && <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                Horários para {format(selectedDate, 'dd/MM/yyyy', {
-              locale: ptBR
-            })}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  Horários para {format(selectedDate, 'dd/MM/yyyy', {
+                locale: ptBR
+              })}
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    const dateStr = format(selectedDate, 'dd/MM/yyyy', { locale: ptBR });
+                    const availableSlots = getAvailableTimeSlots()
+                      .filter(slot => !slot.isBooked)
+                      .map(slot => slot.time)
+                      .join(', ');
+                    
+                    const message = `Horários disponíveis para ${dateStr}:\n\n${availableSlots}\n\nPara agendar, entre em contato!`;
+                    
+                    if (navigator.share) {
+                      navigator.share({
+                        title: `Horários Disponíveis - ${dateStr}`,
+                        text: message
+                      });
+                    } else {
+                      navigator.clipboard.writeText(message);
+                      toast({
+                        title: "Copiado!",
+                        description: "Horários copiados para a área de transferência"
+                      });
+                    }
+                  }}
+                >
+                  📤 Enviar
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
@@ -860,7 +937,12 @@ const CalendarioPage = () => {
                       </div>
                     )}
 
-                    {agendamento.observacoes && <p className="text-sm text-muted-foreground mb-3">{agendamento.observacoes}</p>}
+                    {/* Mostrar forma de pagamento para agendamentos concluídos */}
+                    {agendamento.status === 'Concluído' && agendamento.forma_pagamento && (
+                      <div className="text-sm text-muted-foreground mb-3">
+                        <strong>Forma de pagamento:</strong> {agendamento.forma_pagamento}
+                      </div>
+                    )}
 
                     <div className="flex gap-2 flex-wrap">
                       <Button size="sm" variant="outline" onClick={() => handleEdit(agendamento)}>

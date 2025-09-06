@@ -134,12 +134,55 @@ const DashboardTab = () => {
 
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
     try {
+      // Primeiro buscar o agendamento para criar a transação apenas uma vez
+      const { data: agendamento, error: fetchError } = await supabase
+        .from('agendamentos')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Atualizar status
       const { error } = await supabase
         .from('agendamentos')
         .update({ status: newStatus })
         .eq('id', id);
 
       if (error) throw error;
+
+      // Se está concluindo, criar transação apenas se não existir uma já
+      if (newStatus === 'Concluído' && agendamento) {
+        // Verificar se já existe uma transação para este agendamento
+        const { data: transacaoExistente, error: transacaoError } = await supabase
+          .from('transacoes')
+          .select('id')
+          .eq('agendamento_id', id)
+          .single();
+
+        // Se não existe transação, criar uma nova
+        if (!transacaoExistente && !transacaoError) {
+          let valorFinal = agendamento.preco;
+          if (agendamento.tem_desconto && agendamento.porcentagem_desconto) {
+            valorFinal = valorFinal * (1 - agendamento.porcentagem_desconto / 100);
+          }
+
+          const { error: transacaoInsertError } = await supabase
+            .from('transacoes')
+            .insert([{
+              tipo: 'Serviço realizado',
+              tipo_operacao: 'entrada',
+              valor: valorFinal,
+              data_transacao: agendamento.data_agendamento,
+              agendamento_id: id,
+              observacoes: `Agendamento concluído - ${agendamento.nome}`
+            }]);
+
+          if (transacaoInsertError) {
+            console.error('Erro ao criar transação:', transacaoInsertError);
+          }
+        }
+      }
 
       toast({
         title: "Sucesso",

@@ -17,6 +17,7 @@ interface FormaPagamento {
   nome: string;
   ativa: boolean;
   qr_code_pix: string | null;
+  percentual_acrescimo: number | null;
   created_at: string;
 }
 
@@ -28,7 +29,8 @@ const FormasPagamentoTab = () => {
   const [formData, setFormData] = useState({
     nome: '',
     ativa: true,
-    qr_code_pix: ''
+    qr_code_pix: '',
+    percentual_acrescimo: ''
   });
   const { toast } = useToast();
 
@@ -72,7 +74,8 @@ const FormasPagamentoTab = () => {
     try {
       const dadosFormaPagamento = {
         ...formData,
-        qr_code_pix: formData.qr_code_pix.trim() || null
+        qr_code_pix: formData.qr_code_pix.trim() || null,
+        percentual_acrescimo: formData.percentual_acrescimo ? parseFloat(formData.percentual_acrescimo) : null
       };
 
       if (editingForma) {
@@ -116,7 +119,8 @@ const FormasPagamentoTab = () => {
     setFormData({
       nome: forma.nome,
       ativa: forma.ativa,
-      qr_code_pix: forma.qr_code_pix || ''
+      qr_code_pix: forma.qr_code_pix || '',
+      percentual_acrescimo: forma.percentual_acrescimo?.toString() || ''
     });
     setEditingForma(forma);
     setDialogOpen(true);
@@ -176,7 +180,8 @@ const FormasPagamentoTab = () => {
     setFormData({
       nome: '',
       ativa: true,
-      qr_code_pix: ''
+      qr_code_pix: '',
+      percentual_acrescimo: ''
     });
     setEditingForma(null);
     setDialogOpen(false);
@@ -244,6 +249,22 @@ const FormasPagamentoTab = () => {
                 </div>
               )}
 
+              {formData.nome.toLowerCase().includes('cartão') && (
+                <div>
+                  <Label htmlFor="percentual_acrescimo">Percentual de Acréscimo (%)</Label>
+                  <Input
+                    id="percentual_acrescimo"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.percentual_acrescimo}
+                    onChange={(e) => setFormData({ ...formData, percentual_acrescimo: e.target.value })}
+                    placeholder="Ex: 3.5 para 3,5%"
+                  />
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                   Cancelar
@@ -286,6 +307,11 @@ const FormasPagamentoTab = () => {
                       {forma.qr_code_pix && (
                         <div className="text-xs text-muted-foreground mt-1">
                           QR Code configurado
+                        </div>
+                      )}
+                      {forma.percentual_acrescimo && forma.percentual_acrescimo > 0 && (
+                        <div className="text-xs text-orange-600 mt-1">
+                          Acréscimo: {forma.percentual_acrescimo}%
                         </div>
                       )}
                     </div>

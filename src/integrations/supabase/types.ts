@@ -169,6 +169,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          percentual_acrescimo: number | null
           qr_code_pix: string | null
           updated_at: string
           user_id: string | null
@@ -178,6 +179,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
+          percentual_acrescimo?: number | null
           qr_code_pix?: string | null
           updated_at?: string
           user_id?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+          percentual_acrescimo?: number | null
           qr_code_pix?: string | null
           updated_at?: string
           user_id?: string | null
@@ -228,6 +231,7 @@ export type Database = {
           agendamento_id: string | null
           created_at: string
           data_transacao: string
+          forma_pagamento: string | null
           id: string
           observacoes: string | null
           tipo: string
@@ -240,6 +244,7 @@ export type Database = {
           agendamento_id?: string | null
           created_at?: string
           data_transacao?: string
+          forma_pagamento?: string | null
           id?: string
           observacoes?: string | null
           tipo: string
@@ -252,6 +257,7 @@ export type Database = {
           agendamento_id?: string | null
           created_at?: string
           data_transacao?: string
+          forma_pagamento?: string | null
           id?: string
           observacoes?: string | null
           tipo?: string

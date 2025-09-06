@@ -22,6 +22,7 @@ interface Transacao {
   valor: number;
   agendamento_id: string | null;
   observacoes: string | null;
+  forma_pagamento: string | null;
   created_at: string;
 }
 
@@ -36,18 +37,40 @@ const TransacoesTab = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTransacao, setEditingTransacao] = useState<Transacao | null>(null);
+  const [formasPagamento, setFormasPagamento] = useState<{
+    id: string;
+    nome: string;
+    ativa: boolean;
+  }[]>([]);
   const [formData, setFormData] = useState({
     tipo: '',
-    data_transacao: new Date().toISOString().split('T')[0],
+    data_transacao: format(new Date(), 'yyyy-MM-dd'),
     tipo_operacao: 'entrada' as 'entrada' | 'saida',
     valor: '',
-    observacoes: ''
+    observacoes: '',
+    forma_pagamento: ''
   });
   const { toast } = useToast();
 
   useEffect(() => {
     fetchTransacoes();
+    fetchFormasPagamento();
   }, []);
+
+  const fetchFormasPagamento = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('formas_pagamento')
+        .select('*')
+        .eq('ativa', true)
+        .order('nome');
+      
+      if (error) throw error;
+      setFormasPagamento(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar formas de pagamento:', error);
+    }
+  };
 
   const fetchTransacoes = async () => {
     try {
@@ -132,7 +155,8 @@ const TransacoesTab = () => {
       data_transacao: transacao.data_transacao,
       tipo_operacao: transacao.tipo_operacao,
       valor: transacao.valor.toString(),
-      observacoes: transacao.observacoes || ''
+      observacoes: transacao.observacoes || '',
+      forma_pagamento: transacao.forma_pagamento || ''
     });
     setEditingTransacao(transacao);
     setDialogOpen(true);
@@ -166,10 +190,11 @@ const TransacoesTab = () => {
   const resetForm = () => {
     setFormData({
       tipo: '',
-      data_transacao: new Date().toISOString().split('T')[0],
+      data_transacao: format(new Date(), 'yyyy-MM-dd'),
       tipo_operacao: 'entrada',
       valor: '',
-      observacoes: ''
+      observacoes: '',
+      forma_pagamento: ''
     });
     setEditingTransacao(null);
     setDialogOpen(false);
@@ -368,6 +393,20 @@ const TransacoesTab = () => {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="forma_pagamento">Forma de Pagamento</Label>
+                  <Select value={formData.forma_pagamento} onValueChange={(value) => setFormData({ ...formData, forma_pagamento: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a forma de pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Não informado</SelectItem>
+                      {formasPagamento.map((forma) => (
+                        <SelectItem key={forma.id} value={forma.nome}>{forma.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="observacoes">Observações</Label>
                   <Textarea
                     id="observacoes"
@@ -474,7 +513,7 @@ const TransacoesTab = () => {
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        {format(new Date(transacao.data_transacao), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        {format(new Date(transacao.data_transacao + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                       </div>
                     </div>
                     <div className={`text-lg font-bold ${
@@ -488,6 +527,13 @@ const TransacoesTab = () => {
                   {transacao.observacoes && (
                     <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
                       <strong>Obs:</strong> {transacao.observacoes}
+                    </div>
+                  )}
+
+                  {/* Forma de pagamento */}
+                  {transacao.forma_pagamento && (
+                    <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      <strong>Pagamento:</strong> {transacao.forma_pagamento}
                     </div>
                   )}
 
