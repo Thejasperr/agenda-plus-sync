@@ -72,16 +72,8 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     }
 
     try {
-      // Buscar dados do agendamento
-      const { data: agendamento, error: fetchError } = await supabase
-        .from('agendamentos')
-        .select('*')
-        .eq('id', agendamentoId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
       // Atualizar agendamento com status concluído e forma de pagamento
+      // O trigger do banco criará automaticamente a transação
       const { error } = await supabase
         .from('agendamentos')
         .update({ 
@@ -91,37 +83,6 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
         .eq('id', agendamentoId);
 
       if (error) throw error;
-
-      // Verificar se já existe uma transação para este agendamento
-      const { data: transacaoExistente, error: transacaoError } = await supabase
-        .from('transacoes')
-        .select('id')
-        .eq('agendamento_id', agendamentoId)
-        .single();
-
-      // Se não existe transação, criar uma nova
-      if (!transacaoExistente && transacaoError) {
-        let valorFinal = agendamento.preco;
-        if (agendamento.tem_desconto && agendamento.porcentagem_desconto) {
-          valorFinal = valorFinal * (1 - agendamento.porcentagem_desconto / 100);
-        }
-
-        const { error: transacaoInsertError } = await supabase
-          .from('transacoes')
-          .insert([{
-            tipo: 'Serviço realizado',
-            tipo_operacao: 'entrada',
-            valor: valorFinal,
-            data_transacao: agendamento.data_agendamento,
-            agendamento_id: agendamentoId,
-            forma_pagamento: formaSelecionada,
-            observacoes: `Agendamento concluído - ${agendamento.nome}`
-          }]);
-
-        if (transacaoInsertError) {
-          console.error('Erro ao criar transação:', transacaoInsertError);
-        }
-      }
 
       onConfirm(formaSelecionada);
       setFormaSelecionada('');
