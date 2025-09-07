@@ -399,7 +399,7 @@ const TransacoesTab = () => {
                       <SelectValue placeholder="Selecione a forma de pagamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Não informado</SelectItem>
+                      <SelectItem value="nao_informado">Não informado</SelectItem>
                       {formasPagamento.map((forma) => (
                         <SelectItem key={forma.id} value={forma.nome}>{forma.nome}</SelectItem>
                       ))}
