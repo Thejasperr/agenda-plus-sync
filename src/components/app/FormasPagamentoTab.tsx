@@ -305,8 +305,15 @@ const FormasPagamentoTab = () => {
                         </Badge>
                       </div>
                       {forma.qr_code_pix && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          QR Code configurado
+                        <div className="flex items-center gap-2 mt-2">
+                          <img 
+                            src="/lovable-uploads/ef97b72a-5033-4489-b654-b1ba20b8145a.png" 
+                            alt="QR Code PIX" 
+                            className="w-16 h-16 border rounded"
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            QR Code PIX configurado
+                          </div>
                         </div>
                       )}
                       {forma.percentual_acrescimo && forma.percentual_acrescimo > 0 && (
