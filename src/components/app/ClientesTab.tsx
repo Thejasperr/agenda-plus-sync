@@ -45,6 +45,17 @@ const ClientesTab = () => {
   const [historicoDialogOpen, setHistoricoDialogOpen] = useState(false);
   const { toast } = useToast();
 
+  // Função para formatar telefone para exibição
+  const formatPhoneForDisplay = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 11) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    } else if (digits.length === 10) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return phone;
+  };
+
   useEffect(() => {
     fetchClientes();
     fetchAgendamentos();
@@ -335,10 +346,30 @@ const ClientesTab = () => {
                   id="telefone"
                   value={formData.telefone}
                   onChange={(e) => {
-                    setFormData({ ...formData, telefone: e.target.value });
+                    // Auto-format phone while typing
+                    let value = e.target.value.replace(/\D/g, '');
+                    
+                    // Remove +55 prefix if user starts typing it
+                    if (value.startsWith('55') && value.length > 11) {
+                      value = value.slice(2);
+                    }
+                    
+                    // Format for display
+                    let displayValue = value;
+                    if (value.length >= 11) {
+                      displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7, 11)}`;
+                    } else if (value.length >= 10) {
+                      displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
+                    } else if (value.length >= 6) {
+                      displayValue = `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
+                    } else if (value.length >= 2) {
+                      displayValue = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+                    }
+                    
+                    setFormData({ ...formData, telefone: displayValue });
                     setFormErrors({ ...formErrors, telefone: '' });
                   }}
-                  placeholder="(11) 99999-9999"
+                  placeholder="(14) 99118-5209"
                   className={formErrors.telefone ? 'border-destructive' : ''}
                 />
                 {formErrors.telefone && (
@@ -392,7 +423,7 @@ const ClientesTab = () => {
                         </div>
                         <div className="flex items-center text-muted-foreground text-sm mt-1">
                           <Phone className="h-3 w-3 mr-1" />
-                          <span>{cliente.telefone}</span>
+                          <span>{formatPhoneForDisplay(cliente.telefone)}</span>
                         </div>
                         {cliente.ultimo_atendimento && (
                           <div className="text-xs text-muted-foreground mt-1">

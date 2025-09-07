@@ -133,28 +133,31 @@ const DashboardTab = () => {
   };
 
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
-    try {
-      // Atualizar status - o trigger do banco criará a transação automaticamente
-      const { error } = await supabase
-        .from('agendamentos')
-        .update({ status: newStatus })
-        .eq('id', id);
+    if (newStatus === 'Concluído') {
+      // Para o dashboard, vamos simplificar - apenas marcar como concluído
+      // O usuário pode editar a forma de pagamento depois na aba de transações se necessário
+      try {
+        const { error } = await supabase
+          .from('agendamentos')
+          .update({ status: newStatus })
+          .eq('id', id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Sucesso",
-        description: `Status atualizado para ${newStatus}`,
-      });
+        toast({
+          title: "Sucesso",
+          description: `Status atualizado para ${newStatus}`,
+        });
 
-      fetchDashboardData();
-    } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status",
-        variant: "destructive",
-      });
+        fetchDashboardData();
+      } catch (error) {
+        console.error('Erro ao atualizar status:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar o status",
+          variant: "destructive",
+        });
+      }
     }
   };
 

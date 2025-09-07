@@ -17,22 +17,22 @@ export const validateAndFormatPhone = (phone: string): { isValid: boolean; forma
   if (!phone) return { isValid: false, formatted: '', error: 'Telefone é obrigatório' };
   
   // Remove all non-digits
-  const digits = phone.replace(/\D/g, '');
+  let digits = phone.replace(/\D/g, '');
+  
+  // Remove +55 prefix if present
+  if (digits.startsWith('55') && digits.length > 11) {
+    digits = digits.slice(2);
+  }
   
   // Brazilian phone validation (10 or 11 digits)
   if (digits.length < 10 || digits.length > 11) {
     return { isValid: false, formatted: phone, error: 'Telefone deve ter 10 ou 11 dígitos' };
   }
   
-  // Format phone number
-  let formatted = '';
-  if (digits.length === 11) {
-    formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  } else {
-    formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  }
+  // Store the clean digits for saving
+  const cleanFormatted = digits;
   
-  return { isValid: true, formatted };
+  return { isValid: true, formatted: cleanFormatted };
 };
 
 // Email validation

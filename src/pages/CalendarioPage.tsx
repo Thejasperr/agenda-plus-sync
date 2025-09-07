@@ -284,6 +284,33 @@ const CalendarioPage = () => {
       return true;
     });
   };
+  // Função para verificar se um serviço cabe em um horário específico
+  const canFitService = (startTime: string, dateStr: string, duracaoMinutos: number) => {
+    const agendamentosDodia = agendamentos.filter(ag => ag.data_agendamento === dateStr);
+    
+    const [horaInicio, minutoInicio] = startTime.split(':').map(Number);
+    const slotTotalMinutos = horaInicio * 60 + minutoInicio;
+    const fimServicoMinutos = slotTotalMinutos + duracaoMinutos;
+    
+    // Verificar se não há conflito com agendamentos existentes
+    for (const agendamento of agendamentosDodia) {
+      const agendamentoHora = agendamento.hora_agendamento.substring(0, 5);
+      const servicoAgendado = servicos.find(s => s.id === agendamento.procedimento_id);
+      const duracaoAgendado = servicoAgendado?.duracao_minutos || 60;
+      
+      const [horaAgendado, minutoAgendado] = agendamentoHora.split(':').map(Number);
+      const inicioAgendado = horaAgendado * 60 + minutoAgendado;
+      const fimAgendado = inicioAgendado + duracaoAgendado;
+      
+      // Verificar se há sobreposição
+      if (!(fimServicoMinutos <= inicioAgendado || slotTotalMinutos >= fimAgendado)) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
   const getAvailableTimeSlots = () => {
     if (!selectedDate) return generateTimeSlots();
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -313,12 +340,22 @@ const CalendarioPage = () => {
         }
       }
       
+      // Verificar se há tempo suficiente para o procedimento selecionado
+      let hasEnoughTime = true;
+      if (formData.procedimento_id) {
+        const servicoAtual = servicos.find(s => s.id === formData.procedimento_id);
+        if (servicoAtual?.duracao_minutos) {
+          hasEnoughTime = canFitService(slot.time, dateStr, servicoAtual.duracao_minutos);
+        }
+      }
+      
       return {
         ...slot,
-        isBooked: isOccupied
+        isBooked: isOccupied || !hasEnoughTime
       };
     });
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nome || !formData.telefone || !formData.data_agendamento || !formData.hora_agendamento || formData.preco <= 0) {
@@ -568,7 +605,8 @@ const CalendarioPage = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Calendário</h2>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -800,12 +838,26 @@ const CalendarioPage = () => {
                   variant="outline"
                   onClick={() => {
                     const dateStr = format(selectedDate, 'dd/MM/yyyy', { locale: ptBR });
+                    const now = new Date();
+                    const currentTime = format(now, 'HH:mm');
+                    const isToday = isSameDay(selectedDate, now);
+                    
                     const availableSlots = getAvailableTimeSlots()
-                      .filter(slot => !slot.isBooked)
+                      .filter(slot => {
+                        // Filter out booked slots
+                        if (slot.isBooked) return false;
+                        
+                        // If it's today, only show times from current time onwards
+                        if (isToday) {
+                          return slot.time >= currentTime;
+                        }
+                        
+                        return true;
+                      })
                       .map(slot => slot.time)
                       .join(', ');
                     
-                    const message = `Horários disponíveis para ${dateStr}:\n\n${availableSlots}\n\nPara agendar, entre em contato!`;
+                    const message = `Horários disponíveis para ${dateStr}:\n\n${availableSlots}`;
                     
                     if (navigator.share) {
                       navigator.share({
@@ -827,7 +879,20 @@ const CalendarioPage = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-                {getAvailableTimeSlots().map(slot => <Button key={slot.time} variant={slot.isBooked ? "secondary" : selectedTimeSlot === slot.time ? "default" : "outline"} size="sm" disabled={slot.isBooked} onClick={() => {
+                {getAvailableTimeSlots()
+                  .filter(slot => {
+                    // If it's today, only show times from current time onwards
+                    const now = new Date();
+                    const currentTime = format(now, 'HH:mm');
+                    const isToday = selectedDate && isSameDay(selectedDate, now);
+                    
+                    if (isToday && slot.time < currentTime) {
+                      return false;
+                    }
+                    
+                    return true;
+                  })
+                  .map(slot => <Button key={slot.time} variant={slot.isBooked ? "secondary" : selectedTimeSlot === slot.time ? "default" : "outline"} size="sm" disabled={slot.isBooked} onClick={() => {
               if (!slot.isBooked) {
                 setSelectedTimeSlot(slot.time);
                 // Usar a data selecionada corretamente
@@ -998,6 +1063,7 @@ const CalendarioPage = () => {
         onConfirm={handleFormaPagamentoConfirm}
         agendamentoId={agendamentoConcluindo || ''}
       />
-    </div>;
+    </div>
+  );
 };
 export default CalendarioPage;
