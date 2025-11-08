@@ -4,103 +4,106 @@
 
 @layer base {
   :root {
-    /* Primary Colors - Verde militar */
-    --primary: 95 30% 25%;
-    --primary-foreground: 95 15% 95%;
-    --primary-glow: 95 40% 35%;
+    /* Primary Colors - Tons de Areia */
+    --primary: 35 45% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 38 50% 65%;
     
-    /* Secondary Colors - Verde militar claro */
-    --secondary: 95 25% 85%;
-    --secondary-foreground: 95 30% 20%;
+    /* Secondary Colors - Areia Clara */
+    --secondary: 40 35% 88%;
+    --secondary-foreground: 35 40% 25%;
     
-    /* Background Colors */
-    --background: 95 15% 98%;
-    --foreground: 95 30% 15%;
+    /* Background Colors - Areia suave */
+    --background: 42 40% 96%;
+    --foreground: 30 25% 20%;
     
     /* Muted Colors */
-    --muted: 95 20% 92%;
-    --muted-foreground: 95 15% 45%;
+    --muted: 40 30% 90%;
+    --muted-foreground: 35 20% 50%;
     
-    /* Accent Colors */
-    --accent: 95 25% 88%;
-    --accent-foreground: 95 30% 18%;
+    /* Accent Colors - Terracota suave */
+    --accent: 25 45% 75%;
+    --accent-foreground: 30 40% 25%;
     
     /* Destructive */
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 0 15% 95%;
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 100%;
     
-    /* Border */
-    --border: 95 20% 88%;
-    --input: 95 20% 88%;
-    --ring: 95 30% 25%;
+    /* Border - Areia média */
+    --border: 40 25% 85%;
+    --input: 40 25% 85%;
+    --ring: 35 45% 55%;
     
-    /* Card */
-    --card: 95 20% 99%;
-    --card-foreground: 95 30% 15%;
+    /* Card - Areia muito clara */
+    --card: 42 35% 98%;
+    --card-foreground: 30 25% 20%;
     
     /* Popover */
-    --popover: 95 20% 99%;
-    --popover-foreground: 95 30% 15%;
+    --popover: 42 35% 98%;
+    --popover-foreground: 30 25% 20%;
     
-    /* Success */
-    --success: 95 40% 35%;
-    --success-foreground: 95 15% 95%;
+    /* Success - Tom terroso */
+    --success: 120 35% 50%;
+    --success-foreground: 0 0% 100%;
     
     /* Warning */
-    --warning: 45 85% 50%;
-    --warning-foreground: 45 20% 15%;
+    --warning: 45 90% 55%;
+    --warning-foreground: 30 40% 20%;
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--success)));
+    /* Gradients - Suaves e elegantes */
+    --gradient-primary: linear-gradient(135deg, hsl(35 45% 55%), hsl(38 50% 65%));
+    --gradient-secondary: linear-gradient(135deg, hsl(40 35% 88%), hsl(38 50% 80%));
+    --gradient-hero: linear-gradient(180deg, hsl(42 40% 96%), hsl(40 35% 92%));
     
-    /* Shadows */
-    --shadow-mobile: 0 4px 6px -1px hsl(var(--primary) / 0.1);
-    --shadow-card: 0 10px 15px -3px hsl(var(--primary) / 0.1);
+    /* Shadows - Suaves e elegantes */
+    --shadow-mobile: 0 2px 8px -2px hsl(35 30% 40% / 0.12);
+    --shadow-card: 0 4px 16px -4px hsl(35 30% 40% / 0.15);
+    --shadow-elegant: 0 8px 24px -8px hsl(35 30% 40% / 0.18);
     
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     
     /* Mobile specific */
-    --mobile-header-height: 4rem;
+    --mobile-header-height: 3.5rem;
     --mobile-nav-height: 4rem;
     --mobile-padding: 1rem;
     
-    /* Chart colors - Verde militar */
-    --chart-1: 95 45% 40%;
-    --chart-2: 90 40% 35%;
-    --chart-3: 100 35% 30%;
-    --chart-4: 85 50% 45%;
-    --chart-5: 80 55% 40%;
+    /* Chart colors - Tons terrosos */
+    --chart-1: 35 50% 60%;
+    --chart-2: 25 45% 55%;
+    --chart-3: 45 40% 50%;
+    --chart-4: 30 55% 58%;
+    --chart-5: 40 48% 62%;
     
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
   
   .dark {
-    --background: 95 25% 8%;
-    --foreground: 95 15% 90%;
-    --muted: 95 20% 15%;
-    --muted-foreground: 95 15% 60%;
-    --popover: 95 25% 10%;
-    --popover-foreground: 95 15% 90%;
-    --card: 95 25% 12%;
-    --card-foreground: 95 15% 90%;
-    --border: 95 20% 20%;
-    --input: 95 20% 18%;
-    --primary: 95 40% 45%;
-    --primary-foreground: 95 25% 10%;
-    --secondary: 95 15% 25%;
-    --secondary-foreground: 95 20% 85%;
-    --accent: 95 20% 18%;
-    --accent-foreground: 95 15% 90%;
-    --destructive: 0 75% 60%;
-    --destructive-foreground: 0 15% 95%;
-    --ring: 95 40% 45%;
-    --chart-1: 95 50% 55%;
-    --chart-2: 90 45% 45%;
-    --chart-3: 100 40% 35%;
-    --chart-4: 85 55% 50%;
-    --chart-5: 80 60% 45%;
+    --background: 30 20% 12%;
+    --foreground: 40 30% 92%;
+    --muted: 35 15% 18%;
+    --muted-foreground: 40 20% 65%;
+    --popover: 30 20% 14%;
+    --popover-foreground: 40 30% 92%;
+    --card: 30 18% 15%;
+    --card-foreground: 40 30% 92%;
+    --border: 35 15% 22%;
+    --input: 35 15% 20%;
+    --primary: 35 45% 60%;
+    --primary-foreground: 30 20% 12%;
+    --secondary: 35 20% 25%;
+    --secondary-foreground: 40 25% 88%;
+    --accent: 25 30% 28%;
+    --accent-foreground: 40 30% 92%;
+    --destructive: 0 70% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 35 45% 60%;
+    --chart-1: 35 50% 65%;
+    --chart-2: 25 45% 60%;
+    --chart-3: 45 40% 55%;
+    --chart-4: 30 55% 63%;
+    --chart-5: 40 48% 67%;
   }
 }
 
@@ -114,33 +117,37 @@
   }
 }
 
-/* Mobile optimizations */
+/* Mobile optimizations - Design elegante e moderno */
 @layer utilities {
   .mobile-container {
-    @apply w-full min-h-screen bg-background;
+    @apply w-full min-h-screen bg-gradient-to-b from-background to-muted/30;
   }
   
   .mobile-header {
-    @apply h-16 bg-gradient-to-r from-primary to-primary-glow text-primary-foreground shadow-md;
+    @apply h-14 bg-gradient-to-r from-primary via-primary-glow to-primary text-primary-foreground shadow-lg backdrop-blur-sm;
   }
   
   .mobile-content {
-    @apply flex-1 p-4 pb-20;
+    @apply flex-1 p-4 pb-24;
   }
   
   .mobile-nav {
-    @apply fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border;
+    @apply fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border/50 shadow-elegant;
   }
   
   .mobile-card {
-    @apply bg-card rounded-lg p-4 shadow-sm border border-border mb-4;
+    @apply bg-card rounded-2xl p-5 shadow-card border border-border/50 mb-4 transition-all duration-300 hover:shadow-elegant;
   }
   
   .mobile-button {
-    @apply bg-gradient-to-r from-primary to-primary-glow text-primary-foreground font-medium py-3 px-6 rounded-lg shadow-sm transition-all duration-300 active:scale-95;
+    @apply bg-gradient-to-r from-primary to-primary-glow text-primary-foreground font-semibold py-3.5 px-6 rounded-xl shadow-card transition-all duration-300 active:scale-95 hover:shadow-elegant;
   }
   
   .mobile-button-secondary {
-    @apply bg-secondary text-secondary-foreground font-medium py-3 px-6 rounded-lg shadow-sm transition-all duration-300 active:scale-95;
+    @apply bg-secondary text-secondary-foreground font-semibold py-3.5 px-6 rounded-xl shadow-sm border border-border/50 transition-all duration-300 active:scale-95 hover:bg-secondary/80;
+  }
+  
+  .mobile-input {
+    @apply bg-background border-border/60 rounded-xl transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 }
