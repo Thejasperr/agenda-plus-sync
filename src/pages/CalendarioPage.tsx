@@ -25,6 +25,8 @@ interface Agendamento {
   preco: number;
   tem_desconto: boolean;
   porcentagem_desconto: number | null;
+  pagamento_antecipado: boolean;
+  porcentagem_pagamento_antecipado: number | null;
   data_agendamento: string;
   hora_agendamento: string;
   tem_retorno: boolean;
@@ -88,6 +90,8 @@ const CalendarioPage = () => {
     preco: 0,
     tem_desconto: false,
     porcentagem_desconto: 0,
+    pagamento_antecipado: false,
+    porcentagem_pagamento_antecipado: 0,
     data_agendamento: format(new Date(), 'yyyy-MM-dd'),
     hora_agendamento: '',
     tem_retorno: false,
@@ -371,6 +375,7 @@ const CalendarioPage = () => {
         ...formData,
         procedimento_id: formData.procedimento_id || null,
         porcentagem_desconto: formData.tem_desconto ? formData.porcentagem_desconto : null,
+        porcentagem_pagamento_antecipado: formData.pagamento_antecipado ? formData.porcentagem_pagamento_antecipado : null,
         data_retorno: formData.tem_retorno ? formData.data_retorno : null,
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
         observacoes: formData.observacoes || null,
@@ -434,6 +439,8 @@ const CalendarioPage = () => {
       preco: 0,
       tem_desconto: false,
       porcentagem_desconto: 0,
+      pagamento_antecipado: false,
+      porcentagem_pagamento_antecipado: 0,
       data_agendamento: formattedDate,
       hora_agendamento: selectedTimeSlot,
       tem_retorno: false,
@@ -454,6 +461,8 @@ const CalendarioPage = () => {
       preco: agendamento.preco,
       tem_desconto: agendamento.tem_desconto,
       porcentagem_desconto: agendamento.porcentagem_desconto || 0,
+      pagamento_antecipado: agendamento.pagamento_antecipado || false,
+      porcentagem_pagamento_antecipado: agendamento.porcentagem_pagamento_antecipado || 0,
       data_agendamento: agendamento.data_agendamento,
       hora_agendamento: agendamento.hora_agendamento,
       tem_retorno: agendamento.tem_retorno,
@@ -717,6 +726,26 @@ const CalendarioPage = () => {
                   porcentagem_desconto: parseFloat(e.target.value) || 0
                 })} className="w-20" placeholder="0" />
                     <span className="text-sm">%</span>
+                  </div>}
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox id="pagamento_antecipado" checked={formData.pagamento_antecipado} onCheckedChange={checked => setFormData({
+                ...formData,
+                pagamento_antecipado: !!checked
+              })} />
+                <Label htmlFor="pagamento_antecipado">Pagamento antecipado (garantia)</Label>
+                {formData.pagamento_antecipado && <div className="flex items-center gap-2 ml-4">
+                    <Input type="number" min="0" max="100" value={formData.porcentagem_pagamento_antecipado} onChange={e => setFormData({
+                  ...formData,
+                  porcentagem_pagamento_antecipado: parseFloat(e.target.value) || 0
+                })} className="w-20" placeholder="0" />
+                    <span className="text-sm">%</span>
+                    {formData.pagamento_antecipado && formData.porcentagem_pagamento_antecipado > 0 && (
+                      <span className="text-sm text-muted-foreground">
+                        (R$ {(formData.preco * (formData.porcentagem_pagamento_antecipado / 100)).toFixed(2)})
+                      </span>
+                    )}
                   </div>}
               </div>
 
@@ -999,6 +1028,37 @@ const CalendarioPage = () => {
                     {agendamento.procedimento_id && (
                       <div className="text-sm text-muted-foreground mb-3">
                         <strong>Procedimento:</strong> {servicos.find(s => s.id === agendamento.procedimento_id)?.nome_procedimento || 'Não encontrado'}
+                      </div>
+                    )}
+
+                    {/* Pagamento Antecipado */}
+                    {agendamento.pagamento_antecipado && agendamento.porcentagem_pagamento_antecipado && agendamento.porcentagem_pagamento_antecipado > 0 && (
+                      <div className="bg-primary/10 border border-primary/20 rounded p-2 text-sm mb-3">
+                        <div className="font-semibold text-primary mb-1">💰 Pagamento Antecipado</div>
+                        <div className="flex justify-between text-xs">
+                          <span>Pago:</span>
+                          <span className="font-semibold text-success">
+                            R$ {(() => {
+                              let precoFinal = agendamento.preco;
+                              if (agendamento.tem_desconto && agendamento.porcentagem_desconto) {
+                                precoFinal = precoFinal * (1 - agendamento.porcentagem_desconto / 100);
+                              }
+                              return (precoFinal * (agendamento.porcentagem_pagamento_antecipado / 100)).toFixed(2);
+                            })()} ({agendamento.porcentagem_pagamento_antecipado}%)
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span>Restante:</span>
+                          <span className="font-semibold">
+                            R$ {(() => {
+                              let precoFinal = agendamento.preco;
+                              if (agendamento.tem_desconto && agendamento.porcentagem_desconto) {
+                                precoFinal = precoFinal * (1 - agendamento.porcentagem_desconto / 100);
+                              }
+                              return (precoFinal * (1 - agendamento.porcentagem_pagamento_antecipado / 100)).toFixed(2);
+                            })()}
+                          </span>
+                        </div>
                       </div>
                     )}
 

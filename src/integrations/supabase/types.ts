@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           data_agendamento: string
           data_retorno: string | null
+          "event.id": string | null
           forma_pagamento: string | null
           hora_agendamento: string
           id: string
@@ -27,7 +28,9 @@ export type Database = {
           mensagem_enviada: boolean | null
           nome: string
           observacoes: string | null
+          pagamento_antecipado: boolean | null
           porcentagem_desconto: number | null
+          porcentagem_pagamento_antecipado: number | null
           preco: number
           preco_retorno: number | null
           procedimento_id: string | null
@@ -43,6 +46,7 @@ export type Database = {
           created_at?: string
           data_agendamento: string
           data_retorno?: string | null
+          "event.id"?: string | null
           forma_pagamento?: string | null
           hora_agendamento: string
           id?: string
@@ -50,7 +54,9 @@ export type Database = {
           mensagem_enviada?: boolean | null
           nome: string
           observacoes?: string | null
+          pagamento_antecipado?: boolean | null
           porcentagem_desconto?: number | null
+          porcentagem_pagamento_antecipado?: number | null
           preco: number
           preco_retorno?: number | null
           procedimento_id?: string | null
@@ -66,6 +72,7 @@ export type Database = {
           created_at?: string
           data_agendamento?: string
           data_retorno?: string | null
+          "event.id"?: string | null
           forma_pagamento?: string | null
           hora_agendamento?: string
           id?: string
@@ -73,7 +80,9 @@ export type Database = {
           mensagem_enviada?: boolean | null
           nome?: string
           observacoes?: string | null
+          pagamento_antecipado?: boolean | null
           porcentagem_desconto?: number | null
+          porcentagem_pagamento_antecipado?: number | null
           preco?: number
           preco_retorno?: number | null
           procedimento_id?: string | null
@@ -98,6 +107,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          mensagem_enviada: boolean | null
           nome: string
           retorno_at: string | null
           status: string | null
@@ -109,6 +119,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          mensagem_enviada?: boolean | null
           nome: string
           retorno_at?: string | null
           status?: string | null
@@ -120,6 +131,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          mensagem_enviada?: boolean | null
           nome?: string
           retorno_at?: string | null
           status?: string | null
