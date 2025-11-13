@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
+import PagamentoAntecipadoDialog from '@/components/PagamentoAntecipadoDialog';
 interface Agendamento {
   id: string;
   nome: string;
@@ -60,6 +61,8 @@ const CalendarioPage = () => {
   }[]>([]);
   const [formaPagamentoDialogOpen, setFormaPagamentoDialogOpen] = useState(false);
   const [agendamentoConcluindo, setAgendamentoConcluindo] = useState<string | null>(null);
+  const [pagamentoAntecipadoDialogOpen, setPagamentoAntecipadoDialogOpen] = useState(false);
+  const [agendamentoAdiantamento, setAgendamentoAdiantamento] = useState<Agendamento | null>(null);
   const [formasPagamento, setFormasPagamento] = useState<{
     id: string;
     nome: string;
@@ -1078,6 +1081,20 @@ const CalendarioPage = () => {
                         <MessageCircle className="w-4 h-4" />
                       </Button>
 
+                      {agendamento.status !== 'Concluído' && agendamento.status !== 'Cancelado' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setAgendamentoAdiantamento(agendamento);
+                            setPagamentoAntecipadoDialogOpen(true);
+                          }}
+                          className="text-primary border-primary"
+                        >
+                          <Wallet className="w-4 h-4" />
+                        </Button>
+                      )}
+
                       {agendamento.status === 'Agendado' && <Button size="sm" variant="outline" onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')} className="text-green-600 border-green-600">
                           <Check className="w-4 h-4" />
                         </Button>}
@@ -1123,6 +1140,24 @@ const CalendarioPage = () => {
         onConfirm={handleFormaPagamentoConfirm}
         agendamentoId={agendamentoConcluindo || ''}
       />
+
+      {/* Dialog de Pagamento Antecipado */}
+      {agendamentoAdiantamento && (
+        <PagamentoAntecipadoDialog
+          open={pagamentoAntecipadoDialogOpen}
+          onOpenChange={setPagamentoAntecipadoDialogOpen}
+          agendamentoId={agendamentoAdiantamento.id}
+          nomeCliente={agendamentoAdiantamento.nome}
+          precoTotal={agendamentoAdiantamento.preco}
+          temDesconto={agendamentoAdiantamento.tem_desconto}
+          porcentagemDesconto={agendamentoAdiantamento.porcentagem_desconto}
+          porcentagemAtual={agendamentoAdiantamento.porcentagem_pagamento_antecipado || 0}
+          onConfirm={() => {
+            fetchAgendamentos();
+            setAgendamentoAdiantamento(null);
+          }}
+        />
+      )}
     </div>
   );
 };
