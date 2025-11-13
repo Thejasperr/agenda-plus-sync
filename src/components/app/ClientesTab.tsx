@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, clienteSchema } from '@/lib/security';
 
@@ -17,6 +18,7 @@ interface Cliente {
   telefone: string;
   ultimo_atendimento?: string;
   created_at: string;
+  observacoes?: string;
 }
 
 interface Agendamento {
@@ -36,8 +38,8 @@ const ClientesTab = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ nome: '', telefone: '' });
-  const [formErrors, setFormErrors] = useState({ nome: '', telefone: '' });
+  const [formData, setFormData] = useState({ nome: '', telefone: '', observacoes: '' });
+  const [formErrors, setFormErrors] = useState({ nome: '', telefone: '', observacoes: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [clienteAgendamentos, setClienteAgendamentos] = useState<{[key: string]: Agendamento[]}>({});
@@ -110,12 +112,13 @@ const ClientesTab = () => {
     e.preventDefault();
     
     // Clear previous errors
-    setFormErrors({ nome: '', telefone: '' });
+    setFormErrors({ nome: '', telefone: '', observacoes: '' });
     
     // Sanitize and validate inputs
     const sanitizedData = {
       nome: sanitizeInput(formData.nome),
-      telefone: formData.telefone
+      telefone: formData.telefone,
+      observacoes: sanitizeInput(formData.observacoes)
     };
     
     // Validate phone
@@ -166,8 +169,8 @@ const ClientesTab = () => {
         });
       }
 
-      setFormData({ nome: '', telefone: '' });
-      setFormErrors({ nome: '', telefone: '' });
+      setFormData({ nome: '', telefone: '', observacoes: '' });
+      setFormErrors({ nome: '', telefone: '', observacoes: '' });
       setEditingCliente(null);
       setDialogOpen(false);
       fetchClientes();
@@ -183,15 +186,16 @@ const ClientesTab = () => {
   const handleEdit = (cliente: Cliente) => {
     setFormData({
       nome: cliente.nome,
-      telefone: cliente.telefone
+      telefone: cliente.telefone,
+      observacoes: cliente.observacoes || ''
     });
     setEditingCliente(cliente);
     setDialogOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', telefone: '' });
-    setFormErrors({ nome: '', telefone: '' });
+    setFormData({ nome: '', telefone: '', observacoes: '' });
+    setFormErrors({ nome: '', telefone: '', observacoes: '' });
     setEditingCliente(null);
     setDialogOpen(false);
   };
@@ -379,6 +383,26 @@ const ClientesTab = () => {
                   </div>
                 )}
               </div>
+              <div>
+                <Label htmlFor="observacoes">Observações</Label>
+                <Textarea
+                  id="observacoes"
+                  value={formData.observacoes}
+                  onChange={(e) => {
+                    setFormData({ ...formData, observacoes: e.target.value });
+                    setFormErrors({ ...formErrors, observacoes: '' });
+                  }}
+                  placeholder="Ex: Cliente deixou R$ 50,00 para o próximo atendimento, ou ainda não pagou procedimento X"
+                  rows={3}
+                  className={formErrors.observacoes ? 'border-destructive' : ''}
+                />
+                {formErrors.observacoes && (
+                  <div className="text-sm text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.observacoes}
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                   Cancelar
@@ -447,6 +471,14 @@ const ClientesTab = () => {
                         <div className="text-xs text-muted-foreground">Atendimentos</div>
                       </div>
                     </div>
+
+                    {/* Observações */}
+                    {cliente.observacoes && (
+                      <div className="bg-yellow-500/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                        <p className="text-xs font-medium text-yellow-900 dark:text-yellow-200 mb-1">📝 Observações:</p>
+                        <p className="text-xs text-yellow-800 dark:text-yellow-300 whitespace-pre-wrap">{cliente.observacoes}</p>
+                      </div>
+                    )}
 
                     {/* Histórico de agendamentos */}
                     {agendamentos.length > 0 && (
