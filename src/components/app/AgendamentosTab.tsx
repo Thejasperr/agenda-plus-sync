@@ -61,7 +61,7 @@ const AgendamentosTab = () => {
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
-    procedimento_id: '',
+    procedimento_ids: [] as string[],
     preco: 0,
     tem_desconto: false,
     porcentagem_desconto: 0,
@@ -86,7 +86,14 @@ const AgendamentosTab = () => {
     try {
       const { data, error } = await supabase
         .from('agendamentos')
-        .select('*')
+        .select(`
+          *,
+          agendamento_procedimentos (
+            id,
+            procedimento_id,
+            ordem
+          )
+        `)
         .order('data_agendamento', { ascending: true })
         .order('hora_agendamento', { ascending: true });
 
@@ -164,8 +171,16 @@ const AgendamentosTab = () => {
 
     try {
       const agendamentoData = {
-        ...sanitizedData,
-        procedimento_id: sanitizedData.procedimento_id || null,
+        nome: sanitizedData.nome,
+        telefone: sanitizedData.telefone,
+        preco: sanitizedData.preco,
+        tem_desconto: sanitizedData.tem_desconto,
+        pagamento_antecipado: sanitizedData.pagamento_antecipado,
+        data_agendamento: sanitizedData.data_agendamento,
+        hora_agendamento: sanitizedData.hora_agendamento,
+        tem_retorno: sanitizedData.tem_retorno,
+        status: sanitizedData.status,
+        procedimento_id: sanitizedData.procedimento_ids.length > 0 ? sanitizedData.procedimento_ids[0] : null,
         porcentagem_desconto: sanitizedData.tem_desconto ? sanitizedData.porcentagem_desconto : null,
         porcentagem_pagamento_antecipado: sanitizedData.pagamento_antecipado ? sanitizedData.porcentagem_pagamento_antecipado : null,
         data_retorno: sanitizedData.tem_retorno ? sanitizedData.data_retorno : null,
@@ -190,6 +205,8 @@ const AgendamentosTab = () => {
         }
       }
 
+      let agendamentoId: string;
+
       if (editingAgendamento) {
         const { error } = await supabase
           .from('agendamentos')
@@ -197,22 +214,49 @@ const AgendamentosTab = () => {
           .eq('id', editingAgendamento.id);
 
         if (error) throw error;
+        agendamentoId = editingAgendamento.id;
+
+        // Deletar procedimentos antigos
+        await supabase
+          .from('agendamento_procedimentos')
+          .delete()
+          .eq('agendamento_id', agendamentoId);
 
         toast({
           title: "Sucesso",
           description: "Agendamento atualizado com sucesso!",
         });
       } else {
-        const { error } = await supabase
+        const { data: newAgendamento, error } = await supabase
           .from('agendamentos')
-          .insert([agendamentoData]);
+          .insert([agendamentoData])
+          .select()
+          .single();
 
         if (error) throw error;
+        agendamentoId = newAgendamento.id;
 
         toast({
           title: "Sucesso",
           description: "Agendamento criado com sucesso!",
         });
+      }
+
+      // Inserir novos procedimentos
+      if (sanitizedData.procedimento_ids.length > 0) {
+        const procedimentosData = sanitizedData.procedimento_ids.map((procId, index) => ({
+          agendamento_id: agendamentoId,
+          procedimento_id: procId,
+          ordem: index + 1
+        }));
+
+        const { error: procError } = await supabase
+          .from('agendamento_procedimentos')
+          .insert(procedimentosData);
+        
+        if (procError) {
+          console.error('Erro ao inserir procedimentos:', procError);
+        }
       }
 
       resetForm();
@@ -230,7 +274,7 @@ const AgendamentosTab = () => {
     setFormData({
       nome: '',
       telefone: '',
-      procedimento_id: '',
+      procedimento_ids: [],
       preco: 0,
       tem_desconto: false,
       porcentagem_desconto: 0,
@@ -250,11 +294,20 @@ const AgendamentosTab = () => {
     setDialogOpen(false);
   };
 
-  const handleEdit = (agendamento: Agendamento) => {
+  const handleEdit = async (agendamento: Agendamento) => {
+    // Buscar procedimentos do agendamento
+    const { data: procs } = await supabase
+      .from('agendamento_procedimentos')
+      .select('procedimento_id')
+      .eq('agendamento_id', agendamento.id)
+      .order('ordem');
+    
+    const procedimentoIds = procs?.map(p => p.procedimento_id) || [];
+
     setFormData({
       nome: agendamento.nome,
       telefone: agendamento.telefone,
-      procedimento_id: agendamento.procedimento_id || '',
+      procedimento_ids: procedimentoIds,
       preco: agendamento.preco,
       tem_desconto: agendamento.tem_desconto,
       porcentagem_desconto: agendamento.porcentagem_desconto || 0,
@@ -544,41 +597,86 @@ const AgendamentosTab = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="procedimento">Serviço</Label>
-                    <Select value={formData.procedimento_id} onValueChange={(value) => {
-                      const servico = servicos.find(s => s.id === value);
-                      setFormData({ 
-                        ...formData, 
-                        procedimento_id: value,
-                        preco: servico ? servico.valor : formData.preco
-                      });
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um serviço" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {servicos.map((servico) => (
-                          <SelectItem key={servico.id} value={servico.id}>
-                            {servico.nome_procedimento} - R$ {servico.valor.toFixed(2)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div>
+                  <Label htmlFor="procedimentos">Procedimentos</Label>
+                  <div className="space-y-2">
+                    {formData.procedimento_ids.map((procId, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Select value={procId} onValueChange={(value) => {
+                          const newIds = [...formData.procedimento_ids];
+                          newIds[index] = value;
+                          setFormData({ ...formData, procedimento_ids: newIds });
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um procedimento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {servicos.map((servico) => (
+                              <SelectItem key={servico.id} value={servico.id}>
+                                {servico.nome_procedimento} - R$ {servico.valor.toFixed(2)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newIds = formData.procedimento_ids.filter((_, i) => i !== index);
+                            setFormData({ ...formData, procedimento_ids: newIds });
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFormData({ 
+                          ...formData, 
+                          procedimento_ids: [...formData.procedimento_ids, ''] 
+                        });
+                      }}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Procedimento
+                    </Button>
                   </div>
-                  <div>
-                    <Label htmlFor="preco">Preço (R$) *</Label>
-                    <Input
-                      id="preco"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.preco}
-                      onChange={(e) => setFormData({ ...formData, preco: parseFloat(e.target.value) || 0 })}
-                      placeholder="0.00"
-                    />
-                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="preco">Preço Total (R$) *</Label>
+                  <Input
+                    id="preco"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.preco}
+                    onChange={(e) => setFormData({ ...formData, preco: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                  />
+                  {formData.procedimento_ids.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="mt-1 h-auto p-0 text-xs"
+                      onClick={() => {
+                        const total = formData.procedimento_ids.reduce((sum, procId) => {
+                          const servico = servicos.find(s => s.id === procId);
+                          return sum + (servico?.valor || 0);
+                        }, 0);
+                        setFormData({ ...formData, preco: total });
+                      }}
+                    >
+                      Calcular total dos procedimentos selecionados
+                    </Button>
+                  )}
                 </div>
 
                 <div className="flex items-center space-x-2">
