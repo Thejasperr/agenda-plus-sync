@@ -109,6 +109,7 @@ export type Database = {
           id: string
           mensagem_enviada: boolean | null
           nome: string
+          observacoes: string | null
           retorno_at: string | null
           status: string | null
           telefone: string
@@ -121,6 +122,7 @@ export type Database = {
           id?: string
           mensagem_enviada?: boolean | null
           nome: string
+          observacoes?: string | null
           retorno_at?: string | null
           status?: string | null
           telefone: string
@@ -133,6 +135,7 @@ export type Database = {
           id?: string
           mensagem_enviada?: boolean | null
           nome?: string
+          observacoes?: string | null
           retorno_at?: string | null
           status?: string | null
           telefone?: string
