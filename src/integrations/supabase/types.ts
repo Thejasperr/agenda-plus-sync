@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamento_procedimentos: {
+        Row: {
+          agendamento_id: string
+          created_at: string
+          id: string
+          ordem: number
+          procedimento_id: string
+          user_id: string | null
+        }
+        Insert: {
+          agendamento_id: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          procedimento_id: string
+          user_id?: string | null
+        }
+        Update: {
+          agendamento_id?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          procedimento_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamento_procedimentos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamento_procedimentos_procedimento_id_fkey"
+            columns: ["procedimento_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agendamentos: {
         Row: {
           confirm_atendi: boolean | null

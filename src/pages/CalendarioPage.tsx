@@ -89,7 +89,7 @@ const CalendarioPage = () => {
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
-    procedimento_id: '',
+    procedimento_ids: [] as string[],
     preco: 0,
     tem_desconto: false,
     porcentagem_desconto: 0,
@@ -105,14 +105,19 @@ const CalendarioPage = () => {
   });
   const fetchAgendamentos = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('agendamentos').select('*').order('data_agendamento', {
-        ascending: true
-      }).order('hora_agendamento', {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select(`
+          *,
+          agendamento_procedimentos (
+            id,
+            procedimento_id,
+            ordem
+          )
+        `)
+        .order('data_agendamento', { ascending: true })
+        .order('hora_agendamento', { ascending: true });
+      
       if (error) throw error;
       setAgendamentos(data || []);
     } catch (error) {
@@ -347,12 +352,17 @@ const CalendarioPage = () => {
         }
       }
       
-      // Verificar se há tempo suficiente para o procedimento selecionado
+      // Verificar se há tempo suficiente para os procedimentos selecionados
       let hasEnoughTime = true;
-      if (formData.procedimento_id) {
-        const servicoAtual = servicos.find(s => s.id === formData.procedimento_id);
-        if (servicoAtual?.duracao_minutos) {
-          hasEnoughTime = canFitService(slot.time, dateStr, servicoAtual.duracao_minutos);
+      if (formData.procedimento_ids.length > 0) {
+        // Calcular duração total de todos os procedimentos
+        const duracaoTotal = formData.procedimento_ids.reduce((total, procId) => {
+          const servico = servicos.find(s => s.id === procId);
+          return total + (servico?.duracao_minutos || 60);
+        }, 0);
+        
+        if (duracaoTotal > 0) {
+          hasEnoughTime = canFitService(slot.time, dateStr, duracaoTotal);
         }
       }
       
@@ -375,23 +385,27 @@ const CalendarioPage = () => {
     }
     try {
       const agendamentoData = {
-        ...formData,
-        procedimento_id: formData.procedimento_id || null,
+        nome: formData.nome,
+        telefone: formData.telefone,
+        preco: formData.preco,
+        tem_desconto: formData.tem_desconto,
+        pagamento_antecipado: formData.pagamento_antecipado,
+        data_agendamento: formData.data_agendamento,
+        hora_agendamento: formData.hora_agendamento,
+        tem_retorno: formData.tem_retorno,
+        status: formData.status,
+        procedimento_id: formData.procedimento_ids.length > 0 ? formData.procedimento_ids[0] : null,
         porcentagem_desconto: formData.tem_desconto ? formData.porcentagem_desconto : null,
         porcentagem_pagamento_antecipado: formData.pagamento_antecipado ? formData.porcentagem_pagamento_antecipado : null,
         data_retorno: formData.tem_retorno ? formData.data_retorno : null,
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
-        observacoes: formData.observacoes || null,
-        // Garantir que a data seja salva corretamente
-        data_agendamento: formData.data_agendamento
+        observacoes: formData.observacoes || null
       };
 
       // Criar cliente se não existir
       const clienteExistente = clientes.find(c => c.telefone === formData.telefone);
       if (!clienteExistente) {
-        const {
-          error: clienteError
-        } = await supabase.from('clientes').insert([{
+        const { error: clienteError } = await supabase.from('clientes').insert([{
           nome: formData.nome,
           telefone: formData.telefone
         }]);
@@ -401,25 +415,59 @@ const CalendarioPage = () => {
           fetchClientes();
         }
       }
+
+      let agendamentoId: string;
+
       if (editingAgendamento) {
-        const {
-          error
-        } = await supabase.from('agendamentos').update(agendamentoData).eq('id', editingAgendamento.id);
+        const { error } = await supabase
+          .from('agendamentos')
+          .update(agendamentoData)
+          .eq('id', editingAgendamento.id);
         if (error) throw error;
+        agendamentoId = editingAgendamento.id;
+
+        // Deletar procedimentos antigos
+        await supabase
+          .from('agendamento_procedimentos')
+          .delete()
+          .eq('agendamento_id', agendamentoId);
+
         toast({
           title: "Sucesso",
           description: "Agendamento atualizado com sucesso!"
         });
       } else {
-        const {
-          error
-        } = await supabase.from('agendamentos').insert([agendamentoData]);
+        const { data: newAgendamento, error } = await supabase
+          .from('agendamentos')
+          .insert([agendamentoData])
+          .select()
+          .single();
         if (error) throw error;
+        agendamentoId = newAgendamento.id;
+
         toast({
           title: "Sucesso",
           description: "Agendamento criado com sucesso!"
         });
       }
+
+      // Inserir novos procedimentos
+      if (formData.procedimento_ids.length > 0) {
+        const procedimentosData = formData.procedimento_ids.map((procId, index) => ({
+          agendamento_id: agendamentoId,
+          procedimento_id: procId,
+          ordem: index + 1
+        }));
+
+        const { error: procError } = await supabase
+          .from('agendamento_procedimentos')
+          .insert(procedimentosData);
+        
+        if (procError) {
+          console.error('Erro ao inserir procedimentos:', procError);
+        }
+      }
+
       resetForm();
       fetchAgendamentos();
     } catch (error) {
@@ -432,13 +480,12 @@ const CalendarioPage = () => {
     }
   };
   const resetForm = () => {
-    // Fix timezone issue by ensuring correct date formatting
     const targetDate = selectedDate || new Date();
     const formattedDate = format(targetDate, 'yyyy-MM-dd');
     setFormData({
       nome: '',
       telefone: '',
-      procedimento_id: '',
+      procedimento_ids: [],
       preco: 0,
       tem_desconto: false,
       porcentagem_desconto: 0,
@@ -456,11 +503,20 @@ const CalendarioPage = () => {
     setSelectedTimeSlot('');
     setDialogOpen(false);
   };
-  const handleEdit = (agendamento: Agendamento) => {
+  const handleEdit = async (agendamento: Agendamento) => {
+    // Buscar procedimentos do agendamento
+    const { data: procs } = await supabase
+      .from('agendamento_procedimentos')
+      .select('procedimento_id')
+      .eq('agendamento_id', agendamento.id)
+      .order('ordem');
+    
+    const procedimentoIds = procs?.map(p => p.procedimento_id) || [];
+
     setFormData({
       nome: agendamento.nome,
       telefone: agendamento.telefone,
-      procedimento_id: agendamento.procedimento_id || '',
+      procedimento_ids: procedimentoIds,
       preco: agendamento.preco,
       tem_desconto: agendamento.tem_desconto,
       porcentagem_desconto: agendamento.porcentagem_desconto || 0,
@@ -686,35 +742,93 @@ const CalendarioPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="procedimento">Serviço</Label>
-                  <Select value={formData.procedimento_id} onValueChange={value => {
-                  const servico = servicos.find(s => s.id === value);
-                  setFormData({
+              <div>
+                <Label htmlFor="procedimentos">Procedimentos</Label>
+                <div className="space-y-2">
+                  {formData.procedimento_ids.map((procId, index) => {
+                    const servico = servicos.find(s => s.id === procId);
+                    return (
+                      <div key={index} className="flex items-center gap-2">
+                        <Select value={procId} onValueChange={value => {
+                          const newIds = [...formData.procedimento_ids];
+                          newIds[index] = value;
+                          setFormData({ ...formData, procedimento_ids: newIds });
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um procedimento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {servicos.map(servico => (
+                              <SelectItem key={servico.id} value={servico.id}>
+                                {servico.nome_procedimento} - R$ {servico.valor.toFixed(2)}
+                                {servico.duracao_minutos && ` (${servico.duracao_minutos}min)`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newIds = formData.procedimento_ids.filter((_, i) => i !== index);
+                            setFormData({ ...formData, procedimento_ids: newIds });
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFormData({ 
+                        ...formData, 
+                        procedimento_ids: [...formData.procedimento_ids, ''] 
+                      });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Procedimento
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="preco">Preço Total (R$) *</Label>
+                <Input 
+                  id="preco" 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  value={formData.preco} 
+                  onChange={e => setFormData({
                     ...formData,
-                    procedimento_id: value,
-                    preco: servico ? servico.valor : formData.preco
-                  });
-                }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um serviço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getServicosDisponiveis().map(servico => <SelectItem key={servico.id} value={servico.id}>
-                          {servico.nome_procedimento} - R$ {servico.valor.toFixed(2)}
-                          {servico.duracao_minutos && ` (${servico.duracao_minutos}min)`}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="preco">Preço (R$) *</Label>
-                  <Input id="preco" type="number" step="0.01" min="0" value={formData.preco} onChange={e => setFormData({
-                  ...formData,
-                  preco: parseFloat(e.target.value) || 0
-                })} placeholder="0.00" />
-                </div>
+                    preco: parseFloat(e.target.value) || 0
+                  })} 
+                  placeholder="0.00" 
+                />
+                {formData.procedimento_ids.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="mt-1 h-auto p-0 text-xs"
+                    onClick={() => {
+                      const total = formData.procedimento_ids.reduce((sum, procId) => {
+                        const servico = servicos.find(s => s.id === procId);
+                        return sum + (servico?.valor || 0);
+                      }, 0);
+                      setFormData({ ...formData, preco: total });
+                    }}
+                  >
+                    Calcular total dos procedimentos selecionados
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
