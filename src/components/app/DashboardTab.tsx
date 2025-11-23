@@ -16,6 +16,10 @@ interface Agendamento {
   data_agendamento: string;
   hora_agendamento: string;
   status: string;
+  agendamento_procedimentos?: Array<{
+    procedimento_id: string;
+    servicos?: { nome_procedimento: string; duracao_minutos: number };
+  }>;
 }
 
 interface Transacao {
@@ -58,20 +62,32 @@ const DashboardTab = () => {
       if (clientesError) throw clientesError;
       setTotalClientes(clientes?.length || 0);
 
-      // Agendamentos de hoje
+      // Agendamentos de hoje com procedimentos
       const { data: agendHoje, error: agendHojeError } = await supabase
         .from('agendamentos')
-        .select('*')
+        .select(`
+          *,
+          agendamento_procedimentos (
+            procedimento_id,
+            servicos:procedimento_id (nome_procedimento, duracao_minutos)
+          )
+        `)
         .eq('data_agendamento', hoje)
         .order('hora_agendamento');
       
       if (agendHojeError) throw agendHojeError;
       setAgendamentosHoje((agendHoje as Agendamento[]) || []);
 
-      // Agendamentos de amanhã
+      // Agendamentos de amanhã com procedimentos
       const { data: agendAmanha, error: agendAmanhaError } = await supabase
         .from('agendamentos')
-        .select('*')
+        .select(`
+          *,
+          agendamento_procedimentos (
+            procedimento_id,
+            servicos:procedimento_id (nome_procedimento, duracao_minutos)
+          )
+        `)
         .eq('data_agendamento', amanha)
         .order('hora_agendamento');
       
@@ -269,30 +285,69 @@ const DashboardTab = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {agendamentosHoje.map((agendamento) => (
-                  <div key={agendamento.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium">{agendamento.nome}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {agendamento.hora_agendamento.substring(0, 5)} - R$ {agendamento.preco.toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(agendamento.status)}>
-                        {agendamento.status}
-                      </Badge>
-                      {agendamento.status === 'Agendado' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
-                        >
-                          Concluir
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {agendamentosHoje.map((agendamento) => {
+                  // Calcular duração total e horário de fim
+                  const procedimentos = agendamento.agendamento_procedimentos || [];
+                  const duracaoTotal = procedimentos.reduce((total, proc) => {
+                    return total + (proc.servicos?.duracao_minutos || 60);
+                  }, 0) || 60;
+                  
+                  const [horaInicio, minutoInicio] = agendamento.hora_agendamento.substring(0, 5).split(':').map(Number);
+                  const totalMinutos = horaInicio * 60 + minutoInicio + duracaoTotal;
+                  const horaFim = Math.floor(totalMinutos / 60);
+                  const minutoFim = totalMinutos % 60;
+                  const horarioFim = `${String(horaFim).padStart(2, '0')}:${String(minutoFim).padStart(2, '0')}`;
+                  
+                  return (
+                    <Card key={agendamento.id} className="mobile-card">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold text-base">{agendamento.nome}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {agendamento.hora_agendamento.substring(0, 5)} - {horarioFim}
+                                <span className="ml-2">({duracaoTotal} min)</span>
+                              </div>
+                            </div>
+                            <Badge className={getStatusColor(agendamento.status)}>
+                              {agendamento.status}
+                            </Badge>
+                          </div>
+                          
+                          {/* Mostrar todos os procedimentos */}
+                          {procedimentos.length > 0 && (
+                            <div className="text-sm text-muted-foreground">
+                              <strong>Procedimentos:</strong>
+                              <div className="mt-1 space-y-1">
+                                {procedimentos.map((proc, index) => (
+                                  <div key={index} className="flex items-center gap-2">
+                                    <span>• {proc.servicos?.nome_procedimento || 'Procedimento desconhecido'}</span>
+                                    <span className="text-xs">({proc.servicos?.duracao_minutos || 60} min)</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="text-sm">
+                            <span className="font-medium">Valor:</span> R$ {agendamento.preco.toFixed(2)}
+                          </div>
+                          
+                          {agendamento.status === 'Agendado' && (
+                            <Button
+                              size="sm"
+                              className="w-full mobile-button"
+                              onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
+                            >
+                              Concluir
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -313,19 +368,59 @@ const DashboardTab = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {agendamentosAmanha.map((agendamento) => (
-                  <div key={agendamento.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium">{agendamento.nome}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {agendamento.hora_agendamento.substring(0, 5)} - R$ {agendamento.preco.toFixed(2)}
-                      </div>
-                    </div>
-                    <Badge className={getStatusColor(agendamento.status)}>
-                      {agendamento.status}
-                    </Badge>
-                  </div>
-                ))}
+                {agendamentosAmanha.map((agendamento) => {
+                  // Calcular duração total e horário de fim
+                  const procedimentos = agendamento.agendamento_procedimentos || [];
+                  const duracaoTotal = procedimentos.reduce((total, proc) => {
+                    return total + (proc.servicos?.duracao_minutos || 60);
+                  }, 0) || 60;
+                  
+                  const [horaInicio, minutoInicio] = agendamento.hora_agendamento.substring(0, 5).split(':').map(Number);
+                  const totalMinutos = horaInicio * 60 + minutoInicio + duracaoTotal;
+                  const horaFim = Math.floor(totalMinutos / 60);
+                  const minutoFim = totalMinutos % 60;
+                  const horarioFim = `${String(horaFim).padStart(2, '0')}:${String(minutoFim).padStart(2, '0')}`;
+                  
+                  return (
+                    <Card key={agendamento.id} className="mobile-card">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold text-base">{agendamento.nome}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {agendamento.hora_agendamento.substring(0, 5)} - {horarioFim}
+                                <span className="ml-2">({duracaoTotal} min)</span>
+                              </div>
+                            </div>
+                            <Badge className={getStatusColor(agendamento.status)}>
+                              {agendamento.status}
+                            </Badge>
+                          </div>
+                          
+                          {/* Mostrar todos os procedimentos */}
+                          {procedimentos.length > 0 && (
+                            <div className="text-sm text-muted-foreground">
+                              <strong>Procedimentos:</strong>
+                              <div className="mt-1 space-y-1">
+                                {procedimentos.map((proc, index) => (
+                                  <div key={index} className="flex items-center gap-2">
+                                    <span>• {proc.servicos?.nome_procedimento || 'Procedimento desconhecido'}</span>
+                                    <span className="text-xs">({proc.servicos?.duracao_minutos || 60} min)</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="text-sm">
+                            <span className="font-medium">Valor:</span> R$ {agendamento.preco.toFixed(2)}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </CardContent>

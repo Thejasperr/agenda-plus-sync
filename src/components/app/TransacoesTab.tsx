@@ -24,6 +24,7 @@ interface Transacao {
   observacoes: string | null;
   forma_pagamento: string | null;
   created_at: string;
+  procedimentos?: Array<{ nome: string }>;
 }
 
 const TransacoesTab = () => {
@@ -81,7 +82,31 @@ const TransacoesTab = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTransacoes((data || []) as Transacao[]);
+      
+      // Buscar procedimentos para transações com agendamento_id
+      const transacoesComProcedimentos = await Promise.all(
+        (data || []).map(async (transacao) => {
+          if (transacao.agendamento_id) {
+            const { data: procedimentos } = await supabase
+              .from('agendamento_procedimentos')
+              .select(`
+                procedimento_id,
+                servicos:procedimento_id (nome_procedimento)
+              `)
+              .eq('agendamento_id', transacao.agendamento_id);
+            
+            return {
+              ...transacao,
+              procedimentos: procedimentos?.map(p => ({
+                nome: (p.servicos as any)?.nome_procedimento || 'Procedimento desconhecido'
+              })) || []
+            };
+          }
+          return transacao;
+        })
+      );
+      
+      setTransacoes(transacoesComProcedimentos as Transacao[]);
     } catch (error) {
       console.error('Erro ao buscar transações:', error);
       toast({
@@ -522,6 +547,18 @@ const TransacoesTab = () => {
                       {transacao.tipo_operacao === 'entrada' ? '+' : '-'}R$ {transacao.valor.toFixed(2)}
                     </div>
                   </div>
+
+                  {/* Procedimentos */}
+                  {transacao.procedimentos && transacao.procedimentos.length > 0 && (
+                    <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                      <strong>Procedimentos:</strong>
+                      <div className="mt-1 space-y-0.5">
+                        {transacao.procedimentos.map((proc, index) => (
+                          <div key={index}>• {proc.nome}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Observações */}
                   {transacao.observacoes && (
