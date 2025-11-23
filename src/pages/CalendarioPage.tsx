@@ -103,6 +103,17 @@ const CalendarioPage = () => {
     status: 'Agendado',
     observacoes: ''
   });
+
+  // Calcular automaticamente o preço total quando os procedimentos mudam
+  useEffect(() => {
+    if (formData.procedimento_ids.length > 0) {
+      const total = formData.procedimento_ids.reduce((sum, procId) => {
+        const servico = servicos.find(s => s.id === procId);
+        return sum + (servico?.valor || 0);
+      }, 0);
+      setFormData(prev => ({ ...prev, preco: total }));
+    }
+  }, [formData.procedimento_ids, servicos]);
   const fetchAgendamentos = async () => {
     try {
       const { data, error } = await supabase
@@ -813,21 +824,9 @@ const CalendarioPage = () => {
                   placeholder="0.00" 
                 />
                 {formData.procedimento_ids.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    className="mt-1 h-auto p-0 text-xs"
-                    onClick={() => {
-                      const total = formData.procedimento_ids.reduce((sum, procId) => {
-                        const servico = servicos.find(s => s.id === procId);
-                        return sum + (servico?.valor || 0);
-                      }, 0);
-                      setFormData({ ...formData, preco: total });
-                    }}
-                  >
-                    Calcular total dos procedimentos selecionados
-                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Calculado automaticamente
+                  </p>
                 )}
               </div>
 
@@ -1115,12 +1114,16 @@ const CalendarioPage = () => {
                         <Clock className="w-4 h-4" />
                         <span>
                           {(() => {
-                            const servicoSelecionado = servicos.find(s => s.id === agendamento.procedimento_id);
-                            const duracaoMinutos = servicoSelecionado?.duracao_minutos || 60;
+                            // Calcular duração total de todos os procedimentos
+                            const procedimentosAgendamento = (agendamento as any).procedimentos || [];
+                            const duracaoTotal = procedimentosAgendamento.reduce((total: number, proc: any) => {
+                              const servico = servicos.find(s => s.id === proc.procedimento_id);
+                              return total + (servico?.duracao_minutos || 60);
+                            }, 0);
                             
                             const [horaInicio, minutoInicio] = agendamento.hora_agendamento.split(':').map(Number);
                             const inicioTotalMinutos = horaInicio * 60 + minutoInicio;
-                            const fimTotalMinutos = inicioTotalMinutos + duracaoMinutos;
+                            const fimTotalMinutos = inicioTotalMinutos + duracaoTotal;
                             
                             const horaFim = Math.floor(fimTotalMinutos / 60);
                             const minutoFim = fimTotalMinutos % 60;
@@ -1128,7 +1131,7 @@ const CalendarioPage = () => {
                             const horaFimStr = horaFim.toString().padStart(2, '0');
                             const minutoFimStr = minutoFim.toString().padStart(2, '0');
                             
-                            return `${agendamento.hora_agendamento.substring(0, 5)} - ${horaFimStr}:${minutoFimStr}`;
+                            return `${agendamento.hora_agendamento.substring(0, 5)} - ${horaFimStr}:${minutoFimStr} (${duracaoTotal}min)`;
                           })()}
                         </span>
                       </div>
@@ -1141,10 +1144,24 @@ const CalendarioPage = () => {
                       </div>
                     </div>
                     
-                    {/* Mostrar nome do procedimento */}
-                    {agendamento.procedimento_id && (
+                    {/* Mostrar todos os procedimentos */}
+                    {(agendamento as any).procedimentos && (agendamento as any).procedimentos.length > 0 && (
                       <div className="text-sm text-muted-foreground mb-3">
-                        <strong>Procedimento:</strong> {servicos.find(s => s.id === agendamento.procedimento_id)?.nome_procedimento || 'Não encontrado'}
+                        <strong>Procedimentos:</strong>
+                        <div className="mt-1 space-y-1">
+                          {(agendamento as any).procedimentos.map((proc: any, index: number) => {
+                            const servico = servicos.find(s => s.id === proc.procedimento_id);
+                            return (
+                              <div key={proc.id} className="flex items-center gap-2">
+                                <span className="text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
+                                  {index + 1}
+                                </span>
+                                <span>{servico?.nome_procedimento || 'Não encontrado'}</span>
+                                <span className="text-xs">({servico?.duracao_minutos || 60}min)</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 

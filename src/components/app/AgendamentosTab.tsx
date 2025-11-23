@@ -76,6 +76,17 @@ const AgendamentosTab = () => {
     observacoes: ''
   });
 
+  // Calcular automaticamente o preço total quando os procedimentos mudam
+  useEffect(() => {
+    if (formData.procedimento_ids.length > 0) {
+      const total = formData.procedimento_ids.reduce((sum, procId) => {
+        const servico = servicos.find(s => s.id === procId);
+        return sum + (servico?.valor || 0);
+      }, 0);
+      setFormData(prev => ({ ...prev, preco: total }));
+    }
+  }, [formData.procedimento_ids, servicos]);
+
   useEffect(() => {
     fetchAgendamentos();
     fetchServicos();
