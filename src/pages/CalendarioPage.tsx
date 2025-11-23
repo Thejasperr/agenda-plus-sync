@@ -291,8 +291,13 @@ const CalendarioPage = () => {
       
       for (const agendamento of agendamentosDodia) {
         const agendamentoHora = agendamento.hora_agendamento.substring(0, 5);
-        const servicoAgendado = servicos.find(s => s.id === agendamento.procedimento_id);
-        const duracaoAgendado = servicoAgendado?.duracao_minutos || 60;
+        
+        // Calcular duração total de todos os procedimentos do agendamento
+        const procedimentosAgendamento = (agendamento as any).agendamento_procedimentos || [];
+        const duracaoAgendado = procedimentosAgendamento.reduce((total: number, proc: any) => {
+          const servico = servicos.find(s => s.id === proc.procedimento_id);
+          return total + (servico?.duracao_minutos || 60);
+        }, 0) || 60; // Default 60 minutos se não houver procedimentos
         
         const [horaAgendado, minutoAgendado] = agendamentoHora.split(':').map(Number);
         const inicioAgendado = horaAgendado * 60 + minutoAgendado;
@@ -318,8 +323,13 @@ const CalendarioPage = () => {
     // Verificar se não há conflito com agendamentos existentes
     for (const agendamento of agendamentosDodia) {
       const agendamentoHora = agendamento.hora_agendamento.substring(0, 5);
-      const servicoAgendado = servicos.find(s => s.id === agendamento.procedimento_id);
-      const duracaoAgendado = servicoAgendado?.duracao_minutos || 60;
+      
+      // Calcular duração total de todos os procedimentos do agendamento
+      const procedimentosAgendamento = (agendamento as any).agendamento_procedimentos || [];
+      const duracaoAgendado = procedimentosAgendamento.reduce((total: number, proc: any) => {
+        const servico = servicos.find(s => s.id === proc.procedimento_id);
+        return total + (servico?.duracao_minutos || 60);
+      }, 0) || 60; // Default 60 minutos se não houver procedimentos
       
       const [horaAgendado, minutoAgendado] = agendamentoHora.split(':').map(Number);
       const inicioAgendado = horaAgendado * 60 + minutoAgendado;
@@ -345,8 +355,13 @@ const CalendarioPage = () => {
       // Verificar se este horário está ocupado por algum agendamento
       for (const agendamento of agendamentosDodia) {
         const agendamentoHora = agendamento.hora_agendamento.substring(0, 5);
-        const servicoSelecionado = servicos.find(s => s.id === agendamento.procedimento_id);
-        const duracaoMinutos = servicoSelecionado?.duracao_minutos || 60; // Default 60 minutos
+        
+        // Calcular duração total de todos os procedimentos do agendamento
+        const procedimentosAgendamento = (agendamento as any).agendamento_procedimentos || [];
+        const duracaoMinutos = procedimentosAgendamento.reduce((total: number, proc: any) => {
+          const servico = servicos.find(s => s.id === proc.procedimento_id);
+          return total + (servico?.duracao_minutos || 60);
+        }, 0) || 60; // Default 60 minutos se não houver procedimentos
         
         // Calcular horário de fim do agendamento
         const [horaInicio, minutoInicio] = agendamentoHora.split(':').map(Number);
@@ -1115,7 +1130,7 @@ const CalendarioPage = () => {
                         <span>
                           {(() => {
                             // Calcular duração total de todos os procedimentos
-                            const procedimentosAgendamento = (agendamento as any).procedimentos || [];
+                            const procedimentosAgendamento = (agendamento as any).agendamento_procedimentos || [];
                             const duracaoTotal = procedimentosAgendamento.reduce((total: number, proc: any) => {
                               const servico = servicos.find(s => s.id === proc.procedimento_id);
                               return total + (servico?.duracao_minutos || 60);
@@ -1145,11 +1160,11 @@ const CalendarioPage = () => {
                     </div>
                     
                     {/* Mostrar todos os procedimentos */}
-                    {(agendamento as any).procedimentos && (agendamento as any).procedimentos.length > 0 && (
+                    {(agendamento as any).agendamento_procedimentos && (agendamento as any).agendamento_procedimentos.length > 0 && (
                       <div className="text-sm text-muted-foreground mb-3">
                         <strong>Procedimentos:</strong>
                         <div className="mt-1 space-y-1">
-                          {(agendamento as any).procedimentos.map((proc: any, index: number) => {
+                          {(agendamento as any).agendamento_procedimentos.map((proc: any, index: number) => {
                             const servico = servicos.find(s => s.id === proc.procedimento_id);
                             return (
                               <div key={proc.id} className="flex items-center gap-2">
