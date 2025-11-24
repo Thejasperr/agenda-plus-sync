@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
 
 interface Agendamento {
   id: string;
@@ -39,6 +40,8 @@ const DashboardTab = () => {
   const [entradasSemana, setEntradasSemana] = useState(0);
   const [saidasSemana, setSaidasSemana] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [formaPagamentoDialogOpen, setFormaPagamentoDialogOpen] = useState(false);
+  const [agendamentoConcluindo, setAgendamentoConcluindo] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -150,31 +153,25 @@ const DashboardTab = () => {
 
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
     if (newStatus === 'Concluído') {
-      // Para o dashboard, vamos simplificar - apenas marcar como concluído
-      // O usuário pode editar a forma de pagamento depois na aba de transações se necessário
-      try {
-        const { error } = await supabase
-          .from('agendamentos')
-          .update({ status: newStatus })
-          .eq('id', id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: `Status atualizado para ${newStatus}`,
-        });
-
-        fetchDashboardData();
-      } catch (error) {
-        console.error('Erro ao atualizar status:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível atualizar o status",
-          variant: "destructive",
-        });
-      }
+      // Abrir dialog de forma de pagamento
+      setAgendamentoConcluindo(id);
+      setFormaPagamentoDialogOpen(true);
+      return;
     }
+  };
+
+  const handleFormaPagamentoConfirm = async (formaPagamento: string) => {
+    if (!agendamentoConcluindo) return;
+    
+    // O agendamento e a transação já foram atualizados no FormaPagamentoDialog
+    toast({
+      title: "Sucesso",
+      description: "Agendamento concluído com sucesso!"
+    });
+    
+    setFormaPagamentoDialogOpen(false);
+    setAgendamentoConcluindo(null);
+    fetchDashboardData();
   };
 
   if (loading) {
@@ -426,6 +423,25 @@ const DashboardTab = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Forma de Pagamento */}
+      {agendamentoConcluindo && (() => {
+        const agendamento = agendamentosHoje.find(a => a.id === agendamentoConcluindo);
+        if (!agendamento) return null;
+        
+        const valorFinal = agendamento.preco;
+
+        return (
+          <FormaPagamentoDialog
+            open={formaPagamentoDialogOpen}
+            onOpenChange={setFormaPagamentoDialogOpen}
+            onConfirm={handleFormaPagamentoConfirm}
+            agendamentoId={agendamentoConcluindo}
+            valorServico={valorFinal}
+            clienteTelefone={agendamento.telefone}
+          />
+        );
+      })()}
     </div>
   );
 };
