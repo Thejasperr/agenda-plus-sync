@@ -410,18 +410,52 @@ const CalendarioPage = () => {
       return;
     }
     try {
+      // Verificar se é um novo agendamento e se o cliente tem saldo de crédito
+      let descontoAutomatico = formData.tem_desconto;
+      let porcentagemDescontoAutomatica = formData.porcentagem_desconto;
+
+      if (!editingAgendamento) {
+        // Buscar saldo do cliente
+        const { data: clienteData } = await supabase
+          .from('clientes')
+          .select('saldo_credito')
+          .eq('telefone', formData.telefone)
+          .single();
+
+        if (clienteData && clienteData.saldo_credito > 0) {
+          const saldoDisponivel = clienteData.saldo_credito;
+          const valorDesconto = Math.min(saldoDisponivel, formData.preco);
+          const porcentagemDesconto = (valorDesconto / formData.preco) * 100;
+
+          descontoAutomatico = true;
+          porcentagemDescontoAutomatica = porcentagemDesconto;
+
+          // Deduzir do saldo do cliente
+          const novoSaldo = saldoDisponivel - valorDesconto;
+          await supabase
+            .from('clientes')
+            .update({ saldo_credito: novoSaldo })
+            .eq('telefone', formData.telefone);
+
+          toast({
+            title: "Crédito aplicado",
+            description: `R$ ${valorDesconto.toFixed(2)} de crédito foi aplicado como desconto`,
+          });
+        }
+      }
+
       const agendamentoData = {
         nome: formData.nome,
         telefone: formData.telefone,
         preco: formData.preco,
-        tem_desconto: formData.tem_desconto,
+        tem_desconto: descontoAutomatico,
         pagamento_antecipado: formData.pagamento_antecipado,
         data_agendamento: formData.data_agendamento,
         hora_agendamento: formData.hora_agendamento,
         tem_retorno: formData.tem_retorno,
         status: formData.status,
         procedimento_id: formData.procedimento_ids.length > 0 ? formData.procedimento_ids[0] : null,
-        porcentagem_desconto: formData.tem_desconto ? formData.porcentagem_desconto : null,
+        porcentagem_desconto: descontoAutomatico ? porcentagemDescontoAutomatica : null,
         porcentagem_pagamento_antecipado: formData.pagamento_antecipado ? formData.porcentagem_pagamento_antecipado : null,
         data_retorno: formData.tem_retorno ? formData.data_retorno : null,
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
@@ -1280,12 +1314,29 @@ const CalendarioPage = () => {
       </div>
 
       {/* Dialog de Forma de Pagamento */}
-      <FormaPagamentoDialog
-        open={formaPagamentoDialogOpen}
-        onOpenChange={setFormaPagamentoDialogOpen}
-        onConfirm={handleFormaPagamentoConfirm}
-        agendamentoId={agendamentoConcluindo || ''}
-      />
+      {agendamentoConcluindo && (() => {
+        const agendamento = agendamentos.find(a => a.id === agendamentoConcluindo);
+        if (!agendamento) return null;
+        
+        const valorFinal = agendamento.tem_desconto && agendamento.porcentagem_desconto
+          ? agendamento.preco * (1 - agendamento.porcentagem_desconto / 100)
+          : agendamento.preco;
+        
+        const valorRestante = agendamento.pagamento_antecipado && agendamento.porcentagem_pagamento_antecipado
+          ? valorFinal * (1 - agendamento.porcentagem_pagamento_antecipado / 100)
+          : valorFinal;
+
+        return (
+          <FormaPagamentoDialog
+            open={formaPagamentoDialogOpen}
+            onOpenChange={setFormaPagamentoDialogOpen}
+            onConfirm={handleFormaPagamentoConfirm}
+            agendamentoId={agendamentoConcluindo}
+            valorServico={valorRestante}
+            clienteTelefone={agendamento.telefone}
+          />
+        );
+      })()}
 
       {/* Dialog de Pagamento Antecipado */}
       {agendamentoAdiantamento && (
