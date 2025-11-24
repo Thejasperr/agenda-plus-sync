@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { QrCode } from 'lucide-react';
@@ -20,24 +21,30 @@ interface FormaPagamentoDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (formaPagamento: string) => void;
   agendamentoId: string;
+  valorServico: number;
+  clienteTelefone: string;
 }
 
 const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  agendamentoId
+  agendamentoId,
+  valorServico,
+  clienteTelefone
 }) => {
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [formaSelecionada, setFormaSelecionada] = useState('');
+  const [valorPago, setValorPago] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       fetchFormasPagamento();
+      setValorPago(valorServico.toFixed(2));
     }
-  }, [open]);
+  }, [open, valorServico]);
 
   const fetchFormasPagamento = async () => {
     try {
@@ -71,7 +78,45 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       return;
     }
 
+    const valorPagoNum = parseFloat(valorPago);
+    if (isNaN(valorPagoNum) || valorPagoNum < 0) {
+      toast({
+        title: "Erro",
+        description: "Valor pago inválido",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Calcular o excedente
+      const excedente = valorPagoNum - valorServico;
+
+      // Se houver excedente, adicionar ao saldo do cliente
+      if (excedente > 0) {
+        const { data: clienteData, error: clienteError } = await supabase
+          .from('clientes')
+          .select('saldo_credito')
+          .eq('telefone', clienteTelefone)
+          .single();
+
+        if (clienteError) throw clienteError;
+
+        const novoSaldo = (clienteData.saldo_credito || 0) + excedente;
+
+        const { error: updateError } = await supabase
+          .from('clientes')
+          .update({ saldo_credito: novoSaldo })
+          .eq('telefone', clienteTelefone);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Crédito adicionado",
+          description: `R$ ${excedente.toFixed(2)} foi adicionado ao saldo do cliente`,
+        });
+      }
+
       // Atualizar agendamento com status concluído e forma de pagamento
       // O trigger do banco criará automaticamente a transação
       const { error } = await supabase
@@ -86,6 +131,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
 
       onConfirm(formaSelecionada);
       setFormaSelecionada('');
+      setValorPago('');
     } catch (error) {
       console.error('Erro ao salvar forma de pagamento:', error);
       toast({
@@ -106,6 +152,31 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
+          <div>
+            <Label>Valor do serviço</Label>
+            <div className="text-2xl font-bold text-primary">
+              R$ {valorServico.toFixed(2)}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="valor_pago">Valor pago pelo cliente *</Label>
+            <Input
+              id="valor_pago"
+              type="number"
+              step="0.01"
+              min="0"
+              value={valorPago}
+              onChange={(e) => setValorPago(e.target.value)}
+              placeholder="0.00"
+            />
+            {parseFloat(valorPago) > valorServico && (
+              <p className="text-sm text-green-600 mt-1">
+                Crédito de R$ {(parseFloat(valorPago) - valorServico).toFixed(2)} será adicionado ao cliente
+              </p>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="forma_pagamento">Selecione a forma de pagamento *</Label>
             <Select value={formaSelecionada} onValueChange={setFormaSelecionada}>

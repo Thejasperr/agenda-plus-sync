@@ -153,6 +153,7 @@ export type Database = {
           nome: string
           observacoes: string | null
           retorno_at: string | null
+          saldo_credito: number
           status: string | null
           telefone: string
           ultimo_atendimento: string | null
@@ -166,6 +167,7 @@ export type Database = {
           nome: string
           observacoes?: string | null
           retorno_at?: string | null
+          saldo_credito?: number
           status?: string | null
           telefone: string
           ultimo_atendimento?: string | null
@@ -179,6 +181,7 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           retorno_at?: string | null
+          saldo_credito?: number
           status?: string | null
           telefone?: string
           ultimo_atendimento?: string | null

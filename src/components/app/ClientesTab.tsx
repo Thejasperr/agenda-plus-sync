@@ -19,6 +19,7 @@ interface Cliente {
   ultimo_atendimento?: string;
   created_at: string;
   observacoes?: string;
+  saldo_credito?: number;
 }
 
 interface Agendamento {
@@ -461,7 +462,7 @@ const ClientesTab = () => {
                     </div>
 
                     {/* Estatísticas do cliente */}
-                    <div className="grid grid-cols-2 gap-2 p-2 bg-muted/30 rounded-lg">
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-muted/30 rounded-lg">
                       <div className="text-center">
                         <div className="text-lg font-bold text-green-600">R$ {gastoTotal.toFixed(2)}</div>
                         <div className="text-xs text-muted-foreground">Gasto Total</div>
@@ -469,6 +470,10 @@ const ClientesTab = () => {
                       <div className="text-center">
                         <div className="text-lg font-bold text-blue-600">{atendimentosTotal}</div>
                         <div className="text-xs text-muted-foreground">Atendimentos</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-600">R$ {(cliente.saldo_credito || 0).toFixed(2)}</div>
+                        <div className="text-xs text-muted-foreground">Crédito</div>
                       </div>
                     </div>
 
