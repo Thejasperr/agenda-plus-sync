@@ -190,6 +190,39 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_pix: {
+        Row: {
+          chave_pix: string
+          cidade: string
+          created_at: string
+          id: string
+          nome_recebedor: string
+          tipo_chave: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chave_pix: string
+          cidade: string
+          created_at?: string
+          id?: string
+          nome_recebedor: string
+          tipo_chave: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          chave_pix?: string
+          cidade?: string
+          created_at?: string
+          id?: string
+          nome_recebedor?: string
+          tipo_chave?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       estoque: {
         Row: {
           categoria: string | null
