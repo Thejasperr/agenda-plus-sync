@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { QrCode } from 'lucide-react';
+import { QrCode, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { generatePixPayload } from '@/lib/pixQrCode';
 
 interface FormaPagamento {
   id: string;
@@ -37,14 +38,38 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   const [formaSelecionada, setFormaSelecionada] = useState('');
   const [valorPago, setValorPago] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [pixPayload, setPixPayload] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       fetchFormasPagamento();
       setValorPago(valorServico.toFixed(2));
+      generatePixQrCode();
     }
   }, [open, valorServico]);
+
+  const generatePixQrCode = async () => {
+    try {
+      const { data: configPix } = await supabase
+        .from('configuracoes_pix')
+        .select('*')
+        .maybeSingle();
+
+      if (configPix) {
+        const payload = generatePixPayload(
+          configPix.chave_pix,
+          configPix.nome_recebedor,
+          configPix.cidade,
+          valorServico,
+          agendamentoId.substring(0, 25)
+        );
+        setPixPayload(payload);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar QR Code PIX:', error);
+    }
+  };
 
   const fetchFormasPagamento = async () => {
     try {
@@ -193,8 +218,42 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
             </Select>
           </div>
 
-          {/* Mostrar QR Code PIX se disponível */}
-          {formaSelecionadaObj?.qr_code_pix && (
+          {/* Mostrar QR Code PIX dinâmico se PIX for selecionado */}
+          {formaSelecionada?.toLowerCase().includes('pix') && pixPayload && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center space-y-3">
+                  <QrCode className="h-8 w-8 mx-auto text-primary" />
+                  <div className="text-sm font-medium">PIX Copia e Cola</div>
+                  <div className="bg-muted p-3 rounded-lg text-xs font-mono break-all max-h-32 overflow-y-auto">
+                    {pixPayload}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(pixPayload);
+                      toast({
+                        title: "Copiado!",
+                        description: "Código PIX copiado para a área de transferência",
+                      });
+                    }}
+                    className="w-full"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar Código PIX
+                  </Button>
+                  <div className="text-xs text-muted-foreground">
+                    O cliente pode colar este código no aplicativo do banco para pagar R$ {valorServico.toFixed(2)}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Mostrar QR Code estático (legado) se disponível */}
+          {formaSelecionadaObj?.qr_code_pix && !pixPayload && (
             <Card>
               <CardContent className="p-4">
                 <div className="text-center space-y-2">
