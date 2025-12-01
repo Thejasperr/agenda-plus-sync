@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { QrCode, Save } from 'lucide-react';
+import { QrCode, Save, AlertCircle } from 'lucide-react';
+import { z } from 'zod';
 
 interface ConfiguracaoPix {
   tipo_chave: string;
@@ -14,6 +15,61 @@ interface ConfiguracaoPix {
   nome_recebedor: string;
   cidade: string;
 }
+
+// Validação de chaves PIX
+const validatePixKey = (tipoChave: string, chave: string): { valid: boolean; error?: string } => {
+  const chaveClean = chave.replace(/\D/g, ''); // Remove caracteres não numéricos
+  
+  switch (tipoChave) {
+    case 'cpf':
+      const cpfSchema = z.string().regex(/^\d{11}$/, 'CPF deve ter 11 dígitos');
+      try {
+        cpfSchema.parse(chaveClean);
+        return { valid: true };
+      } catch {
+        return { valid: false, error: 'CPF inválido. Deve conter 11 dígitos (ex: 000.000.000-00)' };
+      }
+      
+    case 'cnpj':
+      const cnpjSchema = z.string().regex(/^\d{14}$/, 'CNPJ deve ter 14 dígitos');
+      try {
+        cnpjSchema.parse(chaveClean);
+        return { valid: true };
+      } catch {
+        return { valid: false, error: 'CNPJ inválido. Deve conter 14 dígitos (ex: 00.000.000/0000-00)' };
+      }
+      
+    case 'email':
+      const emailSchema = z.string().email('Email inválido');
+      try {
+        emailSchema.parse(chave);
+        return { valid: true };
+      } catch {
+        return { valid: false, error: 'Email inválido. Use o formato: seu@email.com' };
+      }
+      
+    case 'telefone':
+      const telefoneSchema = z.string().regex(/^\+?55\d{10,11}$/, 'Telefone inválido');
+      try {
+        telefoneSchema.parse(chaveClean.startsWith('55') ? `+${chaveClean}` : chave);
+        return { valid: true };
+      } catch {
+        return { valid: false, error: 'Telefone inválido. Use o formato: +5511999999999' };
+      }
+      
+    case 'aleatoria':
+      const aleatoriaSchema = z.string().regex(/^[a-zA-Z0-9-]{32}$/, 'Chave aleatória deve ter 32 caracteres');
+      try {
+        aleatoriaSchema.parse(chave);
+        return { valid: true };
+      } catch {
+        return { valid: false, error: 'Chave aleatória inválida. Deve ter 32 caracteres alfanuméricos' };
+      }
+      
+    default:
+      return { valid: false, error: 'Tipo de chave inválido' };
+  }
+};
 
 const ConfiguracaoPixTab = () => {
   const [configuracao, setConfiguracao] = useState<ConfiguracaoPix>({
@@ -24,6 +80,7 @@ const ConfiguracaoPixTab = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,6 +120,20 @@ const ConfiguracaoPixTab = () => {
       });
       return;
     }
+
+    // Validar formato da chave PIX
+    const validation = validatePixKey(configuracao.tipo_chave, configuracao.chave_pix);
+    if (!validation.valid) {
+      setValidationError(validation.error || '');
+      toast({
+        title: "Erro de Validação",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setValidationError('');
 
     setSaving(true);
     try {
@@ -150,9 +221,10 @@ const ConfiguracaoPixTab = () => {
               <Input
                 id="chave_pix"
                 value={configuracao.chave_pix}
-                onChange={(e) =>
-                  setConfiguracao({ ...configuracao, chave_pix: e.target.value })
-                }
+                onChange={(e) => {
+                  setConfiguracao({ ...configuracao, chave_pix: e.target.value });
+                  setValidationError(''); // Limpar erro ao digitar
+                }}
                 placeholder={
                   configuracao.tipo_chave === 'cpf'
                     ? '000.000.000-00'
@@ -164,7 +236,21 @@ const ConfiguracaoPixTab = () => {
                     ? '+5511999999999'
                     : 'Sua chave aleatória'
                 }
+                className={validationError ? 'border-destructive' : ''}
               />
+              {validationError && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-destructive">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>{validationError}</span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {configuracao.tipo_chave === 'cpf' && 'Digite apenas números ou com formatação (ex: 000.000.000-00)'}
+                {configuracao.tipo_chave === 'cnpj' && 'Digite apenas números ou com formatação (ex: 00.000.000/0000-00)'}
+                {configuracao.tipo_chave === 'email' && 'Digite um email válido'}
+                {configuracao.tipo_chave === 'telefone' && 'Digite com código do país (ex: +5511999999999)'}
+                {configuracao.tipo_chave === 'aleatoria' && 'Cole a chave aleatória gerada pelo seu banco (32 caracteres)'}
+              </p>
             </div>
 
             <div>
