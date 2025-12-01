@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { QrCode, Copy } from 'lucide-react';
+import { QrCode, Copy, Download, Printer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePixPayload } from '@/lib/pixQrCode';
@@ -40,6 +40,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   const [valorPago, setValorPago] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [pixPayload, setPixPayload] = useState<string>('');
+  const [qrCodeRef, setQrCodeRef] = useState<SVGSVGElement | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -102,6 +103,150 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadQRCode = () => {
+    if (!qrCodeRef) return;
+
+    try {
+      // Criar um canvas para converter o SVG em PNG
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const svgData = new XMLSerializer().serializeToString(qrCodeRef);
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const link = document.createElement('a');
+            link.download = `qrcode-pix-${agendamentoId.substring(0, 8)}.png`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            
+            toast({
+              title: "Download iniciado",
+              description: "QR Code salvo como imagem PNG",
+            });
+          }
+        }, 'image/png');
+
+        URL.revokeObjectURL(url);
+      };
+
+      img.src = url;
+    } catch (error) {
+      console.error('Erro ao baixar QR Code:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível baixar o QR Code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePrintQRCode = () => {
+    if (!qrCodeRef) return;
+
+    try {
+      const svgData = new XMLSerializer().serializeToString(qrCodeRef);
+      const printWindow = window.open('', '_blank');
+      
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>QR Code PIX - R$ ${parseFloat(valorPago).toFixed(2)}</title>
+              <style>
+                body {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 100vh;
+                  margin: 0;
+                  font-family: Arial, sans-serif;
+                  padding: 20px;
+                }
+                .container {
+                  text-align: center;
+                }
+                h1 {
+                  font-size: 24px;
+                  margin-bottom: 10px;
+                }
+                .amount {
+                  font-size: 32px;
+                  font-weight: bold;
+                  color: #00875F;
+                  margin: 10px 0;
+                }
+                .qr-code {
+                  margin: 20px 0;
+                }
+                .code-container {
+                  margin-top: 20px;
+                  padding: 15px;
+                  background: #f5f5f5;
+                  border-radius: 8px;
+                  max-width: 500px;
+                  word-break: break-all;
+                  font-family: monospace;
+                  font-size: 12px;
+                }
+                @media print {
+                  body {
+                    padding: 0;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>Pagamento PIX</h1>
+                <div class="amount">R$ ${parseFloat(valorPago).toFixed(2)}</div>
+                <div class="qr-code">
+                  ${svgData}
+                </div>
+                <p><strong>Escaneie o QR Code acima ou copie o código abaixo:</strong></p>
+                <div class="code-container">
+                  ${pixPayload}
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        
+        printWindow.document.close();
+        printWindow.focus();
+        
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+
+        toast({
+          title: "Impressão iniciada",
+          description: "Janela de impressão aberta",
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao imprimir QR Code:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível imprimir o QR Code",
+        variant: "destructive",
+      });
     }
   };
 
@@ -244,7 +389,32 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                       size={200}
                       level="M"
                       includeMargin={true}
+                      ref={(ref) => setQrCodeRef(ref)}
                     />
+                  </div>
+                  
+                  {/* Botões de ação para QR Code */}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadQRCode}
+                      className="flex-1"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Baixar PNG
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePrintQRCode}
+                      className="flex-1"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Imprimir
+                    </Button>
                   </div>
                   
                   <div className="text-xs text-muted-foreground font-medium">
