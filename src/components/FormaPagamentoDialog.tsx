@@ -9,6 +9,7 @@ import { QrCode, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePixPayload } from '@/lib/pixQrCode';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface FormaPagamento {
   id: string;
@@ -234,11 +235,27 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
             <Card>
               <CardContent className="p-4">
                 <div className="text-center space-y-3">
-                  <QrCode className="h-8 w-8 mx-auto text-primary" />
-                  <div className="text-sm font-medium">PIX Copia e Cola</div>
+                  <div className="text-sm font-medium">QR Code PIX</div>
+                  
+                  {/* QR Code visual escaneável */}
+                  <div className="flex justify-center p-4 bg-white rounded-lg">
+                    <QRCodeSVG 
+                      value={pixPayload} 
+                      size={200}
+                      level="M"
+                      includeMargin={true}
+                    />
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground font-medium">
+                    Escaneie o QR Code acima ou copie o código abaixo
+                  </div>
+                  
+                  {/* Código Copia e Cola */}
                   <div className="bg-muted p-3 rounded-lg text-xs font-mono break-all max-h-32 overflow-y-auto">
                     {pixPayload}
                   </div>
+                  
                   <Button
                     type="button"
                     variant="outline"
@@ -255,8 +272,9 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                     <Copy className="h-4 w-4 mr-2" />
                     Copiar Código PIX
                   </Button>
+                  
                   <div className="text-xs text-muted-foreground">
-                    O cliente pode colar este código no aplicativo do banco para pagar R$ {parseFloat(valorPago).toFixed(2)}
+                    Valor: R$ {parseFloat(valorPago).toFixed(2)}
                   </div>
                 </div>
               </CardContent>
