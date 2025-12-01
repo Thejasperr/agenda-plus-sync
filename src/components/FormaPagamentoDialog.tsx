@@ -45,11 +45,22 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     if (open) {
       fetchFormasPagamento();
       setValorPago(valorServico.toFixed(2));
-      generatePixQrCode();
     }
   }, [open, valorServico]);
 
-  const generatePixQrCode = async () => {
+  // Regenerar QR Code quando o valor pago mudar
+  useEffect(() => {
+    if (open && valorPago) {
+      generatePixQrCode(parseFloat(valorPago));
+    }
+  }, [open, valorPago]);
+
+  const generatePixQrCode = async (valor: number) => {
+    if (isNaN(valor) || valor <= 0) {
+      setPixPayload('');
+      return;
+    }
+
     try {
       const { data: configPix } = await supabase
         .from('configuracoes_pix')
@@ -61,7 +72,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
           configPix.chave_pix,
           configPix.nome_recebedor,
           configPix.cidade,
-          valorServico,
+          valor,
           agendamentoId.substring(0, 25)
         );
         setPixPayload(payload);
@@ -245,7 +256,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                     Copiar Código PIX
                   </Button>
                   <div className="text-xs text-muted-foreground">
-                    O cliente pode colar este código no aplicativo do banco para pagar R$ {valorServico.toFixed(2)}
+                    O cliente pode colar este código no aplicativo do banco para pagar R$ {parseFloat(valorPago).toFixed(2)}
                   </div>
                 </div>
               </CardContent>
