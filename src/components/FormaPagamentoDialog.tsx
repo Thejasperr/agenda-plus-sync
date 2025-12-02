@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -40,7 +40,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   const [valorPago, setValorPago] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [pixPayload, setPixPayload] = useState<string>('');
-  const [qrCodeRef, setQrCodeRef] = useState<SVGSVGElement | null>(null);
+  const qrCodeContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -107,7 +107,8 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   };
 
   const handleDownloadQRCode = () => {
-    if (!qrCodeRef) return;
+    const svgElement = qrCodeContainerRef.current?.querySelector('svg');
+    if (!svgElement) return;
 
     try {
       // Criar um canvas para converter o SVG em PNG
@@ -115,7 +116,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const svgData = new XMLSerializer().serializeToString(qrCodeRef);
+      const svgData = new XMLSerializer().serializeToString(svgElement);
       const img = new Image();
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
@@ -156,10 +157,11 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   };
 
   const handlePrintQRCode = () => {
-    if (!qrCodeRef) return;
+    const svgElement = qrCodeContainerRef.current?.querySelector('svg');
+    if (!svgElement) return;
 
     try {
-      const svgData = new XMLSerializer().serializeToString(qrCodeRef);
+      const svgData = new XMLSerializer().serializeToString(svgElement);
       const printWindow = window.open('', '_blank');
       
       if (printWindow) {
@@ -257,12 +259,17 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       `📱 *Código PIX Copia e Cola:*\n${pixPayload}\n\n` +
       `Copie o código acima e cole no seu aplicativo de banco para realizar o pagamento.`;
     
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    // Formatar telefone do cliente (remover caracteres não numéricos)
+    const telefoneFormatado = clienteTelefone.replace(/\D/g, '');
+    // Adicionar código do Brasil se não tiver
+    const telefoneCompleto = telefoneFormatado.startsWith('55') ? telefoneFormatado : `55${telefoneFormatado}`;
+    
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${telefoneCompleto}&text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     
     toast({
       title: "WhatsApp aberto",
-      description: "Compartilhe o código PIX com o cliente",
+      description: "Envie o código PIX para o cliente",
     });
   };
 
@@ -399,13 +406,15 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                   <div className="text-sm font-medium">QR Code PIX</div>
                   
                   {/* QR Code visual escaneável */}
-                  <div className="flex justify-center p-4 bg-white rounded-lg">
+                  <div 
+                    ref={qrCodeContainerRef}
+                    className="flex justify-center p-4 bg-white rounded-lg"
+                  >
                     <QRCodeSVG 
                       value={pixPayload} 
                       size={200}
                       level="M"
                       includeMargin={true}
-                      ref={(ref) => setQrCodeRef(ref)}
                     />
                   </div>
                   
