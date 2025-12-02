@@ -266,11 +266,27 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     
     // Usar wa.me que é a URL oficial do WhatsApp
     const whatsappUrl = `https://wa.me/${telefoneCompleto}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
     
-    toast({
-      title: "WhatsApp aberto",
-      description: "Envie o código PIX para o cliente",
+    // Criar um elemento <a> e simular clique para evitar bloqueios de popup
+    const link = document.createElement('a');
+    link.href = whatsappUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Copiar mensagem como fallback
+    navigator.clipboard.writeText(message).then(() => {
+      toast({
+        title: "Mensagem copiada!",
+        description: "Se o WhatsApp não abrir, cole a mensagem manualmente",
+      });
+    }).catch(() => {
+      toast({
+        title: "Abrindo WhatsApp",
+        description: "Enviando código PIX para o cliente",
+      });
     });
   };
 
