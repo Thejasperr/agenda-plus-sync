@@ -264,7 +264,8 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     // Adicionar código do Brasil se não tiver
     const telefoneCompleto = telefoneFormatado.startsWith('55') ? telefoneFormatado : `55${telefoneFormatado}`;
     
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${telefoneCompleto}&text=${encodeURIComponent(message)}`;
+    // Usar wa.me que é a URL oficial do WhatsApp
+    const whatsappUrl = `https://wa.me/${telefoneCompleto}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     
     toast({
