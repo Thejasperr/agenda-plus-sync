@@ -252,41 +252,47 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     }
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = async () => {
     const valor = parseFloat(valorPago).toFixed(2);
     const message = `💰 *Pagamento PIX*\n\n` +
       `Valor: *R$ ${valor}*\n\n` +
       `📱 *Código PIX Copia e Cola:*\n${pixPayload}\n\n` +
       `Copie o código acima e cole no seu aplicativo de banco para realizar o pagamento.`;
     
-    // Formatar telefone do cliente (remover caracteres não numéricos)
+    // Formatar telefone do cliente
     const telefoneFormatado = clienteTelefone.replace(/\D/g, '');
-    // Adicionar código do Brasil se não tiver
     const telefoneCompleto = telefoneFormatado.startsWith('55') ? telefoneFormatado : `55${telefoneFormatado}`;
-    
-    // Usar wa.me que é a URL oficial do WhatsApp
     const whatsappUrl = `https://wa.me/${telefoneCompleto}?text=${encodeURIComponent(message)}`;
     
-    // Criar um elemento <a> e simular clique para evitar bloqueios de popup
-    const link = document.createElement('a');
-    link.href = whatsappUrl;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Copiar mensagem primeiro
+    try {
+      await navigator.clipboard.writeText(message);
+    } catch (e) {
+      console.log('Erro ao copiar:', e);
+    }
     
-    // Copiar mensagem como fallback
-    navigator.clipboard.writeText(message).then(() => {
-      toast({
-        title: "Mensagem copiada!",
-        description: "Se o WhatsApp não abrir, cole a mensagem manualmente",
-      });
-    }).catch(() => {
-      toast({
-        title: "Abrindo WhatsApp",
-        description: "Enviando código PIX para o cliente",
-      });
+    // Tentar abrir WhatsApp de diferentes formas
+    try {
+      // Método 1: window.open
+      const win = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        // Método 2: location.assign em nova janela falhou, tentar link
+        const link = document.createElement('a');
+        link.href = whatsappUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (e) {
+      console.log('Erro ao abrir WhatsApp:', e);
+    }
+    
+    toast({
+      title: "Mensagem copiada!",
+      description: `Abra o WhatsApp do cliente (${clienteTelefone}) e cole a mensagem`,
     });
   };
 
