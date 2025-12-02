@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { QrCode, Copy, Download, Printer } from 'lucide-react';
+import { QrCode, Copy, Download, Printer, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePixPayload } from '@/lib/pixQrCode';
@@ -250,6 +250,22 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     }
   };
 
+  const handleShareWhatsApp = () => {
+    const valor = parseFloat(valorPago).toFixed(2);
+    const message = `💰 *Pagamento PIX*\n\n` +
+      `Valor: *R$ ${valor}*\n\n` +
+      `📱 *Código PIX Copia e Cola:*\n${pixPayload}\n\n` +
+      `Copie o código acima e cole no seu aplicativo de banco para realizar o pagamento.`;
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    
+    toast({
+      title: "WhatsApp aberto",
+      description: "Compartilhe o código PIX com o cliente",
+    });
+  };
+
   const handleConfirm = async () => {
     if (!formaSelecionada) {
       toast({
@@ -394,7 +410,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                   </div>
                   
                   {/* Botões de ação para QR Code */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -403,7 +419,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                       className="flex-1"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Baixar PNG
+                      Baixar
                     </Button>
                     <Button
                       type="button"
@@ -414,6 +430,16 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                     >
                       <Printer className="h-4 w-4 mr-2" />
                       Imprimir
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleShareWhatsApp}
+                      className="flex-1"
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      WhatsApp
                     </Button>
                   </div>
                   
