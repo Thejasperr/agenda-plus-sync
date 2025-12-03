@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, DollarSign, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Search, DollarSign, Edit2, Trash2, AlertCircle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, getSecureErrorMessage, servicoSchema } from '@/lib/security';
+import * as XLSX from 'xlsx';
 
 interface Servico {
   id: string;
@@ -168,6 +169,24 @@ const ServicosTab = () => {
     servico.nome_procedimento.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleDownloadServicos = () => {
+    const dataToExport = filteredServicos.map(s => ({
+      'Procedimento': s.nome_procedimento,
+      'Valor (R$)': s.valor.toFixed(2),
+      'Duração (min)': s.duracao_minutos || '-'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Serviços');
+    XLSX.writeFile(wb, 'servicos.xlsx');
+
+    toast({
+      title: "Download concluído",
+      description: "Tabela de serviços exportada com sucesso!",
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -189,6 +208,16 @@ const ServicosTab = () => {
             className="pl-10"
           />
         </div>
+        
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleDownloadServicos}
+          disabled={filteredServicos.length === 0}
+          title="Baixar tabela de serviços"
+        >
+          <Download className="h-4 w-4" />
+        </Button>
         
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
