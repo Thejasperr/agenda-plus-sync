@@ -9,7 +9,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, getSecureErrorMessage, servicoSchema } from '@/lib/security';
-import * as XLSX from 'xlsx';
 
 interface Servico {
   id: string;
@@ -170,20 +169,77 @@ const ServicosTab = () => {
   );
 
   const handleDownloadServicos = () => {
-    const dataToExport = filteredServicos.map(s => ({
-      'Procedimento': s.nome_procedimento,
-      'Valor (R$)': s.valor.toFixed(2),
-      'Duração (min)': s.duracao_minutos || '-'
-    }));
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Serviços');
-    XLSX.writeFile(wb, 'servicos.xlsx');
+    const padding = 40;
+    const rowHeight = 50;
+    const headerHeight = 60;
+    const width = 600;
+    const height = headerHeight + (filteredServicos.length * rowHeight) + padding * 2;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background
+    ctx.fillStyle = '#faf8f5';
+    ctx.fillRect(0, 0, width, height);
+
+    // Title
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 24px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tabela de Serviços', width / 2, padding + 10);
+
+    // Header
+    const headerY = padding + headerHeight;
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(padding, headerY - 30, width - padding * 2, 35);
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Procedimento', padding + 15, headerY - 8);
+    ctx.fillText('Valor', width - padding - 150, headerY - 8);
+    ctx.fillText('Duração', width - padding - 60, headerY - 8);
+
+    // Rows
+    ctx.font = '14px system-ui, sans-serif';
+    filteredServicos.forEach((servico, index) => {
+      const y = headerY + (index * rowHeight) + 30;
+      
+      // Alternating row colors
+      if (index % 2 === 0) {
+        ctx.fillStyle = '#f5f0e8';
+        ctx.fillRect(padding, y - 25, width - padding * 2, rowHeight);
+      }
+
+      ctx.fillStyle = '#1a1a1a';
+      ctx.textAlign = 'left';
+      ctx.fillText(servico.nome_procedimento.substring(0, 30), padding + 15, y);
+      
+      ctx.fillStyle = '#22c55e';
+      ctx.fillText(`R$ ${servico.valor.toFixed(2)}`, width - padding - 150, y);
+      
+      ctx.fillStyle = '#666';
+      ctx.fillText(servico.duracao_minutos ? `${servico.duracao_minutos}min` : '-', width - padding - 60, y);
+    });
+
+    // Border
+    ctx.strokeStyle = '#d4a574';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(padding, headerY - 30, width - padding * 2, (filteredServicos.length * rowHeight) + 35);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = 'servicos.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
 
     toast({
       title: "Download concluído",
-      description: "Tabela de serviços exportada com sucesso!",
+      description: "Imagem dos serviços baixada com sucesso!",
     });
   };
 
