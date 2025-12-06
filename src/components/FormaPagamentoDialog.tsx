@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { QrCode, Copy, Download, Printer, Share2 } from 'lucide-react';
+import { QrCode, Copy, Download, Printer, Share2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePixPayload } from '@/lib/pixQrCode';
@@ -40,6 +40,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   const [valorPago, setValorPago] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [pixPayload, setPixPayload] = useState<string>('');
+  const [loadingPix, setLoadingPix] = useState(false);
   const qrCodeContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -63,6 +64,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       return;
     }
 
+    setLoadingPix(true);
     try {
       const { data: configPix, error } = await supabase
         .from('configuracoes_pix')
@@ -87,6 +89,8 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       }
     } catch (error) {
       console.error('Erro ao gerar QR Code PIX:', error);
+    } finally {
+      setLoadingPix(false);
     }
   };
 
@@ -427,8 +431,20 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
             </Select>
           </div>
 
+          {/* Loading indicator while generating PIX */}
+          {formaSelecionada?.toLowerCase().includes('pix') && loadingPix && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Gerando QR Code PIX...</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Mostrar QR Code PIX dinâmico se PIX for selecionado */}
-          {formaSelecionada?.toLowerCase().includes('pix') && pixPayload && (
+          {formaSelecionada?.toLowerCase().includes('pix') && !loadingPix && pixPayload && (
             <Card>
               <CardContent className="p-4">
                 <div className="text-center space-y-3">
