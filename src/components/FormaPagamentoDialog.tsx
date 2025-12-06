@@ -64,10 +64,13 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     }
 
     try {
-      const { data: configPix } = await supabase
+      const { data: configPix, error } = await supabase
         .from('configuracoes_pix')
         .select('*')
+        .limit(1)
         .maybeSingle();
+
+      console.log('Configuração PIX:', configPix, 'Erro:', error);
 
       if (configPix) {
         const payload = generatePixPayload(
@@ -77,7 +80,10 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
           valor,
           agendamentoId.substring(0, 25)
         );
+        console.log('Payload PIX gerado:', payload);
         setPixPayload(payload);
+      } else {
+        console.log('Nenhuma configuração PIX encontrada');
       }
     } catch (error) {
       console.error('Erro ao gerar QR Code PIX:', error);
@@ -374,7 +380,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90%] max-w-md mx-auto">
+      <DialogContent className="w-[90%] max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Forma de Pagamento</DialogTitle>
         </DialogHeader>
