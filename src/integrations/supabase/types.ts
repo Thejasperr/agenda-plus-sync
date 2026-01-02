@@ -319,6 +319,147 @@ export type Database = {
         }
         Relationships: []
       }
+      spas_assinaturas: {
+        Row: {
+          ativa: boolean
+          cliente_id: string
+          created_at: string
+          data_inicio: string
+          dia_pagamento: number
+          id: string
+          observacoes: string | null
+          updated_at: string
+          user_id: string | null
+          valor_mensal: number
+        }
+        Insert: {
+          ativa?: boolean
+          cliente_id: string
+          created_at?: string
+          data_inicio?: string
+          dia_pagamento?: number
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+          user_id?: string | null
+          valor_mensal: number
+        }
+        Update: {
+          ativa?: boolean
+          cliente_id?: string
+          created_at?: string
+          data_inicio?: string
+          dia_pagamento?: number
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+          user_id?: string | null
+          valor_mensal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spas_assinaturas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spas_pagamentos: {
+        Row: {
+          assinatura_id: string
+          created_at: string
+          data_pagamento: string
+          forma_pagamento: string | null
+          id: string
+          mes_referencia: string
+          observacoes: string | null
+          pago: boolean
+          updated_at: string
+          user_id: string | null
+          valor_pago: number
+        }
+        Insert: {
+          assinatura_id: string
+          created_at?: string
+          data_pagamento?: string
+          forma_pagamento?: string | null
+          id?: string
+          mes_referencia: string
+          observacoes?: string | null
+          pago?: boolean
+          updated_at?: string
+          user_id?: string | null
+          valor_pago: number
+        }
+        Update: {
+          assinatura_id?: string
+          created_at?: string
+          data_pagamento?: string
+          forma_pagamento?: string | null
+          id?: string
+          mes_referencia?: string
+          observacoes?: string | null
+          pago?: boolean
+          updated_at?: string
+          user_id?: string | null
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spas_pagamentos_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "spas_assinaturas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spas_sessoes: {
+        Row: {
+          assinatura_id: string
+          created_at: string
+          data_sessao: string
+          hora_sessao: string | null
+          id: string
+          observacoes: string | null
+          realizada: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assinatura_id: string
+          created_at?: string
+          data_sessao: string
+          hora_sessao?: string | null
+          id?: string
+          observacoes?: string | null
+          realizada?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assinatura_id?: string
+          created_at?: string
+          data_sessao?: string
+          hora_sessao?: string | null
+          id?: string
+          observacoes?: string | null
+          realizada?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spas_sessoes_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "spas_assinaturas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transacoes: {
         Row: {
           agendamento_id: string | null
