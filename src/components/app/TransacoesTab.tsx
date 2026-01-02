@@ -32,10 +32,11 @@ const TransacoesTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [operacaoFilter, setOperacaoFilter] = useState<string>('todos');
-  const [periodoFilter, setPeriodoFilter] = useState<string>('todos');
+  const [periodoFilter, setPeriodoFilter] = useState<string>('mes');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showTipoSuggestions, setShowTipoSuggestions] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTransacao, setEditingTransacao] = useState<Transacao | null>(null);
   const [formasPagamento, setFormasPagamento] = useState<{
@@ -376,14 +377,44 @@ const TransacoesTab = () => {
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
+                <div className="relative">
                   <Label htmlFor="tipo">Tipo *</Label>
                   <Input
                     id="tipo"
                     value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, tipo: e.target.value });
+                      setShowTipoSuggestions(true);
+                    }}
+                    onFocus={() => setShowTipoSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowTipoSuggestions(false), 150)}
                     placeholder="Ex: Serviço, Material, Despesa..."
+                    autoComplete="off"
                   />
+                  {showTipoSuggestions && formData.tipo && tiposUnicos.filter(t => 
+                    t.toLowerCase().includes(formData.tipo.toLowerCase()) && 
+                    t.toLowerCase() !== formData.tipo.toLowerCase()
+                  ).length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                      {tiposUnicos
+                        .filter(t => t.toLowerCase().includes(formData.tipo.toLowerCase()) && t.toLowerCase() !== formData.tipo.toLowerCase())
+                        .slice(0, 5)
+                        .map((tipo) => (
+                          <button
+                            key={tipo}
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-muted transition-colors text-sm"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setFormData({ ...formData, tipo });
+                              setShowTipoSuggestions(false);
+                            }}
+                          >
+                            {tipo}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="data_transacao">Data *</Label>
@@ -455,6 +486,25 @@ const TransacoesTab = () => {
 
         {/* Filtros */}
         <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex gap-2">
+            <Button
+              variant={periodoFilter === 'mes' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriodoFilter('mes')}
+              className="flex-1 sm:flex-none"
+            >
+              Este mês
+            </Button>
+            <Button
+              variant={periodoFilter === 'todos' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriodoFilter('todos')}
+              className="flex-1 sm:flex-none"
+            >
+              Ver tudo
+            </Button>
+          </div>
+          
           <Select value={periodoFilter} onValueChange={setPeriodoFilter}>
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Período" />
