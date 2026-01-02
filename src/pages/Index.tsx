@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Users, Settings, TrendingUp, CalendarDays, Menu, LogOut, User, BarChart3 } from 'lucide-react';
+import { Users, Settings, TrendingUp, CalendarDays, Menu, LogOut, User, BarChart3, Footprints } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
 import ConfiguracoesTab from '@/components/app/ConfiguracoesTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
 import DashboardTab from '@/components/app/DashboardTab';
+import SpasTab from '@/components/app/SpasTab';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'configuracoes';
+type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'spas' | 'configuracoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -38,7 +39,8 @@ const Index = () => {
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
     { id: 'calendario' as TabType, label: 'Calendário', icon: CalendarDays },
     { id: 'transacoes' as TabType, label: 'Transações', icon: TrendingUp },
-    { id: 'configuracoes' as TabType, label: 'Configurações', icon: Settings },
+    { id: 'spas' as TabType, label: 'Spa', icon: Footprints },
+    { id: 'configuracoes' as TabType, label: 'Config', icon: Settings },
   ];
 
   const renderTabContent = () => {
@@ -51,6 +53,8 @@ const Index = () => {
         return <CalendarioPage />;
       case 'transacoes':
         return <TransacoesTab />;
+      case 'spas':
+        return <SpasTab />;
       case 'configuracoes':
         return <ConfiguracoesTab />;
       default:
