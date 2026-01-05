@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet, Footprints } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,16 @@ interface Agendamento {
   forma_pagamento: string | null;
   created_at: string;
 }
+
+interface SpaSessao {
+  id: string;
+  data_sessao: string;
+  hora_sessao: string | null;
+  realizada: boolean;
+  cliente_nome: string;
+  assinatura_id: string;
+}
+
 const CalendarioPage = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -68,6 +78,7 @@ const CalendarioPage = () => {
     nome: string;
     ativa: boolean;
   }[]>([]);
+  const [spaSessoes, setSpaSessoes] = useState<SpaSessao[]>([]);
   
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -159,11 +170,46 @@ const CalendarioPage = () => {
       console.error('Erro ao buscar clientes:', error);
     }
   };
+  const fetchSpaSessoes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('spas_sessoes')
+        .select(`
+          id,
+          data_sessao,
+          hora_sessao,
+          realizada,
+          assinatura_id,
+          spas_assinaturas!inner (
+            cliente_id,
+            clientes!inner (nome)
+          )
+        `)
+        .order('hora_sessao');
+
+      if (error) throw error;
+
+      const sessoesFormatadas = (data || []).map((sessao: any) => ({
+        id: sessao.id,
+        data_sessao: sessao.data_sessao,
+        hora_sessao: sessao.hora_sessao,
+        realizada: sessao.realizada,
+        assinatura_id: sessao.assinatura_id,
+        cliente_nome: sessao.spas_assinaturas?.clientes?.nome || 'Cliente desconhecido'
+      }));
+
+      setSpaSessoes(sessoesFormatadas);
+    } catch (error) {
+      console.error('Erro ao buscar sessões de spa:', error);
+    }
+  };
+
   useEffect(() => {
     fetchAgendamentos();
     fetchServicos();
     fetchClientes();
     fetchFormasPagamento();
+    fetchSpaSessoes();
   }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -184,11 +230,49 @@ const CalendarioPage = () => {
     console.log('Comparando datas:', agendamentoDateStr, 'vs', selectedDateStr);
     return agendamentoDateStr === selectedDateStr;
   }) : [];
+
+  const spaSessoesDodia = selectedDate ? spaSessoes.filter(sessao => {
+    const sessaoDateStr = sessao.data_sessao;
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    return sessaoDateStr === selectedDateStr;
+  }) : [];
+
+  const marcarSessaoRealizada = async (sessaoId: string) => {
+    try {
+      const { error } = await supabase
+        .from('spas_sessoes')
+        .update({ realizada: true })
+        .eq('id', sessaoId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Sessão de Spa marcada como realizada!"
+      });
+
+      fetchSpaSessoes();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a sessão",
+        variant: "destructive"
+      });
+    }
+  };
+
   const hasAgendamentos = (date: Date) => {
-    return agendamentos.some(agendamento => {
+    const hasNormalAgendamentos = agendamentos.some(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
       return isSameDay(agendamentoDate, date);
     });
+    
+    const hasSpa = spaSessoes.some(sessao => {
+      const sessaoDate = new Date(sessao.data_sessao + 'T00:00:00');
+      return isSameDay(sessaoDate, date);
+    });
+    
+    return hasNormalAgendamentos || hasSpa;
   };
 
   const hasAgendamentosPast = (date: Date) => {
@@ -208,11 +292,19 @@ const CalendarioPage = () => {
     
     return compareDate >= today && hasAgendamentos(date);
   };
+
   const getAgendadosCount = (date: Date) => {
-    return agendamentos.filter(agendamento => {
+    const normalCount = agendamentos.filter(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
       return isSameDay(agendamentoDate, date);
     }).length;
+    
+    const spaCount = spaSessoes.filter(sessao => {
+      const sessaoDate = new Date(sessao.data_sessao + 'T00:00:00');
+      return isSameDay(sessaoDate, date);
+    }).length;
+    
+    return normalCount + spaCount;
   };
 
   // Gerar horários disponíveis
@@ -1147,8 +1239,42 @@ const CalendarioPage = () => {
                 </Card>
               )}
 
-              {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : (
+              {agendamentosDodia.length === 0 && spaSessoesDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : (
                 <div className="space-y-4">
+                {/* Sessões de Spa dos Pés */}
+                {spaSessoesDodia.map(sessao => (
+                  <div key={sessao.id} className="border border-purple-200 bg-purple-50/30 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Footprints className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <h4 className="font-medium">{sessao.cliente_nome}</h4>
+                          <p className="text-sm text-muted-foreground">Spa dos Pés</p>
+                        </div>
+                      </div>
+                      <Badge className={sessao.realizada ? 'bg-green-500' : 'bg-purple-500/10 text-purple-700 border-purple-200'}>
+                        {sessao.realizada ? 'Realizada' : 'Agendada'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center gap-1 text-sm mb-3">
+                      <Clock className="w-4 h-4" />
+                      <span>{sessao.hora_sessao ? sessao.hora_sessao.substring(0, 5) : 'Horário a definir'}</span>
+                    </div>
+                    
+                    {!sessao.realizada && (
+                      <Button
+                        size="sm"
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        onClick={() => marcarSessaoRealizada(sessao.id)}
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Marcar como Realizada
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                
                 {agendamentosDodia.map(agendamento => <div key={agendamento.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
