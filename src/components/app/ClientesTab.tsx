@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X, AlertCircle } from 'lucide-react';
+import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X, AlertCircle, Sparkles, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,16 @@ interface Agendamento {
   observacoes: string | null;
 }
 
+interface SpaAssinatura {
+  id: string;
+  cliente_id: string;
+  ativa: boolean;
+  proxima_sessao?: {
+    data_sessao: string;
+    hora_sessao: string | null;
+  };
+}
+
 const ClientesTab = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,6 +56,7 @@ const ClientesTab = () => {
   const [clienteAgendamentos, setClienteAgendamentos] = useState<{[key: string]: Agendamento[]}>({});
   const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
   const [historicoDialogOpen, setHistoricoDialogOpen] = useState(false);
+  const [spaAssinaturas, setSpaAssinaturas] = useState<{[key: string]: SpaAssinatura}>({});
   const { toast } = useToast();
 
   // Função para formatar telefone para exibição
@@ -62,7 +73,54 @@ const ClientesTab = () => {
   useEffect(() => {
     fetchClientes();
     fetchAgendamentos();
+    fetchSpaAssinaturas();
   }, []);
+
+  const fetchSpaAssinaturas = async () => {
+    try {
+      // Buscar assinaturas ativas
+      const { data: assinaturas, error: assinaturaError } = await supabase
+        .from('spas_assinaturas')
+        .select('id, cliente_id, ativa')
+        .eq('ativa', true);
+
+      if (assinaturaError) throw assinaturaError;
+
+      if (!assinaturas || assinaturas.length === 0) {
+        setSpaAssinaturas({});
+        return;
+      }
+
+      // Buscar próximas sessões não realizadas
+      const hoje = new Date().toISOString().split('T')[0];
+      const { data: sessoes, error: sessoesError } = await supabase
+        .from('spas_sessoes')
+        .select('assinatura_id, data_sessao, hora_sessao')
+        .in('assinatura_id', assinaturas.map(a => a.id))
+        .eq('realizada', false)
+        .gte('data_sessao', hoje)
+        .order('data_sessao', { ascending: true });
+
+      if (sessoesError) throw sessoesError;
+
+      // Mapear assinaturas por cliente_id com próxima sessão
+      const assinaturasMap: {[key: string]: SpaAssinatura} = {};
+      assinaturas.forEach(assinatura => {
+        const proximaSessao = sessoes?.find(s => s.assinatura_id === assinatura.id);
+        assinaturasMap[assinatura.cliente_id] = {
+          ...assinatura,
+          proxima_sessao: proximaSessao ? {
+            data_sessao: proximaSessao.data_sessao,
+            hora_sessao: proximaSessao.hora_sessao
+          } : undefined
+        };
+      });
+
+      setSpaAssinaturas(assinaturasMap);
+    } catch (error) {
+      // Silently handle spa loading errors
+    }
+  };
 
   const fetchClientes = async () => {
     try {
@@ -437,8 +495,14 @@ const ClientesTab = () => {
                     {/* Cabeçalho */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-foreground">{cliente.nome}</h3>
+                          {spaAssinaturas[cliente.id] && (
+                            <Badge className="bg-purple-500/10 text-purple-700 border-purple-200">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              Spa dos Pés
+                            </Badge>
+                          )}
                           {direitoGratis && (
                             <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-200">
                               <Gift className="h-3 w-3 mr-1" />
@@ -446,6 +510,14 @@ const ClientesTab = () => {
                             </Badge>
                           )}
                         </div>
+                        {spaAssinaturas[cliente.id]?.proxima_sessao && (
+                          <div className="flex items-center text-purple-600 text-xs mt-1">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Próxima sessão: {formatDate(spaAssinaturas[cliente.id].proxima_sessao!.data_sessao)}
+                            {spaAssinaturas[cliente.id].proxima_sessao!.hora_sessao && 
+                              ` às ${spaAssinaturas[cliente.id].proxima_sessao!.hora_sessao.slice(0, 5)}`}
+                          </div>
+                        )}
                         <div className="flex items-center text-muted-foreground text-sm mt-1">
                           <Phone className="h-3 w-3 mr-1" />
                           <span>{formatPhoneForDisplay(cliente.telefone)}</span>
