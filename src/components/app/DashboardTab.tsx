@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, TrendingDown, CalendarCheck, CalendarClock } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, TrendingDown, CalendarCheck, CalendarClock, Footprints } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,15 @@ interface Transacao {
   data_transacao: string;
 }
 
+interface SpaSessao {
+  id: string;
+  data_sessao: string;
+  hora_sessao: string | null;
+  realizada: boolean;
+  cliente_nome: string;
+  assinatura_id: string;
+}
+
 const DashboardTab = () => {
   const [totalClientes, setTotalClientes] = useState(0);
   const [agendamentosHoje, setAgendamentosHoje] = useState<Agendamento[]>([]);
@@ -42,6 +51,8 @@ const DashboardTab = () => {
   const [loading, setLoading] = useState(true);
   const [formaPagamentoDialogOpen, setFormaPagamentoDialogOpen] = useState(false);
   const [agendamentoConcluindo, setAgendamentoConcluindo] = useState<string | null>(null);
+  const [spaSessoesHoje, setSpaSessoesHoje] = useState<SpaSessao[]>([]);
+  const [spaSessoesAmanha, setSpaSessoesAmanha] = useState<SpaSessao[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -126,6 +137,38 @@ const DashboardTab = () => {
       const receitaMensal = (transacoesMes as Transacao[])?.reduce((acc, t) => acc + t.valor, 0) || 0;
       setReceitaMes(receitaMensal);
 
+      // Sessões de Spa dos Pés de hoje e amanhã
+      const { data: spaSessoes, error: spaSessoesError } = await supabase
+        .from('spas_sessoes')
+        .select(`
+          id,
+          data_sessao,
+          hora_sessao,
+          realizada,
+          assinatura_id,
+          spas_assinaturas!inner (
+            cliente_id,
+            clientes!inner (nome)
+          )
+        `)
+        .in('data_sessao', [hoje, amanha])
+        .eq('realizada', false)
+        .order('hora_sessao');
+
+      if (spaSessoesError) throw spaSessoesError;
+
+      const sessoesFormatadas = (spaSessoes || []).map((sessao: any) => ({
+        id: sessao.id,
+        data_sessao: sessao.data_sessao,
+        hora_sessao: sessao.hora_sessao,
+        realizada: sessao.realizada,
+        assinatura_id: sessao.assinatura_id,
+        cliente_nome: sessao.spas_assinaturas?.clientes?.nome || 'Cliente desconhecido'
+      }));
+
+      setSpaSessoesHoje(sessoesFormatadas.filter(s => s.data_sessao === hoje));
+      setSpaSessoesAmanha(sessoesFormatadas.filter(s => s.data_sessao === amanha));
+
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
       toast({
@@ -148,6 +191,30 @@ const DashboardTab = () => {
         return 'bg-red-500/10 text-red-700 border-red-200';
       default:
         return 'bg-gray-500/10 text-gray-700 border-gray-200';
+    }
+  };
+
+  const marcarSessaoRealizada = async (sessaoId: string) => {
+    try {
+      const { error } = await supabase
+        .from('spas_sessoes')
+        .update({ realizada: true })
+        .eq('id', sessaoId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Sessão de Spa marcada como realizada!"
+      });
+
+      fetchDashboardData();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a sessão",
+        variant: "destructive"
+      });
     }
   };
 
@@ -276,12 +343,44 @@ const DashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {agendamentosHoje.length === 0 ? (
+            {agendamentosHoje.length === 0 && spaSessoesHoje.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 Nenhum agendamento para hoje
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Sessões de Spa dos Pés de hoje primeiro */}
+                {spaSessoesHoje.map((sessao) => (
+                  <Card key={sessao.id} className="mobile-card border-purple-200 bg-purple-50/30">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Footprints className="h-4 w-4 text-purple-600" />
+                              <span className="font-semibold text-base">{sessao.cliente_nome}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {sessao.hora_sessao ? sessao.hora_sessao.substring(0, 5) : 'Horário a definir'}
+                            </div>
+                          </div>
+                          <Badge className="bg-purple-500/10 text-purple-700 border-purple-200">
+                            Spa dos Pés
+                          </Badge>
+                        </div>
+                        
+                        <Button
+                          size="sm"
+                          className="w-full mobile-button bg-purple-600 hover:bg-purple-700"
+                          onClick={() => marcarSessaoRealizada(sessao.id)}
+                        >
+                          Marcar como Realizada
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
                 {agendamentosHoje.map((agendamento) => {
                   // Calcular duração total e horário de fim
                   const procedimentos = agendamento.agendamento_procedimentos || [];
@@ -359,12 +458,36 @@ const DashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {agendamentosAmanha.length === 0 ? (
+            {agendamentosAmanha.length === 0 && spaSessoesAmanha.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 Nenhum agendamento para amanhã
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Sessões de Spa dos Pés de amanhã primeiro */}
+                {spaSessoesAmanha.map((sessao) => (
+                  <Card key={sessao.id} className="mobile-card border-purple-200 bg-purple-50/30">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Footprints className="h-4 w-4 text-purple-600" />
+                              <span className="font-semibold text-base">{sessao.cliente_nome}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {sessao.hora_sessao ? sessao.hora_sessao.substring(0, 5) : 'Horário a definir'}
+                            </div>
+                          </div>
+                          <Badge className="bg-purple-500/10 text-purple-700 border-purple-200">
+                            Spa dos Pés
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
                 {agendamentosAmanha.map((agendamento) => {
                   // Calcular duração total e horário de fim
                   const procedimentos = agendamento.agendamento_procedimentos || [];
