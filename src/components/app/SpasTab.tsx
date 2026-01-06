@@ -24,7 +24,10 @@ import {
   Edit,
   Trash2,
   Phone,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  Power,
+  PowerOff
 } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, isWithinInterval, parseISO, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,6 +38,15 @@ interface Cliente {
   telefone: string;
 }
 
+interface Procedimento {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  duracao_minutos: number | null;
+  valor: number | null;
+  ativo: boolean;
+}
+
 interface Assinatura {
   id: string;
   cliente_id: string;
@@ -43,7 +55,9 @@ interface Assinatura {
   valor_mensal: number;
   ativa: boolean;
   observacoes: string | null;
+  procedimento_id: string | null;
   cliente?: Cliente;
+  procedimento?: Procedimento;
 }
 
 interface Sessao {
@@ -79,19 +93,29 @@ const SpasTab = () => {
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [formasPagamento, setFormasPagamento] = useState<{nome: string}[]>([]);
+  const [procedimentos, setProcedimentos] = useState<Procedimento[]>([]);
   
   // Dialogs
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sessaoDialogOpen, setSessaoDialogOpen] = useState(false);
   const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false);
   const [historicoDialogOpen, setHistoricoDialogOpen] = useState(false);
+  const [procedimentoDialogOpen, setProcedimentoDialogOpen] = useState(false);
   
   // Forms
   const [selectedCliente, setSelectedCliente] = useState<string>('');
   const [valorMensal, setValorMensal] = useState('');
   const [diaPagamento, setDiaPagamento] = useState('1');
   const [observacoes, setObservacoes] = useState('');
+  const [selectedProcedimento, setSelectedProcedimento] = useState<string>('');
   const [editingAssinatura, setEditingAssinatura] = useState<Assinatura | null>(null);
+  
+  // Procedimento form
+  const [nomeProcedimento, setNomeProcedimento] = useState('');
+  const [descricaoProcedimento, setDescricaoProcedimento] = useState('');
+  const [duracaoProcedimento, setDuracaoProcedimento] = useState('');
+  const [valorProcedimento, setValorProcedimento] = useState('');
+  const [editingProcedimento, setEditingProcedimento] = useState<Procedimento | null>(null);
   
   // Sessão form
   const [selectedAssinatura, setSelectedAssinatura] = useState<string>('');
@@ -142,12 +166,19 @@ const SpasTab = () => {
         .from('formas_pagamento')
         .select('nome')
         .eq('ativa', true);
+      
+      // Fetch procedimentos
+      const { data: procedimentosData } = await supabase
+        .from('spas_procedimentos')
+        .select('*')
+        .order('nome');
 
       if (clientesData) setClientes(clientesData);
       if (assinaturasData) setAssinaturas(assinaturasData);
       if (sessoesData) setSessoes(sessoesData);
       if (pagamentosData) setPagamentos(pagamentosData);
       if (formasData) setFormasPagamento(formasData);
+      if (procedimentosData) setProcedimentos(procedimentosData);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -156,10 +187,24 @@ const SpasTab = () => {
   };
 
   const getClienteById = (id: string) => clientes.find(c => c.id === id);
+  const getProcedimentoById = (id: string) => procedimentos.find(p => p.id === id);
 
   const clientesNoSpa = assinaturas
     .filter(a => a.ativa)
-    .map(a => ({ ...a, cliente: getClienteById(a.cliente_id) }))
+    .map(a => ({ 
+      ...a, 
+      cliente: getClienteById(a.cliente_id),
+      procedimento: a.procedimento_id ? getProcedimentoById(a.procedimento_id) : undefined
+    }))
+    .filter(a => a.cliente);
+    
+  const clientesInativos = assinaturas
+    .filter(a => !a.ativa)
+    .map(a => ({ 
+      ...a, 
+      cliente: getClienteById(a.cliente_id),
+      procedimento: a.procedimento_id ? getProcedimentoById(a.procedimento_id) : undefined
+    }))
     .filter(a => a.cliente);
 
   const clientesDisponiveis = clientes.filter(
@@ -204,6 +249,7 @@ const SpasTab = () => {
           valor_mensal: parseFloat(valorMensal),
           dia_pagamento: parseInt(diaPagamento),
           observacoes: observacoes || null,
+          procedimento_id: selectedProcedimento || null,
         });
 
       if (error) throw error;
@@ -227,6 +273,7 @@ const SpasTab = () => {
           valor_mensal: parseFloat(valorMensal),
           dia_pagamento: parseInt(diaPagamento),
           observacoes: observacoes || null,
+          procedimento_id: selectedProcedimento || null,
         })
         .eq('id', editingAssinatura.id);
 
@@ -257,6 +304,126 @@ const SpasTab = () => {
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     }
+  };
+
+  const handleAtivarAssinatura = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('spas_assinaturas')
+        .update({ ativa: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({ title: 'Sucesso', description: 'Assinatura reativada!' });
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  // Procedimentos CRUD
+  const handleAddProcedimento = async () => {
+    if (!nomeProcedimento) {
+      toast({ title: 'Erro', description: 'Nome do procedimento é obrigatório.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('spas_procedimentos')
+        .insert({
+          nome: nomeProcedimento,
+          descricao: descricaoProcedimento || null,
+          duracao_minutos: duracaoProcedimento ? parseInt(duracaoProcedimento) : null,
+          valor: valorProcedimento ? parseFloat(valorProcedimento) : null,
+        });
+
+      if (error) throw error;
+
+      toast({ title: 'Sucesso', description: 'Procedimento adicionado!' });
+      resetProcedimentoForm();
+      setProcedimentoDialogOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateProcedimento = async () => {
+    if (!editingProcedimento) return;
+
+    try {
+      const { error } = await supabase
+        .from('spas_procedimentos')
+        .update({
+          nome: nomeProcedimento,
+          descricao: descricaoProcedimento || null,
+          duracao_minutos: duracaoProcedimento ? parseInt(duracaoProcedimento) : null,
+          valor: valorProcedimento ? parseFloat(valorProcedimento) : null,
+        })
+        .eq('id', editingProcedimento.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Sucesso', description: 'Procedimento atualizado!' });
+      resetProcedimentoForm();
+      setProcedimentoDialogOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleToggleProcedimento = async (procedimento: Procedimento) => {
+    try {
+      const { error } = await supabase
+        .from('spas_procedimentos')
+        .update({ ativo: !procedimento.ativo })
+        .eq('id', procedimento.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Sucesso', description: procedimento.ativo ? 'Procedimento desativado.' : 'Procedimento ativado.' });
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteProcedimento = async (id: string) => {
+    if (!confirm('Deseja realmente excluir este procedimento?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('spas_procedimentos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({ title: 'Sucesso', description: 'Procedimento excluído.' });
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleEditProcedimento = (procedimento: Procedimento) => {
+    setEditingProcedimento(procedimento);
+    setNomeProcedimento(procedimento.nome);
+    setDescricaoProcedimento(procedimento.descricao || '');
+    setDuracaoProcedimento(procedimento.duracao_minutos?.toString() || '');
+    setValorProcedimento(procedimento.valor?.toString() || '');
+    setProcedimentoDialogOpen(true);
+  };
+
+  const resetProcedimentoForm = () => {
+    setNomeProcedimento('');
+    setDescricaoProcedimento('');
+    setDuracaoProcedimento('');
+    setValorProcedimento('');
+    setEditingProcedimento(null);
   };
 
   const handleAddSessao = async () => {
@@ -339,6 +506,7 @@ const SpasTab = () => {
     setValorMensal(assinatura.valor_mensal.toString());
     setDiaPagamento(assinatura.dia_pagamento.toString());
     setObservacoes(assinatura.observacoes || '');
+    setSelectedProcedimento(assinatura.procedimento_id || '');
     setDialogOpen(true);
   };
 
@@ -347,6 +515,7 @@ const SpasTab = () => {
     setValorMensal('');
     setDiaPagamento('1');
     setObservacoes('');
+    setSelectedProcedimento('');
     setEditingAssinatura(null);
   };
 
@@ -392,7 +561,7 @@ const SpasTab = () => {
       </div>
 
       <Tabs value={subTab} onValueChange={setSubTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="clientes" className="flex items-center gap-1">
             <Users size={14} />
             <span className="hidden sm:inline">Clientes</span>
@@ -408,6 +577,10 @@ const SpasTab = () => {
           <TabsTrigger value="historico" className="flex items-center gap-1">
             <History size={14} />
             <span className="hidden sm:inline">Histórico</span>
+          </TabsTrigger>
+          <TabsTrigger value="procedimentos" className="flex items-center gap-1">
+            <Settings size={14} />
+            <span className="hidden sm:inline">Procedimentos</span>
           </TabsTrigger>
         </TabsList>
 
@@ -483,6 +656,21 @@ const SpasTab = () => {
                     </Select>
                   </div>
                   <div>
+                    <Label>Procedimento</Label>
+                    <Select value={selectedProcedimento} onValueChange={setSelectedProcedimento}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um procedimento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {procedimentos.filter(p => p.ativo).map((proc) => (
+                          <SelectItem key={proc.id} value={proc.id}>
+                            {proc.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label>Observações</Label>
                     <Input
                       value={observacoes}
@@ -527,6 +715,11 @@ const SpasTab = () => {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">{assinatura.cliente?.telefone}</p>
+                          {assinatura.procedimento && (
+                            <Badge variant="default" className="mt-1 bg-purple-600">
+                              {assinatura.procedimento.nome}
+                            </Badge>
+                          )}
                           <div className="flex flex-wrap gap-2 mt-2">
                             <Badge variant="outline">
                               R$ {assinatura.valor_mensal.toFixed(2)}/mês
@@ -575,8 +768,9 @@ const SpasTab = () => {
                             size="icon"
                             className="text-destructive"
                             onClick={() => handleDesativarAssinatura(assinatura.id)}
+                            title="Desativar"
                           >
-                            <Trash2 size={16} />
+                            <PowerOff size={16} />
                           </Button>
                         </div>
                       </div>
@@ -584,6 +778,43 @@ const SpasTab = () => {
                   </Card>
                 );
               })}
+              
+              {/* Clientes Inativos */}
+              {clientesInativos.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 mt-4">
+                    <h4 className="text-sm font-medium text-muted-foreground">Clientes Inativos</h4>
+                    <Badge variant="outline" className="text-xs">{clientesInativos.length}</Badge>
+                  </div>
+                  {clientesInativos.map((assinatura) => (
+                    <Card key={assinatura.id} className="opacity-60">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">{assinatura.cliente?.nome}</h3>
+                              <Badge variant="outline" className="text-xs">Inativo</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{assinatura.cliente?.telefone}</p>
+                            {assinatura.procedimento && (
+                              <p className="text-sm text-muted-foreground">{assinatura.procedimento.nome}</p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAtivarAssinatura(assinatura.id)}
+                            className="gap-1"
+                          >
+                            <Power size={14} />
+                            Reativar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </TabsContent>
@@ -914,6 +1145,138 @@ const SpasTab = () => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Procedimentos Tab */}
+        <TabsContent value="procedimentos" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold">Procedimentos de Spa</h3>
+            <Dialog open={procedimentoDialogOpen} onOpenChange={(open) => { 
+              setProcedimentoDialogOpen(open); 
+              if (!open) resetProcedimentoForm(); 
+            }}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-2">
+                  <Plus size={16} />
+                  Novo Procedimento
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingProcedimento ? 'Editar Procedimento' : 'Novo Procedimento'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Nome *</Label>
+                    <Input
+                      value={nomeProcedimento}
+                      onChange={(e) => setNomeProcedimento(e.target.value)}
+                      placeholder="Ex: Spa Relaxante"
+                    />
+                  </div>
+                  <div>
+                    <Label>Descrição</Label>
+                    <Input
+                      value={descricaoProcedimento}
+                      onChange={(e) => setDescricaoProcedimento(e.target.value)}
+                      placeholder="Descrição do procedimento..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Duração (minutos)</Label>
+                      <Input
+                        type="number"
+                        value={duracaoProcedimento}
+                        onChange={(e) => setDuracaoProcedimento(e.target.value)}
+                        placeholder="Ex: 60"
+                      />
+                    </div>
+                    <div>
+                      <Label>Valor (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={valorProcedimento}
+                        onChange={(e) => setValorProcedimento(e.target.value)}
+                        placeholder="Ex: 150.00"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={editingProcedimento ? handleUpdateProcedimento : handleAddProcedimento} 
+                    className="w-full"
+                  >
+                    {editingProcedimento ? 'Salvar Alterações' : 'Adicionar Procedimento'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {procedimentos.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <Settings className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Nenhum procedimento cadastrado.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3">
+              {procedimentos.map((procedimento) => (
+                <Card key={procedimento.id} className={!procedimento.ativo ? 'opacity-60' : ''}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{procedimento.nome}</h4>
+                          {!procedimento.ativo && (
+                            <Badge variant="outline" className="text-xs">Inativo</Badge>
+                          )}
+                        </div>
+                        {procedimento.descricao && (
+                          <p className="text-sm text-muted-foreground">{procedimento.descricao}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {procedimento.duracao_minutos && (
+                            <Badge variant="outline">{procedimento.duracao_minutos} min</Badge>
+                          )}
+                          {procedimento.valor && (
+                            <Badge variant="outline">R$ {procedimento.valor.toFixed(2)}</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditProcedimento(procedimento)}
+                        >
+                          <Edit size={16} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleToggleProcedimento(procedimento)}
+                          title={procedimento.ativo ? 'Desativar' : 'Ativar'}
+                        >
+                          {procedimento.ativo ? <PowerOff size={16} /> : <Power size={16} />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => handleDeleteProcedimento(procedimento.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </TabsContent>
