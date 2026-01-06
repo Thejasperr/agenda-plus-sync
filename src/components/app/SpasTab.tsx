@@ -189,17 +189,8 @@ const SpasTab = () => {
   const getClienteById = (id: string) => clientes.find(c => c.id === id);
   const getProcedimentoById = (id: string) => procedimentos.find(p => p.id === id);
 
-  const clientesNoSpa = assinaturas
-    .filter(a => a.ativa)
-    .map(a => ({ 
-      ...a, 
-      cliente: getClienteById(a.cliente_id),
-      procedimento: a.procedimento_id ? getProcedimentoById(a.procedimento_id) : undefined
-    }))
-    .filter(a => a.cliente);
-    
-  const clientesInativos = assinaturas
-    .filter(a => !a.ativa)
+  // Todos os clientes com assinatura (ativos e inativos)
+  const todosClientesSpa = assinaturas
     .map(a => ({ 
       ...a, 
       cliente: getClienteById(a.cliente_id),
@@ -207,8 +198,11 @@ const SpasTab = () => {
     }))
     .filter(a => a.cliente);
 
+  // Apenas clientes ativos para usar em seleções (sessões, pagamentos)
+  const clientesNoSpa = todosClientesSpa.filter(a => a.ativa);
+
   const clientesDisponiveis = clientes.filter(
-    c => !assinaturas.some(a => a.cliente_id === c.id && a.ativa)
+    c => !assinaturas.some(a => a.cliente_id === c.id)
   );
 
   const getProximaSessao = (assinaturaId: string): Date | null => {
@@ -541,7 +535,7 @@ const SpasTab = () => {
     .filter(s => s.assinatura)
     .sort((a, b) => parseISO(a.data_sessao).getTime() - parseISO(b.data_sessao).getTime());
 
-  const filteredClientes = clientesNoSpa.filter(a =>
+  const filteredClientes = todosClientesSpa.filter(a =>
     a.cliente?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.cliente?.telefone.includes(searchTerm)
   );
@@ -700,19 +694,23 @@ const SpasTab = () => {
           ) : (
             <div className="grid gap-3">
               {filteredClientes.map((assinatura) => {
-                const proximaSessao = getProximaSessao(assinatura.id);
-                const sessoesNoMes = getSessoesRealizadasMes(assinatura.id);
+                const proximaSessao = assinatura.ativa ? getProximaSessao(assinatura.id) : null;
+                const sessoesNoMes = assinatura.ativa ? getSessoesRealizadasMes(assinatura.id) : 0;
                 
                 return (
-                  <Card key={assinatura.id}>
+                  <Card key={assinatura.id} className={!assinatura.ativa ? 'opacity-60' : ''}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold">{assinatura.cliente?.nome}</h3>
-                            <Badge variant="secondary" className="text-xs">
-                              {sessoesNoMes}/4 sessões
-                            </Badge>
+                            {assinatura.ativa ? (
+                              <Badge variant="secondary" className="text-xs">
+                                {sessoesNoMes}/4 sessões
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">Inativo</Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">{assinatura.cliente?.telefone}</p>
                           {assinatura.procedimento && (
@@ -763,58 +761,33 @@ const SpasTab = () => {
                           >
                             <History size={16} />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() => handleDesativarAssinatura(assinatura.id)}
-                            title="Desativar"
-                          >
-                            <PowerOff size={16} />
-                          </Button>
+                          {assinatura.ativa ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              onClick={() => handleDesativarAssinatura(assinatura.id)}
+                              title="Desativar"
+                            >
+                              <PowerOff size={16} />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-green-600"
+                              onClick={() => handleAtivarAssinatura(assinatura.id)}
+                              title="Reativar"
+                            >
+                              <Power size={16} />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 );
               })}
-              
-              {/* Clientes Inativos */}
-              {clientesInativos.length > 0 && (
-                <>
-                  <div className="flex items-center gap-2 mt-4">
-                    <h4 className="text-sm font-medium text-muted-foreground">Clientes Inativos</h4>
-                    <Badge variant="outline" className="text-xs">{clientesInativos.length}</Badge>
-                  </div>
-                  {clientesInativos.map((assinatura) => (
-                    <Card key={assinatura.id} className="opacity-60">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{assinatura.cliente?.nome}</h3>
-                              <Badge variant="outline" className="text-xs">Inativo</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{assinatura.cliente?.telefone}</p>
-                            {assinatura.procedimento && (
-                              <p className="text-sm text-muted-foreground">{assinatura.procedimento.nome}</p>
-                            )}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAtivarAssinatura(assinatura.id)}
-                            className="gap-1"
-                          >
-                            <Power size={14} />
-                            Reativar
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </>
-              )}
             </div>
           )}
         </TabsContent>
