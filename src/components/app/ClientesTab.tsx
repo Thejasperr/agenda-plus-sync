@@ -39,6 +39,7 @@ interface SpaAssinatura {
   id: string;
   cliente_id: string;
   ativa: boolean;
+  procedimento_nome?: string;
   proxima_sessao?: {
     data_sessao: string;
     hora_sessao: string | null;
@@ -78,10 +79,10 @@ const ClientesTab = () => {
 
   const fetchSpaAssinaturas = async () => {
     try {
-      // Buscar assinaturas ativas
+      // Buscar assinaturas ativas com procedimento
       const { data: assinaturas, error: assinaturaError } = await supabase
         .from('spas_assinaturas')
-        .select('id, cliente_id, ativa')
+        .select('id, cliente_id, ativa, procedimento_id')
         .eq('ativa', true);
 
       if (assinaturaError) throw assinaturaError;
@@ -89,6 +90,25 @@ const ClientesTab = () => {
       if (!assinaturas || assinaturas.length === 0) {
         setSpaAssinaturas({});
         return;
+      }
+      
+      // Buscar procedimentos
+      const procedimentoIds = assinaturas
+        .filter(a => a.procedimento_id)
+        .map(a => a.procedimento_id);
+      
+      let procedimentosMap: {[key: string]: string} = {};
+      if (procedimentoIds.length > 0) {
+        const { data: procedimentos } = await supabase
+          .from('spas_procedimentos')
+          .select('id, nome')
+          .in('id', procedimentoIds);
+        
+        if (procedimentos) {
+          procedimentos.forEach(p => {
+            procedimentosMap[p.id] = p.nome;
+          });
+        }
       }
 
       // Buscar próximas sessões não realizadas
@@ -108,7 +128,10 @@ const ClientesTab = () => {
       assinaturas.forEach(assinatura => {
         const proximaSessao = sessoes?.find(s => s.assinatura_id === assinatura.id);
         assinaturasMap[assinatura.cliente_id] = {
-          ...assinatura,
+          id: assinatura.id,
+          cliente_id: assinatura.cliente_id,
+          ativa: assinatura.ativa,
+          procedimento_nome: assinatura.procedimento_id ? procedimentosMap[assinatura.procedimento_id] : undefined,
           proxima_sessao: proximaSessao ? {
             data_sessao: proximaSessao.data_sessao,
             hora_sessao: proximaSessao.hora_sessao
@@ -500,7 +523,7 @@ const ClientesTab = () => {
                           {spaAssinaturas[cliente.id] && (
                             <Badge className="bg-purple-500/10 text-purple-700 border-purple-200">
                               <Sparkles className="h-3 w-3 mr-1" />
-                              Spa dos Pés
+                              {spaAssinaturas[cliente.id].procedimento_nome || 'Spa dos Pés'}
                             </Badge>
                           )}
                           {direitoGratis && (

@@ -328,6 +328,7 @@ export type Database = {
           dia_pagamento: number
           id: string
           observacoes: string | null
+          procedimento_id: string | null
           updated_at: string
           user_id: string | null
           valor_mensal: number
@@ -340,6 +341,7 @@ export type Database = {
           dia_pagamento?: number
           id?: string
           observacoes?: string | null
+          procedimento_id?: string | null
           updated_at?: string
           user_id?: string | null
           valor_mensal: number
@@ -352,6 +354,7 @@ export type Database = {
           dia_pagamento?: number
           id?: string
           observacoes?: string | null
+          procedimento_id?: string | null
           updated_at?: string
           user_id?: string | null
           valor_mensal?: number
@@ -362,6 +365,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spas_assinaturas_procedimento_id_fkey"
+            columns: ["procedimento_id"]
+            isOneToOne: false
+            referencedRelation: "spas_procedimentos"
             referencedColumns: ["id"]
           },
         ]
@@ -415,6 +425,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      spas_procedimentos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          duracao_minutos: number | null
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string | null
+          valor: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          duracao_minutos?: number | null
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id?: string | null
+          valor?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          duracao_minutos?: number | null
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string | null
+          valor?: number | null
+        }
+        Relationships: []
       }
       spas_sessoes: {
         Row: {
