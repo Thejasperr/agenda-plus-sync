@@ -289,8 +289,81 @@ export type Database = {
         }
         Relationships: []
       }
+      pacote_servicos: {
+        Row: {
+          created_at: string
+          id: string
+          pacote_id: string
+          servico_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pacote_id: string
+          servico_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pacote_id?: string
+          servico_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pacote_servicos_pacote_id_fkey"
+            columns: ["pacote_id"]
+            isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pacote_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pacotes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string | null
+          valor_total: number
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id?: string | null
+          valor_total: number
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string | null
+          valor_total?: number
+        }
+        Relationships: []
+      }
       servicos: {
         Row: {
+          categoria: string
           created_at: string
           duracao_minutos: number | null
           id: string
@@ -300,6 +373,7 @@ export type Database = {
           valor: number
         }
         Insert: {
+          categoria?: string
           created_at?: string
           duracao_minutos?: number | null
           id?: string
@@ -309,6 +383,7 @@ export type Database = {
           valor: number
         }
         Update: {
+          categoria?: string
           created_at?: string
           duracao_minutos?: number | null
           id?: string
