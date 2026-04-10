@@ -1155,41 +1155,8 @@ const CalendarioPage = () => {
                 </Card>
               )}
 
-              {agendamentosDodia.length === 0 && spaSessoesDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : (
+              {agendamentosDodia.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhum agendamento para este dia</p> : (
                 <div className="space-y-4">
-                {/* Sessões de Spa dos Pés */}
-                {spaSessoesDodia.map(sessao => (
-                  <div key={sessao.id} className="border border-purple-200 bg-purple-50/30 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Footprints className="h-5 w-5 text-purple-600" />
-                        <div>
-                          <h4 className="font-medium">{sessao.cliente_nome}</h4>
-                          <p className="text-sm text-muted-foreground">Spa dos Pés</p>
-                        </div>
-                      </div>
-                      <Badge className={sessao.realizada ? 'bg-green-500' : 'bg-purple-500/10 text-purple-700 border-purple-200'}>
-                        {sessao.realizada ? 'Realizada' : 'Agendada'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center gap-1 text-sm mb-3">
-                      <Clock className="w-4 h-4" />
-                      <span>{sessao.hora_sessao ? sessao.hora_sessao.substring(0, 5) : 'Horário a definir'}</span>
-                    </div>
-                    
-                    {!sessao.realizada && (
-                      <Button
-                        size="sm"
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                        onClick={() => marcarSessaoRealizada(sessao.id)}
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        Marcar como Realizada
-                      </Button>
-                    )}
-                  </div>
-                ))}
                 
                 {agendamentosDodia.map(agendamento => <div key={agendamento.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
