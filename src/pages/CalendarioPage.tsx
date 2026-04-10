@@ -192,17 +192,10 @@ const CalendarioPage = () => {
 
 
   const hasAgendamentos = (date: Date) => {
-    const hasNormalAgendamentos = agendamentos.some(agendamento => {
+    return agendamentos.some(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
       return isSameDay(agendamentoDate, date);
     });
-    
-    const hasSpa = spaSessoes.some(sessao => {
-      const sessaoDate = new Date(sessao.data_sessao + 'T00:00:00');
-      return isSameDay(sessaoDate, date);
-    });
-    
-    return hasNormalAgendamentos || hasSpa;
   };
 
   const hasAgendamentosPast = (date: Date) => {
@@ -224,17 +217,10 @@ const CalendarioPage = () => {
   };
 
   const getAgendadosCount = (date: Date) => {
-    const normalCount = agendamentos.filter(agendamento => {
+    return agendamentos.filter(agendamento => {
       const agendamentoDate = new Date(agendamento.data_agendamento + 'T00:00:00');
       return isSameDay(agendamentoDate, date);
     }).length;
-    
-    const spaCount = spaSessoes.filter(sessao => {
-      const sessaoDate = new Date(sessao.data_sessao + 'T00:00:00');
-      return isSameDay(sessaoDate, date);
-    }).length;
-    
-    return normalCount + spaCount;
   };
 
   // Gerar horários disponíveis
