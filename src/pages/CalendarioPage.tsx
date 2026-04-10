@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet, Footprints } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,14 +39,6 @@ interface Agendamento {
   created_at: string;
 }
 
-interface SpaSessao {
-  id: string;
-  data_sessao: string;
-  hora_sessao: string | null;
-  realizada: boolean;
-  cliente_nome: string;
-  assinatura_id: string;
-}
 
 const CalendarioPage = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
@@ -78,7 +70,7 @@ const CalendarioPage = () => {
     nome: string;
     ativa: boolean;
   }[]>([]);
-  const [spaSessoes, setSpaSessoes] = useState<SpaSessao[]>([]);
+  
   
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -170,46 +162,12 @@ const CalendarioPage = () => {
       console.error('Erro ao buscar clientes:', error);
     }
   };
-  const fetchSpaSessoes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('spas_sessoes')
-        .select(`
-          id,
-          data_sessao,
-          hora_sessao,
-          realizada,
-          assinatura_id,
-          spas_assinaturas!inner (
-            cliente_id,
-            clientes!inner (nome)
-          )
-        `)
-        .order('hora_sessao');
-
-      if (error) throw error;
-
-      const sessoesFormatadas = (data || []).map((sessao: any) => ({
-        id: sessao.id,
-        data_sessao: sessao.data_sessao,
-        hora_sessao: sessao.hora_sessao,
-        realizada: sessao.realizada,
-        assinatura_id: sessao.assinatura_id,
-        cliente_nome: sessao.spas_assinaturas?.clientes?.nome || 'Cliente desconhecido'
-      }));
-
-      setSpaSessoes(sessoesFormatadas);
-    } catch (error) {
-      console.error('Erro ao buscar sessões de spa:', error);
-    }
-  };
 
   useEffect(() => {
     fetchAgendamentos();
     fetchServicos();
     fetchClientes();
     fetchFormasPagamento();
-    fetchSpaSessoes();
   }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -231,35 +189,7 @@ const CalendarioPage = () => {
     return agendamentoDateStr === selectedDateStr;
   }) : [];
 
-  const spaSessoesDodia = selectedDate ? spaSessoes.filter(sessao => {
-    const sessaoDateStr = sessao.data_sessao;
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    return sessaoDateStr === selectedDateStr;
-  }) : [];
 
-  const marcarSessaoRealizada = async (sessaoId: string) => {
-    try {
-      const { error } = await supabase
-        .from('spas_sessoes')
-        .update({ realizada: true })
-        .eq('id', sessaoId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Sessão de Spa marcada como realizada!"
-      });
-
-      fetchSpaSessoes();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar a sessão",
-        variant: "destructive"
-      });
-    }
-  };
 
   const hasAgendamentos = (date: Date) => {
     const hasNormalAgendamentos = agendamentos.some(agendamento => {
