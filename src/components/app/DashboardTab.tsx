@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, TrendingDown, CalendarCheck, CalendarClock, Footprints } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, TrendingDown, CalendarCheck, CalendarClock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isSameDay } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
@@ -31,15 +31,6 @@ interface Transacao {
   data_transacao: string;
 }
 
-interface SpaSessao {
-  id: string;
-  data_sessao: string;
-  hora_sessao: string | null;
-  realizada: boolean;
-  cliente_nome: string;
-  assinatura_id: string;
-}
-
 const DashboardTab = () => {
   const [totalClientes, setTotalClientes] = useState(0);
   const [agendamentosHoje, setAgendamentosHoje] = useState<Agendamento[]>([]);
@@ -51,8 +42,6 @@ const DashboardTab = () => {
   const [loading, setLoading] = useState(true);
   const [formaPagamentoDialogOpen, setFormaPagamentoDialogOpen] = useState(false);
   const [agendamentoConcluindo, setAgendamentoConcluindo] = useState<string | null>(null);
-  const [spaSessoesHoje, setSpaSessoesHoje] = useState<SpaSessao[]>([]);
-  const [spaSessoesAmanha, setSpaSessoesAmanha] = useState<SpaSessao[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,114 +57,44 @@ const DashboardTab = () => {
       const inicioMes = format(startOfMonth(new Date()), 'yyyy-MM-dd');
       const fimMes = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
-      // Total de clientes
-      const { data: clientes, error: clientesError } = await supabase
-        .from('clientes')
-        .select('id');
-      
+      const { data: clientes, error: clientesError } = await supabase.from('clientes').select('id');
       if (clientesError) throw clientesError;
       setTotalClientes(clientes?.length || 0);
 
-      // Agendamentos de hoje com procedimentos
       const { data: agendHoje, error: agendHojeError } = await supabase
         .from('agendamentos')
-        .select(`
-          *,
-          agendamento_procedimentos (
-            procedimento_id,
-            servicos:procedimento_id (nome_procedimento, duracao_minutos)
-          )
-        `)
+        .select(`*, agendamento_procedimentos (procedimento_id, servicos:procedimento_id (nome_procedimento, duracao_minutos))`)
         .eq('data_agendamento', hoje)
         .order('hora_agendamento');
-      
       if (agendHojeError) throw agendHojeError;
       setAgendamentosHoje((agendHoje as Agendamento[]) || []);
 
-      // Agendamentos de amanhã com procedimentos
       const { data: agendAmanha, error: agendAmanhaError } = await supabase
         .from('agendamentos')
-        .select(`
-          *,
-          agendamento_procedimentos (
-            procedimento_id,
-            servicos:procedimento_id (nome_procedimento, duracao_minutos)
-          )
-        `)
+        .select(`*, agendamento_procedimentos (procedimento_id, servicos:procedimento_id (nome_procedimento, duracao_minutos))`)
         .eq('data_agendamento', amanha)
         .order('hora_agendamento');
-      
       if (agendAmanhaError) throw agendAmanhaError;
       setAgendamentosAmanha((agendAmanha as Agendamento[]) || []);
 
-      // Transações da semana
       const { data: transacoesSemana, error: transacoesSemanaError } = await supabase
-        .from('transacoes')
-        .select('*')
-        .gte('data_transacao', inicioSemana)
-        .lte('data_transacao', fimSemana);
-      
+        .from('transacoes').select('*').gte('data_transacao', inicioSemana).lte('data_transacao', fimSemana);
       if (transacoesSemanaError) throw transacoesSemanaError;
       
       const entradas = (transacoesSemana as Transacao[])?.filter(t => t.tipo_operacao === 'entrada').reduce((acc, t) => acc + t.valor, 0) || 0;
       const saidas = (transacoesSemana as Transacao[])?.filter(t => t.tipo_operacao === 'saida').reduce((acc, t) => acc + t.valor, 0) || 0;
-      
       setEntradasSemana(entradas);
       setSaidasSemana(saidas);
       setReceitaSemana(entradas - saidas);
 
-      // Receita do mês
       const { data: transacoesMes, error: transacoesMesError } = await supabase
-        .from('transacoes')
-        .select('*')
-        .eq('tipo_operacao', 'entrada')
-        .gte('data_transacao', inicioMes)
-        .lte('data_transacao', fimMes);
-      
+        .from('transacoes').select('*').eq('tipo_operacao', 'entrada').gte('data_transacao', inicioMes).lte('data_transacao', fimMes);
       if (transacoesMesError) throw transacoesMesError;
-      
-      const receitaMensal = (transacoesMes as Transacao[])?.reduce((acc, t) => acc + t.valor, 0) || 0;
-      setReceitaMes(receitaMensal);
-
-      // Sessões de Spa dos Pés de hoje e amanhã
-      const { data: spaSessoes, error: spaSessoesError } = await supabase
-        .from('spas_sessoes')
-        .select(`
-          id,
-          data_sessao,
-          hora_sessao,
-          realizada,
-          assinatura_id,
-          spas_assinaturas!inner (
-            cliente_id,
-            clientes!inner (nome)
-          )
-        `)
-        .in('data_sessao', [hoje, amanha])
-        .eq('realizada', false)
-        .order('hora_sessao');
-
-      if (spaSessoesError) throw spaSessoesError;
-
-      const sessoesFormatadas = (spaSessoes || []).map((sessao: any) => ({
-        id: sessao.id,
-        data_sessao: sessao.data_sessao,
-        hora_sessao: sessao.hora_sessao,
-        realizada: sessao.realizada,
-        assinatura_id: sessao.assinatura_id,
-        cliente_nome: sessao.spas_assinaturas?.clientes?.nome || 'Cliente desconhecido'
-      }));
-
-      setSpaSessoesHoje(sessoesFormatadas.filter(s => s.data_sessao === hoje));
-      setSpaSessoesAmanha(sessoesFormatadas.filter(s => s.data_sessao === amanha));
+      setReceitaMes((transacoesMes as Transacao[])?.reduce((acc, t) => acc + t.valor, 0) || 0);
 
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados do dashboard",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível carregar os dados do dashboard", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -183,384 +102,140 @@ const DashboardTab = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Agendado':
-        return 'bg-blue-500/10 text-blue-700 border-blue-200';
-      case 'Concluído':
-        return 'bg-green-500/10 text-green-700 border-green-200';
-      case 'Cancelado':
-        return 'bg-red-500/10 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-500/10 text-gray-700 border-gray-200';
-    }
-  };
-
-  const marcarSessaoRealizada = async (sessaoId: string) => {
-    try {
-      const { error } = await supabase
-        .from('spas_sessoes')
-        .update({ realizada: true })
-        .eq('id', sessaoId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Sessão de Spa marcada como realizada!"
-      });
-
-      fetchDashboardData();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar a sessão",
-        variant: "destructive"
-      });
+      case 'Agendado': return 'bg-blue-500/10 text-blue-700 border-blue-200';
+      case 'Concluído': return 'bg-green-500/10 text-green-700 border-green-200';
+      case 'Cancelado': return 'bg-red-500/10 text-red-700 border-red-200';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const updateAgendamentoStatus = async (id: string, newStatus: string) => {
     if (newStatus === 'Concluído') {
-      // Abrir dialog de forma de pagamento
       setAgendamentoConcluindo(id);
       setFormaPagamentoDialogOpen(true);
-      return;
     }
   };
 
   const handleFormaPagamentoConfirm = async (formaPagamento: string) => {
     if (!agendamentoConcluindo) return;
-    
-    // O agendamento e a transação já foram atualizados no FormaPagamentoDialog
-    toast({
-      title: "Sucesso",
-      description: "Agendamento concluído com sucesso!"
-    });
-    
+    toast({ title: "Sucesso", description: "Agendamento concluído!" });
     setFormaPagamentoDialogOpen(false);
     setAgendamentoConcluindo(null);
     fetchDashboardData();
   };
 
-  if (loading) {
+  const renderAgendamentoCard = (agendamento: Agendamento, showConcluir = false) => {
+    const procedimentos = agendamento.agendamento_procedimentos || [];
+    const duracaoTotal = procedimentos.reduce((total, proc) => total + (proc.servicos?.duracao_minutos || 60), 0) || 60;
+    const [horaInicio, minutoInicio] = agendamento.hora_agendamento.substring(0, 5).split(':').map(Number);
+    const totalMinutos = horaInicio * 60 + minutoInicio + duracaoTotal;
+    const horarioFim = `${String(Math.floor(totalMinutos / 60)).padStart(2, '0')}:${String(totalMinutos % 60).padStart(2, '0')}`;
+
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Carregando dashboard...</div>
-      </div>
+      <Card key={agendamento.id} className="mobile-card">
+        <CardContent className="p-4">
+          <div className="space-y-2">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="font-semibold">{agendamento.nome}</div>
+                <div className="text-sm text-muted-foreground">
+                  {agendamento.hora_agendamento.substring(0, 5)} - {horarioFim}
+                  <span className="ml-2">({duracaoTotal} min)</span>
+                </div>
+              </div>
+              <Badge className={getStatusColor(agendamento.status)}>{agendamento.status}</Badge>
+            </div>
+            
+            {procedimentos.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                {procedimentos.map((proc, i) => (
+                  <span key={i} className="inline-block mr-2">• {proc.servicos?.nome_procedimento || 'Procedimento'}</span>
+                ))}
+              </div>
+            )}
+            
+            <div className="text-sm font-medium">R$ {agendamento.preco.toFixed(2)}</div>
+            
+            {showConcluir && agendamento.status === 'Agendado' && (
+              <Button size="sm" className="w-full" onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}>
+                Concluir
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     );
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><div className="text-muted-foreground">Carregando dashboard...</div></div>;
   }
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Dashboard</h2>
 
-      {/* Cards de métricas principais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div>
-                <div className="text-2xl font-bold">{totalClientes}</div>
-                <div className="text-sm text-muted-foreground">Clientes</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-green-600" />
-              <div>
-                <div className="text-2xl font-bold">{agendamentosHoje.length}</div>
-                <div className="text-sm text-muted-foreground">Hoje</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-8 w-8 text-purple-600" />
-              <div>
-                <div className="text-2xl font-bold">R$ {receitaMes.toFixed(0)}</div>
-                <div className="text-sm text-muted-foreground">Mês</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-orange-600" />
-              <div>
-                <div className="text-2xl font-bold">R$ {receitaSemana.toFixed(0)}</div>
-                <div className="text-sm text-muted-foreground">Semana</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-xl bg-blue-500/10"><Users className="h-5 w-5 text-blue-600" /></div><div><div className="text-2xl font-bold">{totalClientes}</div><div className="text-xs text-muted-foreground">Clientes</div></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-xl bg-green-500/10"><Calendar className="h-5 w-5 text-green-600" /></div><div><div className="text-2xl font-bold">{agendamentosHoje.length}</div><div className="text-xs text-muted-foreground">Hoje</div></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-xl bg-purple-500/10"><DollarSign className="h-5 w-5 text-purple-600" /></div><div><div className="text-xl font-bold">R$ {receitaMes.toFixed(0)}</div><div className="text-xs text-muted-foreground">Mês</div></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-xl bg-orange-500/10"><TrendingUp className="h-5 w-5 text-orange-600" /></div><div><div className="text-xl font-bold">R$ {receitaSemana.toFixed(0)}</div><div className="text-xs text-muted-foreground">Semana</div></div></div></CardContent></Card>
       </div>
 
-      {/* Resumo financeiro da semana */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Resumo Financeiro da Semana
-          </CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><TrendingUp className="h-5 w-5" /> Resumo Financeiro da Semana</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">R$ {entradasSemana.toFixed(2)}</div>
-              <div className="text-sm text-muted-foreground">Entradas</div>
+            <div className="text-center p-3 rounded-xl bg-green-500/5">
+              <div className="text-xl font-bold text-green-600">R$ {entradasSemana.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Entradas</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">R$ {saidasSemana.toFixed(2)}</div>
-              <div className="text-sm text-muted-foreground">Saídas</div>
+            <div className="text-center p-3 rounded-xl bg-red-500/5">
+              <div className="text-xl font-bold text-red-600">R$ {saidasSemana.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Saídas</div>
             </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${receitaSemana >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                R$ {receitaSemana.toFixed(2)}
-              </div>
-              <div className="text-sm text-muted-foreground">Saldo</div>
+            <div className="text-center p-3 rounded-xl bg-blue-500/5">
+              <div className={`text-xl font-bold ${receitaSemana >= 0 ? 'text-green-600' : 'text-red-600'}`}>R$ {receitaSemana.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Saldo</div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Agendamentos lado a lado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Agendamentos de hoje */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarCheck className="h-5 w-5" />
-              Agendamentos de Hoje
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><CalendarCheck className="h-5 w-5" /> Agendamentos de Hoje</CardTitle></CardHeader>
           <CardContent>
-            {agendamentosHoje.length === 0 && spaSessoesHoje.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">
-                Nenhum agendamento para hoje
-              </div>
+            {agendamentosHoje.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">Nenhum agendamento para hoje</div>
             ) : (
-              <div className="space-y-3">
-                {/* Sessões de Spa dos Pés de hoje primeiro */}
-                {spaSessoesHoje.map((sessao) => (
-                  <Card key={sessao.id} className="mobile-card border-purple-200 bg-purple-50/30">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Footprints className="h-4 w-4 text-purple-600" />
-                              <span className="font-semibold text-base">{sessao.cliente_nome}</span>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {sessao.hora_sessao ? sessao.hora_sessao.substring(0, 5) : 'Horário a definir'}
-                            </div>
-                          </div>
-                          <Badge className="bg-purple-500/10 text-purple-700 border-purple-200">
-                            Spa dos Pés
-                          </Badge>
-                        </div>
-                        
-                        <Button
-                          size="sm"
-                          className="w-full mobile-button bg-purple-600 hover:bg-purple-700"
-                          onClick={() => marcarSessaoRealizada(sessao.id)}
-                        >
-                          Marcar como Realizada
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {agendamentosHoje.map((agendamento) => {
-                  // Calcular duração total e horário de fim
-                  const procedimentos = agendamento.agendamento_procedimentos || [];
-                  const duracaoTotal = procedimentos.reduce((total, proc) => {
-                    return total + (proc.servicos?.duracao_minutos || 60);
-                  }, 0) || 60;
-                  
-                  const [horaInicio, minutoInicio] = agendamento.hora_agendamento.substring(0, 5).split(':').map(Number);
-                  const totalMinutos = horaInicio * 60 + minutoInicio + duracaoTotal;
-                  const horaFim = Math.floor(totalMinutos / 60);
-                  const minutoFim = totalMinutos % 60;
-                  const horarioFim = `${String(horaFim).padStart(2, '0')}:${String(minutoFim).padStart(2, '0')}`;
-                  
-                  return (
-                    <Card key={agendamento.id} className="mobile-card">
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-semibold text-base">{agendamento.nome}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {agendamento.hora_agendamento.substring(0, 5)} - {horarioFim}
-                                <span className="ml-2">({duracaoTotal} min)</span>
-                              </div>
-                            </div>
-                            <Badge className={getStatusColor(agendamento.status)}>
-                              {agendamento.status}
-                            </Badge>
-                          </div>
-                          
-                          {/* Mostrar todos os procedimentos */}
-                          {procedimentos.length > 0 && (
-                            <div className="text-sm text-muted-foreground">
-                              <strong>Procedimentos:</strong>
-                              <div className="mt-1 space-y-1">
-                                {procedimentos.map((proc, index) => (
-                                  <div key={index} className="flex items-center gap-2">
-                                    <span>• {proc.servicos?.nome_procedimento || 'Procedimento desconhecido'}</span>
-                                    <span className="text-xs">({proc.servicos?.duracao_minutos || 60} min)</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="text-sm">
-                            <span className="font-medium">Valor:</span> R$ {agendamento.preco.toFixed(2)}
-                          </div>
-                          
-                          {agendamento.status === 'Agendado' && (
-                            <Button
-                              size="sm"
-                              className="w-full mobile-button"
-                              onClick={() => updateAgendamentoStatus(agendamento.id, 'Concluído')}
-                            >
-                              Concluir
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+              <div className="space-y-3">{agendamentosHoje.map(a => renderAgendamentoCard(a, true))}</div>
             )}
           </CardContent>
         </Card>
 
-        {/* Agendamentos de amanhã */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarClock className="h-5 w-5" />
-              Agendamentos de Amanhã
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><CalendarClock className="h-5 w-5" /> Agendamentos de Amanhã</CardTitle></CardHeader>
           <CardContent>
-            {agendamentosAmanha.length === 0 && spaSessoesAmanha.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">
-                Nenhum agendamento para amanhã
-              </div>
+            {agendamentosAmanha.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">Nenhum agendamento para amanhã</div>
             ) : (
-              <div className="space-y-3">
-                {/* Sessões de Spa dos Pés de amanhã primeiro */}
-                {spaSessoesAmanha.map((sessao) => (
-                  <Card key={sessao.id} className="mobile-card border-purple-200 bg-purple-50/30">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Footprints className="h-4 w-4 text-purple-600" />
-                              <span className="font-semibold text-base">{sessao.cliente_nome}</span>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {sessao.hora_sessao ? sessao.hora_sessao.substring(0, 5) : 'Horário a definir'}
-                            </div>
-                          </div>
-                          <Badge className="bg-purple-500/10 text-purple-700 border-purple-200">
-                            Spa dos Pés
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {agendamentosAmanha.map((agendamento) => {
-                  // Calcular duração total e horário de fim
-                  const procedimentos = agendamento.agendamento_procedimentos || [];
-                  const duracaoTotal = procedimentos.reduce((total, proc) => {
-                    return total + (proc.servicos?.duracao_minutos || 60);
-                  }, 0) || 60;
-                  
-                  const [horaInicio, minutoInicio] = agendamento.hora_agendamento.substring(0, 5).split(':').map(Number);
-                  const totalMinutos = horaInicio * 60 + minutoInicio + duracaoTotal;
-                  const horaFim = Math.floor(totalMinutos / 60);
-                  const minutoFim = totalMinutos % 60;
-                  const horarioFim = `${String(horaFim).padStart(2, '0')}:${String(minutoFim).padStart(2, '0')}`;
-                  
-                  return (
-                    <Card key={agendamento.id} className="mobile-card">
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-semibold text-base">{agendamento.nome}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {agendamento.hora_agendamento.substring(0, 5)} - {horarioFim}
-                                <span className="ml-2">({duracaoTotal} min)</span>
-                              </div>
-                            </div>
-                            <Badge className={getStatusColor(agendamento.status)}>
-                              {agendamento.status}
-                            </Badge>
-                          </div>
-                          
-                          {/* Mostrar todos os procedimentos */}
-                          {procedimentos.length > 0 && (
-                            <div className="text-sm text-muted-foreground">
-                              <strong>Procedimentos:</strong>
-                              <div className="mt-1 space-y-1">
-                                {procedimentos.map((proc, index) => (
-                                  <div key={index} className="flex items-center gap-2">
-                                    <span>• {proc.servicos?.nome_procedimento || 'Procedimento desconhecido'}</span>
-                                    <span className="text-xs">({proc.servicos?.duracao_minutos || 60} min)</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="text-sm">
-                            <span className="font-medium">Valor:</span> R$ {agendamento.preco.toFixed(2)}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+              <div className="space-y-3">{agendamentosAmanha.map(a => renderAgendamentoCard(a, false))}</div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Dialog de Forma de Pagamento */}
       {agendamentoConcluindo && (() => {
         const agendamento = agendamentosHoje.find(a => a.id === agendamentoConcluindo);
         if (!agendamento) return null;
-        
-        const valorFinal = agendamento.preco;
-
         return (
           <FormaPagamentoDialog
             open={formaPagamentoDialogOpen}
             onOpenChange={setFormaPagamentoDialogOpen}
             onConfirm={handleFormaPagamentoConfirm}
             agendamentoId={agendamentoConcluindo}
-            valorServico={valorFinal}
+            valorServico={agendamento.preco}
             clienteTelefone={agendamento.telefone}
           />
         );
