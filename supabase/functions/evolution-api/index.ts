@@ -155,6 +155,16 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'getWebSocketInfo': {
+        // Build WebSocket URL from the Evolution API base URL
+        const wsBaseUrl = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+        const wsUrl = `${wsBaseUrl}/ws/events/${EVOLUTION_INSTANCE_NAME}?apikey=${EVOLUTION_API_KEY}`;
+        return new Response(JSON.stringify({ wsUrl }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
