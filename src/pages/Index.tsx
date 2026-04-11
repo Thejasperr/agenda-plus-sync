@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, Package } from 'lucide-react';
+import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, Package, MessageCircle } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
 import ConfiguracoesTab from '@/components/app/ConfiguracoesTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
 import DashboardTab from '@/components/app/DashboardTab';
+import WhatsAppTab from '@/components/app/WhatsAppTab';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'configuracoes';
+type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'whatsapp' | 'configuracoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -29,6 +30,7 @@ const Index = () => {
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart3 },
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
     { id: 'calendario' as TabType, label: 'Calendário', icon: CalendarDays },
+    { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'transacoes' as TabType, label: 'Transações', icon: TrendingUp },
     { id: 'configuracoes' as TabType, label: 'Config', icon: Settings },
   ];
@@ -39,6 +41,7 @@ const Index = () => {
       case 'clientes': return <ClientesTab />;
       case 'calendario': return <CalendarioPage />;
       case 'transacoes': return <TransacoesTab />;
+      case 'whatsapp': return <WhatsAppTab />;
       case 'configuracoes': return <ConfiguracoesTab />;
       default: return <DashboardTab />;
     }
