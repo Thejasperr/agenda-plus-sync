@@ -331,8 +331,8 @@ const WhatsAppTab = () => {
                         ? 'bg-primary/15 text-foreground rounded-tr-sm'
                         : 'bg-card text-foreground rounded-tl-sm'
                     }`}>
-                      {!fromMe && msg.pushName && (
-                        <p className="text-[10px] font-medium text-primary mb-0.5">{msg.pushName}</p>
+                      {!fromMe && pushName && (
+                        <p className="text-[10px] font-medium text-primary mb-0.5">{pushName}</p>
                       )}
                       
                       {/* Media rendering */}
