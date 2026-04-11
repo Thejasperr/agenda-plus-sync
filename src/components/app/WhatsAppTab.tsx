@@ -29,20 +29,68 @@ const WhatsAppTab = () => {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedChatRef = useRef<Chat | null>(null);
   const { toast } = useToast();
   const { loading, error, fetchChats, fetchMessages, sendText, sendMedia, sendAudio, checkConnection } = useEvolutionApi();
+
+  // Keep ref in sync
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  // WebSocket for real-time messages
+  const { wsConnected } = useEvolutionWebSocket({
+    onMessage: useCallback((data: any) => {
+      const currentChat = selectedChatRef.current;
+      if (!data) return;
+      
+      // Handle incoming message
+      const msgArray = Array.isArray(data) ? data : [data];
+      
+      msgArray.forEach((msg: any) => {
+        const remoteJid = msg?.key?.remoteJid;
+        
+        // Update chat list with new message preview
+        setChats(prev => {
+          const updated = [...prev];
+          const chatIndex = updated.findIndex(c => c.remoteJid === remoteJid);
+          if (chatIndex >= 0) {
+            updated[chatIndex] = {
+              ...updated[chatIndex],
+              lastMessageTimestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Date.now() / 1000,
+            };
+          }
+          return updated;
+        });
+
+        // If this message is for the currently open chat, add it
+        if (currentChat && remoteJid === currentChat.remoteJid) {
+          setMessages(prev => {
+            const exists = prev.some((m: any) => m.key?.id === msg.key?.id || m.id === msg.id);
+            if (exists) return prev;
+            return safeSortMessages([...prev, msg]);
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      });
+    }, []),
+    onConnectionUpdate: useCallback((connected: boolean) => {
+      setIsConnected(connected);
+    }, []),
+  });
 
   // Check connection on mount
   useEffect(() => {
     checkConnection().then(state => {
-      setIsConnected(state?.instance?.state === 'open');
+      if (state?.instance?.state === 'open') setIsConnected(true);
     });
   }, [checkConnection]);
 
   // Load chats
   useEffect(() => {
     fetchChats().then(data => {
-      const sorted = data.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+      if (!Array.isArray(data)) return;
+      const sorted = [...data].sort((a: any, b: any) => ((b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
       setChats(sorted);
     });
   }, [fetchChats]);
@@ -51,21 +99,10 @@ const WhatsAppTab = () => {
   useEffect(() => {
     if (selectedChat) {
       fetchMessages(selectedChat.remoteJid).then(msgs => {
-        setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+        setMessages(safeSortMessages(msgs));
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       });
     }
-  }, [selectedChat, fetchMessages]);
-
-  // Auto-refresh messages
-  useEffect(() => {
-    if (!selectedChat) return;
-    const interval = setInterval(() => {
-      fetchMessages(selectedChat.remoteJid).then(msgs => {
-        setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
-      });
-    }, 5000);
-    return () => clearInterval(interval);
   }, [selectedChat, fetchMessages]);
 
   const handleSendMessage = async () => {
