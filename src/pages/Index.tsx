@@ -30,6 +30,7 @@ const Index = () => {
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart3 },
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
     { id: 'calendario' as TabType, label: 'Calendário', icon: CalendarDays },
+    { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'transacoes' as TabType, label: 'Transações', icon: TrendingUp },
     { id: 'configuracoes' as TabType, label: 'Config', icon: Settings },
   ];
@@ -40,6 +41,7 @@ const Index = () => {
       case 'clientes': return <ClientesTab />;
       case 'calendario': return <CalendarioPage />;
       case 'transacoes': return <TransacoesTab />;
+      case 'whatsapp': return <WhatsAppTab />;
       case 'configuracoes': return <ConfiguracoesTab />;
       default: return <DashboardTab />;
     }
