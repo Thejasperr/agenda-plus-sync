@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, Package } from 'lucide-react';
+import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, Package, MessageCircle } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
 import ConfiguracoesTab from '@/components/app/ConfiguracoesTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
 import DashboardTab from '@/components/app/DashboardTab';
+import WhatsAppTab from '@/components/app/WhatsAppTab';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'configuracoes';
+type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'whatsapp' | 'configuracoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
