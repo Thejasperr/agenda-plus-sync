@@ -131,18 +131,24 @@ const WhatsAppTab = () => {
     }
   };
 
-  const getMessageContent = (msg: Message): string => {
-    if (!msg.message) return '';
-    if (msg.message.conversation) return msg.message.conversation;
-    if (msg.message.extendedTextMessage?.text) return msg.message.extendedTextMessage.text;
-    if (msg.message.imageMessage) return '📷 Imagem';
-    if (msg.message.videoMessage) return '🎥 Vídeo';
-    if (msg.message.audioMessage) return '🎵 Áudio';
-    if (msg.message.documentMessage) return `📄 ${msg.message.documentMessage.fileName || 'Documento'}`;
-    if (msg.message.stickerMessage) return '🎃 Sticker';
-    if (msg.message.contactMessage) return '👤 Contato';
-    if (msg.message.locationMessage) return '📍 Localização';
-    return '💬 Mensagem';
+  const getMessageContent = (msg: any): string => {
+    try {
+      const m = msg.message;
+      if (!m) return '';
+      if (typeof m === 'string') return m;
+      if (typeof m.conversation === 'string') return m.conversation;
+      if (typeof m.extendedTextMessage?.text === 'string') return m.extendedTextMessage.text;
+      if (m.imageMessage) return '📷 Imagem';
+      if (m.videoMessage) return '🎥 Vídeo';
+      if (m.audioMessage) return '🎵 Áudio';
+      if (m.documentMessage) return `📄 ${typeof m.documentMessage?.fileName === 'string' ? m.documentMessage.fileName : 'Documento'}`;
+      if (m.stickerMessage) return '🎃 Sticker';
+      if (m.contactMessage) return '👤 Contato';
+      if (m.locationMessage) return '📍 Localização';
+      return '💬 Mensagem';
+    } catch {
+      return '💬 Mensagem';
+    }
   };
 
   const getContactName = (chat: Chat): string => {
@@ -297,17 +303,22 @@ const WhatsAppTab = () => {
           )}
           {(() => {
             let lastDate = '';
-            return messages.map((msg, i) => {
+            return messages.map((msg: any, i) => {
               const content = getMessageContent(msg);
-              const fromMe = msg.key.fromMe;
-              const time = formatTime(msg.messageTimestamp);
-              const dateStr = formatDate(msg.messageTimestamp);
+              const msgKey = msg.key || {};
+              const fromMe = msgKey.fromMe === true;
+              const timestamp = typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 
+                                typeof msg.messageTimestamp === 'string' ? parseInt(msg.messageTimestamp) : 0;
+              const time = formatTime(timestamp || undefined);
+              const dateStr = formatDate(timestamp || undefined);
               const showDate = dateStr !== lastDate;
               if (showDate) lastDate = dateStr;
+              const keyId = typeof msgKey.id === 'string' ? msgKey.id : String(msg.id || i);
+              const pushName = typeof msg.pushName === 'string' ? msg.pushName : '';
 
               return (
-                <React.Fragment key={msg.key.id || i}>
-                  {showDate && (
+                <React.Fragment key={keyId}>
+                  {showDate && dateStr && (
                     <div className="flex justify-center my-2">
                       <span className="text-[10px] bg-card/80 backdrop-blur-sm text-muted-foreground px-3 py-1 rounded-full shadow-sm">
                         {dateStr}
@@ -320,8 +331,8 @@ const WhatsAppTab = () => {
                         ? 'bg-primary/15 text-foreground rounded-tr-sm'
                         : 'bg-card text-foreground rounded-tl-sm'
                     }`}>
-                      {!fromMe && msg.pushName && (
-                        <p className="text-[10px] font-medium text-primary mb-0.5">{msg.pushName}</p>
+                      {!fromMe && pushName && (
+                        <p className="text-[10px] font-medium text-primary mb-0.5">{pushName}</p>
                       )}
                       
                       {/* Media rendering */}
