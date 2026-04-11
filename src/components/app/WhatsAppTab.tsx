@@ -246,6 +246,11 @@ const WhatsAppTab = () => {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-foreground">WhatsApp</h2>
             <div className="flex items-center gap-2">
+              {wsConnected && (
+                <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  <Zap size={10} /> Tempo real
+                </span>
+              )}
               {isConnected !== null && (
                 <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                   isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
