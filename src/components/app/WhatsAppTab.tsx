@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, MoreVertical, Check, CheckCheck, Smile, X, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, MoreVertical, Check, CheckCheck, Smile, X, Wifi, WifiOff, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useEvolutionApi, type Chat, type Message } from '@/hooks/useEvolutionApi';
+import { useEvolutionWebSocket } from '@/hooks/useEvolutionWebSocket';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const safeSortMessages = (msgs: any[]): any[] => {
+  if (!Array.isArray(msgs)) return [];
+  return [...msgs].sort((a, b) => {
+    const ta = typeof a?.messageTimestamp === 'number' ? a.messageTimestamp : parseInt(a?.messageTimestamp) || 0;
+    const tb = typeof b?.messageTimestamp === 'number' ? b.messageTimestamp : parseInt(b?.messageTimestamp) || 0;
+    return ta - tb;
+  });
+};
 
 const WhatsAppTab = () => {
   const [chats, setChats] = useState<Chat[]>([]);
