@@ -131,18 +131,24 @@ const WhatsAppTab = () => {
     }
   };
 
-  const getMessageContent = (msg: Message): string => {
-    if (!msg.message) return '';
-    if (msg.message.conversation) return msg.message.conversation;
-    if (msg.message.extendedTextMessage?.text) return msg.message.extendedTextMessage.text;
-    if (msg.message.imageMessage) return '📷 Imagem';
-    if (msg.message.videoMessage) return '🎥 Vídeo';
-    if (msg.message.audioMessage) return '🎵 Áudio';
-    if (msg.message.documentMessage) return `📄 ${msg.message.documentMessage.fileName || 'Documento'}`;
-    if (msg.message.stickerMessage) return '🎃 Sticker';
-    if (msg.message.contactMessage) return '👤 Contato';
-    if (msg.message.locationMessage) return '📍 Localização';
-    return '💬 Mensagem';
+  const getMessageContent = (msg: any): string => {
+    try {
+      const m = msg.message;
+      if (!m) return '';
+      if (typeof m === 'string') return m;
+      if (typeof m.conversation === 'string') return m.conversation;
+      if (typeof m.extendedTextMessage?.text === 'string') return m.extendedTextMessage.text;
+      if (m.imageMessage) return '📷 Imagem';
+      if (m.videoMessage) return '🎥 Vídeo';
+      if (m.audioMessage) return '🎵 Áudio';
+      if (m.documentMessage) return `📄 ${typeof m.documentMessage?.fileName === 'string' ? m.documentMessage.fileName : 'Documento'}`;
+      if (m.stickerMessage) return '🎃 Sticker';
+      if (m.contactMessage) return '👤 Contato';
+      if (m.locationMessage) return '📍 Localização';
+      return '💬 Mensagem';
+    } catch {
+      return '💬 Mensagem';
+    }
   };
 
   const getContactName = (chat: Chat): string => {
