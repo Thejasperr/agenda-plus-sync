@@ -255,7 +255,7 @@ const WhatsAppTab = () => {
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {chat.lastMessage || 'Sem mensagens'}
+                        {safeString(chat.lastMessage) || 'Sem mensagens'}
                       </p>
                     </div>
                     {chat.unreadCount && chat.unreadCount > 0 && (
