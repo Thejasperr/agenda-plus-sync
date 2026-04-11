@@ -303,17 +303,22 @@ const WhatsAppTab = () => {
           )}
           {(() => {
             let lastDate = '';
-            return messages.map((msg, i) => {
+            return messages.map((msg: any, i) => {
               const content = getMessageContent(msg);
-              const fromMe = msg.key.fromMe;
-              const time = formatTime(msg.messageTimestamp);
-              const dateStr = formatDate(msg.messageTimestamp);
+              const msgKey = msg.key || {};
+              const fromMe = msgKey.fromMe === true;
+              const timestamp = typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 
+                                typeof msg.messageTimestamp === 'string' ? parseInt(msg.messageTimestamp) : 0;
+              const time = formatTime(timestamp || undefined);
+              const dateStr = formatDate(timestamp || undefined);
               const showDate = dateStr !== lastDate;
               if (showDate) lastDate = dateStr;
+              const keyId = typeof msgKey.id === 'string' ? msgKey.id : String(msg.id || i);
+              const pushName = typeof msg.pushName === 'string' ? msg.pushName : '';
 
               return (
-                <React.Fragment key={msg.key.id || i}>
-                  {showDate && (
+                <React.Fragment key={keyId}>
+                  {showDate && dateStr && (
                     <div className="flex justify-center my-2">
                       <span className="text-[10px] bg-card/80 backdrop-blur-sm text-muted-foreground px-3 py-1 rounded-full shadow-sm">
                         {dateStr}
