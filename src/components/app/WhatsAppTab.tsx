@@ -113,7 +113,7 @@ const WhatsAppTab = () => {
       setMessageText('');
       // Refresh messages
       const msgs = await fetchMessages(selectedChat.remoteJid);
-      setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+      setMessages(safeSortMessages(msgs));
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch {
       toast({ title: 'Erro', description: 'Falha ao enviar mensagem', variant: 'destructive' });
@@ -132,7 +132,7 @@ const WhatsAppTab = () => {
         await sendMedia(number, mediatype, base64, '', file.name);
         toast({ title: 'Sucesso', description: 'Mídia enviada!' });
         const msgs = await fetchMessages(selectedChat.remoteJid);
-        setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+        setMessages(safeSortMessages(msgs));
       } catch {
         toast({ title: 'Erro', description: 'Falha ao enviar mídia', variant: 'destructive' });
       }
@@ -159,7 +159,7 @@ const WhatsAppTab = () => {
             await sendAudio(number, base64);
             toast({ title: 'Sucesso', description: 'Áudio enviado!' });
             const msgs = await fetchMessages(selectedChat.remoteJid);
-            setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+            setMessages(safeSortMessages(msgs));
           } catch {
             toast({ title: 'Erro', description: 'Falha ao enviar áudio', variant: 'destructive' });
           }
