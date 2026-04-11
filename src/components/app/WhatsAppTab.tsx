@@ -151,14 +151,21 @@ const WhatsAppTab = () => {
     }
   };
 
-  const getContactName = (chat: Chat): string => {
-    if (chat.name) return chat.name;
-    const jid = chat.remoteJid || '';
+  const getContactName = (chat: any): string => {
+    if (chat.name && typeof chat.name === 'string') return chat.name;
+    const jid = typeof chat.remoteJid === 'string' ? chat.remoteJid : '';
     return jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
   };
 
   const getInitials = (name: string): string => {
-    return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    if (!name) return '??';
+    return name.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '??';
+  };
+
+  const safeString = (val: any): string => {
+    if (typeof val === 'string') return val;
+    if (val === null || val === undefined) return '';
+    return '';
   };
 
   const formatTime = (timestamp?: number): string => {
