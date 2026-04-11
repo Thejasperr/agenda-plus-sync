@@ -151,14 +151,21 @@ const WhatsAppTab = () => {
     }
   };
 
-  const getContactName = (chat: Chat): string => {
-    if (chat.name) return chat.name;
-    const jid = chat.remoteJid || '';
+  const getContactName = (chat: any): string => {
+    if (chat.name && typeof chat.name === 'string') return chat.name;
+    const jid = typeof chat.remoteJid === 'string' ? chat.remoteJid : '';
     return jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
   };
 
   const getInitials = (name: string): string => {
-    return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    if (!name) return '??';
+    return name.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '??';
+  };
+
+  const safeString = (val: any): string => {
+    if (typeof val === 'string') return val;
+    if (val === null || val === undefined) return '';
+    return '';
   };
 
   const formatTime = (timestamp?: number): string => {
@@ -244,14 +251,14 @@ const WhatsAppTab = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm truncate">{name}</span>
                         <span className="text-[10px] text-muted-foreground shrink-0">
-                          {formatTime(chat.lastMessageTimestamp)}
+                          {formatTime(typeof chat.lastMessageTimestamp === 'number' ? chat.lastMessageTimestamp : undefined)}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {chat.lastMessage || 'Sem mensagens'}
+                        {safeString(chat.lastMessage) || 'Sem mensagens'}
                       </p>
                     </div>
-                    {chat.unreadCount && chat.unreadCount > 0 && (
+                    {typeof chat.unreadCount === 'number' && chat.unreadCount > 0 && (
                       <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1">
                         {chat.unreadCount}
                       </span>
