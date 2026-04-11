@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, MoreVertical, Check, CheckCheck, Smile, X, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, MoreVertical, Check, CheckCheck, Smile, X, Wifi, WifiOff, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useEvolutionApi, type Chat, type Message } from '@/hooks/useEvolutionApi';
+import { useEvolutionWebSocket } from '@/hooks/useEvolutionWebSocket';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const safeSortMessages = (msgs: any[]): any[] => {
+  if (!Array.isArray(msgs)) return [];
+  return [...msgs].sort((a, b) => {
+    const ta = typeof a?.messageTimestamp === 'number' ? a.messageTimestamp : parseInt(a?.messageTimestamp) || 0;
+    const tb = typeof b?.messageTimestamp === 'number' ? b.messageTimestamp : parseInt(b?.messageTimestamp) || 0;
+    return ta - tb;
+  });
+};
 
 const WhatsAppTab = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -19,20 +29,68 @@ const WhatsAppTab = () => {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedChatRef = useRef<Chat | null>(null);
   const { toast } = useToast();
   const { loading, error, fetchChats, fetchMessages, sendText, sendMedia, sendAudio, checkConnection } = useEvolutionApi();
+
+  // Keep ref in sync
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  // WebSocket for real-time messages
+  const { wsConnected } = useEvolutionWebSocket({
+    onMessage: useCallback((data: any) => {
+      const currentChat = selectedChatRef.current;
+      if (!data) return;
+      
+      // Handle incoming message
+      const msgArray = Array.isArray(data) ? data : [data];
+      
+      msgArray.forEach((msg: any) => {
+        const remoteJid = msg?.key?.remoteJid;
+        
+        // Update chat list with new message preview
+        setChats(prev => {
+          const updated = [...prev];
+          const chatIndex = updated.findIndex(c => c.remoteJid === remoteJid);
+          if (chatIndex >= 0) {
+            updated[chatIndex] = {
+              ...updated[chatIndex],
+              lastMessageTimestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Date.now() / 1000,
+            };
+          }
+          return updated;
+        });
+
+        // If this message is for the currently open chat, add it
+        if (currentChat && remoteJid === currentChat.remoteJid) {
+          setMessages(prev => {
+            const exists = prev.some((m: any) => m.key?.id === msg.key?.id || m.id === msg.id);
+            if (exists) return prev;
+            return safeSortMessages([...prev, msg]);
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      });
+    }, []),
+    onConnectionUpdate: useCallback((connected: boolean) => {
+      setIsConnected(connected);
+    }, []),
+  });
 
   // Check connection on mount
   useEffect(() => {
     checkConnection().then(state => {
-      setIsConnected(state?.instance?.state === 'open');
+      if (state?.instance?.state === 'open') setIsConnected(true);
     });
   }, [checkConnection]);
 
   // Load chats
   useEffect(() => {
     fetchChats().then(data => {
-      const sorted = data.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+      if (!Array.isArray(data)) return;
+      const sorted = [...data].sort((a: any, b: any) => ((b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
       setChats(sorted);
     });
   }, [fetchChats]);
@@ -41,21 +99,10 @@ const WhatsAppTab = () => {
   useEffect(() => {
     if (selectedChat) {
       fetchMessages(selectedChat.remoteJid).then(msgs => {
-        setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+        setMessages(safeSortMessages(msgs));
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       });
     }
-  }, [selectedChat, fetchMessages]);
-
-  // Auto-refresh messages
-  useEffect(() => {
-    if (!selectedChat) return;
-    const interval = setInterval(() => {
-      fetchMessages(selectedChat.remoteJid).then(msgs => {
-        setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
-      });
-    }, 5000);
-    return () => clearInterval(interval);
   }, [selectedChat, fetchMessages]);
 
   const handleSendMessage = async () => {
@@ -66,7 +113,7 @@ const WhatsAppTab = () => {
       setMessageText('');
       // Refresh messages
       const msgs = await fetchMessages(selectedChat.remoteJid);
-      setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+      setMessages(safeSortMessages(msgs));
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch {
       toast({ title: 'Erro', description: 'Falha ao enviar mensagem', variant: 'destructive' });
@@ -85,7 +132,7 @@ const WhatsAppTab = () => {
         await sendMedia(number, mediatype, base64, '', file.name);
         toast({ title: 'Sucesso', description: 'Mídia enviada!' });
         const msgs = await fetchMessages(selectedChat.remoteJid);
-        setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+        setMessages(safeSortMessages(msgs));
       } catch {
         toast({ title: 'Erro', description: 'Falha ao enviar mídia', variant: 'destructive' });
       }
@@ -112,7 +159,7 @@ const WhatsAppTab = () => {
             await sendAudio(number, base64);
             toast({ title: 'Sucesso', description: 'Áudio enviado!' });
             const msgs = await fetchMessages(selectedChat.remoteJid);
-            setMessages(msgs.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0)));
+            setMessages(safeSortMessages(msgs));
           } catch {
             toast({ title: 'Erro', description: 'Falha ao enviar áudio', variant: 'destructive' });
           }
@@ -199,6 +246,11 @@ const WhatsAppTab = () => {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-foreground">WhatsApp</h2>
             <div className="flex items-center gap-2">
+              {wsConnected && (
+                <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  <Zap size={10} /> Tempo real
+                </span>
+              )}
               {isConnected !== null && (
                 <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                   isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
