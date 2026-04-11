@@ -251,14 +251,14 @@ const WhatsAppTab = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm truncate">{name}</span>
                         <span className="text-[10px] text-muted-foreground shrink-0">
-                          {formatTime(chat.lastMessageTimestamp)}
+                          {formatTime(typeof chat.lastMessageTimestamp === 'number' ? chat.lastMessageTimestamp : undefined)}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
                         {safeString(chat.lastMessage) || 'Sem mensagens'}
                       </p>
                     </div>
-                    {chat.unreadCount && chat.unreadCount > 0 && (
+                    {typeof chat.unreadCount === 'number' && chat.unreadCount > 0 && (
                       <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1">
                         {chat.unreadCount}
                       </span>
