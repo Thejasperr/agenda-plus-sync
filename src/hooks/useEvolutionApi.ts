@@ -128,6 +128,24 @@ export function useEvolutionApi() {
     }
   }, []);
 
+  const fetchProfilePicture = useCallback(async (number: string): Promise<string | null> => {
+    try {
+      const data = await callEvolution('fetchProfilePicture', { number });
+      if (data?.profilePictureUrl && typeof data.profilePictureUrl === 'string') {
+        return data.profilePictureUrl;
+      }
+      if (data?.picture && typeof data.picture === 'string') {
+        return data.picture;
+      }
+      if (typeof data === 'string' && data.startsWith('http')) {
+        return data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -137,5 +155,6 @@ export function useEvolutionApi() {
     sendMedia,
     sendAudio,
     checkConnection,
+    fetchProfilePicture,
   };
 }
