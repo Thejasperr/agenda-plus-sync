@@ -70,7 +70,13 @@ export function useEvolutionApi() {
     setError(null);
     try {
       const data = await callEvolution('fetchMessages', { remoteJid, limit });
-      const messages = Array.isArray(data) ? data : Array.isArray(data?.messages) ? data.messages : [];
+      const messages = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.messages)
+          ? data.messages
+          : Array.isArray(data?.messages?.records)
+            ? data.messages.records
+            : [];
       return messages;
     } catch (e: any) {
       setError(e.message);
