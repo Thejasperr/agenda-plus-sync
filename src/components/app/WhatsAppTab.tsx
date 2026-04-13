@@ -111,6 +111,29 @@ const WhatsAppTab = () => {
     setSelectedChat({ ...chat, unreadCount: 0 });
   }, [markChatAsRead]);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const showBrowserNotification = useCallback((title: string, body: string) => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (document.visibilityState === 'visible') return; // Only notify when tab is not focused
+    try {
+      const notification = new Notification(title, {
+        body,
+        icon: '/placeholder.svg',
+        tag: 'whatsapp-msg',
+      } as NotificationOptions);
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    } catch { /* silent */ }
+  }, []);
+
   const { wsConnected } = useEvolutionWebSocket({
     onMessage: useCallback((data: any) => {
       const currentChat = selectedChatRef.current;
@@ -122,6 +145,14 @@ const WhatsAppTab = () => {
         const remoteJid = safe(msg?.key?.remoteJid);
         if (!remoteJid) return;
         const isCurrentChat = currentChat && remoteJid === safe(currentChat.remoteJid);
+        const isFromMe = msg?.key?.fromMe === true;
+
+        // Browser notification for incoming messages when tab is not focused
+        if (!isFromMe) {
+          const senderName = safe(msg?.pushName) || remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+          const content = getMessageContent(msg);
+          showBrowserNotification(`💬 ${senderName}`, content || 'Nova mensagem');
+        }
 
         setChats(prev => {
           const updated = [...prev];
@@ -131,7 +162,7 @@ const WhatsAppTab = () => {
               ...updated[chatIndex],
               lastMessage: getMessageContent(msg),
               lastMessageTimestamp: safeNum(msg.messageTimestamp) || Math.floor(Date.now() / 1000),
-              unreadCount: isCurrentChat ? 0 : Math.max(1, safeNum(updated[chatIndex].unreadCount) + (msg?.key?.fromMe ? 0 : 1)),
+              unreadCount: isCurrentChat ? 0 : Math.max(1, safeNum(updated[chatIndex].unreadCount) + (isFromMe ? 0 : 1)),
             };
             const [chatItem] = updated.splice(chatIndex, 1);
             updated.unshift(chatItem);
@@ -153,7 +184,7 @@ const WhatsAppTab = () => {
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
       });
-    }, [getMessageContent, markChatAsRead]),
+    }, [getMessageContent, markChatAsRead, showBrowserNotification]),
     onConnectionUpdate: useCallback((connected: boolean) => {
       setIsConnected(connected);
     }, []),
