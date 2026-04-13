@@ -230,7 +230,8 @@ const WhatsAppTab = () => {
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedChat) return;
-    const number = safe(selectedChat.remoteJid).replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+    const jid = safe(selectedChat.remoteJid);
+    const number = jid.includes('@lid') ? jid : jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
     try {
       await sendText(number, messageText);
       setMessageText('');
@@ -249,7 +250,8 @@ const WhatsAppTab = () => {
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = cleanBase64(reader.result as string);
-      const number = safe(selectedChat.remoteJid).replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+      const jid = safe(selectedChat.remoteJid);
+      const number = jid.includes('@lid') ? jid : jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
       try {
         await sendMedia(number, mediatype, base64, '', file.name);
         toast({ title: 'Sucesso', description: 'Mídia enviada!' });
@@ -288,7 +290,8 @@ const WhatsAppTab = () => {
         const reader = new FileReader();
         reader.onload = async () => {
           const base64 = cleanBase64(reader.result as string);
-          const number = safe(selectedChat.remoteJid).replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+          const jid = safe(selectedChat.remoteJid);
+          const number = jid.includes('@lid') ? jid : jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
           try {
             await sendAudio(number, base64);
             toast({ title: 'Sucesso', description: 'Áudio enviado!' });
