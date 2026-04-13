@@ -15,17 +15,24 @@ interface UseEvolutionWebSocketOptions {
   onConnectionUpdate?: (connected: boolean) => void;
 }
 
+const MAX_RECONNECT_DELAY = 60000; // 60s max
+const BASE_DELAY = 3000; // 3s initial
+const MAX_RETRIES = 10;
+
 export function useEvolutionWebSocket(options: UseEvolutionWebSocketOptions) {
   const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const optionsRef = useRef(options);
+  const retriesRef = useRef(0);
+  const mountedRef = useRef(true);
   optionsRef.current = options;
 
   const connect = useCallback(async () => {
-    // Get WebSocket URL from edge function
+    if (!mountedRef.current) return;
+
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!session || !mountedRef.current) return;
 
     try {
       const res = await fetch(`${FUNCTION_URL}?action=getWebSocketInfo`, {
@@ -38,18 +45,11 @@ export function useEvolutionWebSocket(options: UseEvolutionWebSocketOptions) {
         body: JSON.stringify({}),
       });
 
-      if (!res.ok) {
-        console.error('Failed to get WebSocket info');
-        return;
-      }
+      if (!res.ok || !mountedRef.current) return;
 
       const { wsUrl } = await res.json();
-      if (!wsUrl) {
-        console.error('No WebSocket URL returned');
-        return;
-      }
+      if (!wsUrl || !mountedRef.current) return;
 
-      // Close existing connection
       if (wsRef.current) {
         wsRef.current.close();
       }
@@ -58,12 +58,15 @@ export function useEvolutionWebSocket(options: UseEvolutionWebSocketOptions) {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (!mountedRef.current) return;
         console.log('Evolution WebSocket connected');
         setWsConnected(true);
+        retriesRef.current = 0; // Reset retries on successful connection
         optionsRef.current.onConnectionUpdate?.(true);
       };
 
       ws.onmessage = (event) => {
+        if (!mountedRef.current) return;
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
           
@@ -77,9 +80,6 @@ export function useEvolutionWebSocket(options: UseEvolutionWebSocketOptions) {
             case 'connection.update':
               optionsRef.current.onConnectionUpdate?.(data.data?.state === 'open');
               break;
-            default:
-              // Other events like presence, typing, etc.
-              break;
           }
         } catch (err) {
           console.error('WebSocket message parse error:', err);
@@ -87,24 +87,42 @@ export function useEvolutionWebSocket(options: UseEvolutionWebSocketOptions) {
       };
 
       ws.onclose = () => {
+        if (!mountedRef.current) return;
         console.log('Evolution WebSocket disconnected');
         setWsConnected(false);
         optionsRef.current.onConnectionUpdate?.(false);
-        // Auto-reconnect after 5s
-        reconnectTimerRef.current = setTimeout(connect, 5000);
+        scheduleReconnect();
       };
 
-      ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
-        ws.close();
+      ws.onerror = () => {
+        // Don't log full error object to avoid noise; onclose handles reconnect
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
       };
     } catch (err) {
       console.error('WebSocket connect error:', err);
-      reconnectTimerRef.current = setTimeout(connect, 5000);
+      if (mountedRef.current) scheduleReconnect();
     }
   }, []);
 
+  const scheduleReconnect = useCallback(() => {
+    if (!mountedRef.current) return;
+    if (retriesRef.current >= MAX_RETRIES) {
+      console.log(`WebSocket: max retries (${MAX_RETRIES}) reached, stopping reconnection`);
+      return;
+    }
+    // Exponential backoff with jitter
+    const delay = Math.min(BASE_DELAY * Math.pow(2, retriesRef.current), MAX_RECONNECT_DELAY);
+    const jitter = delay * 0.3 * Math.random();
+    const finalDelay = delay + jitter;
+    retriesRef.current += 1;
+    console.log(`WebSocket: reconnecting in ${Math.round(finalDelay / 1000)}s (attempt ${retriesRef.current}/${MAX_RETRIES})`);
+    reconnectTimerRef.current = setTimeout(connect, finalDelay);
+  }, [connect]);
+
   const disconnect = useCallback(() => {
+    mountedRef.current = false;
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
     }
@@ -115,10 +133,17 @@ export function useEvolutionWebSocket(options: UseEvolutionWebSocketOptions) {
     setWsConnected(false);
   }, []);
 
+  const reconnect = useCallback(() => {
+    retriesRef.current = 0;
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    connect();
+  }, [connect]);
+
   useEffect(() => {
+    mountedRef.current = true;
     connect();
     return () => disconnect();
   }, [connect, disconnect]);
 
-  return { wsConnected, reconnect: connect, disconnect };
+  return { wsConnected, reconnect, disconnect };
 }
