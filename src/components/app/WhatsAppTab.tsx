@@ -57,7 +57,7 @@ const WhatsAppTab = () => {
   const selectedChatRef = useRef<Chat | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const { toast } = useToast();
-  const { loading, error, fetchChats, fetchMessages, sendText, sendMedia, sendAudio, checkConnection, fetchProfilePicture } = useEvolutionApi();
+  const { loading, error, fetchChats, fetchMessages, sendText, sendMedia, sendAudio, checkConnection, fetchProfilePicture, getBase64FromMedia } = useEvolutionApi();
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
