@@ -156,13 +156,34 @@ Deno.serve(async (req) => {
       }
 
       case 'getWebSocketInfo': {
-        // Build WebSocket URL from the Evolution API base URL
         const wsBaseUrl = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
         const wsUrl = `${wsBaseUrl}/ws/events/${EVOLUTION_INSTANCE_NAME}?apikey=${EVOLUTION_API_KEY}`;
         return new Response(JSON.stringify({ wsUrl }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+
+      case 'getBase64FromMedia': {
+        const body = await req.json();
+        if (!body.messageId || !body.remoteJid) {
+          return new Response(JSON.stringify({ error: 'messageId and remoteJid are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        response = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${EVOLUTION_INSTANCE_NAME}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            message: {
+              key: {
+                id: body.messageId,
+                remoteJid: body.remoteJid,
+                fromMe: body.fromMe ?? false,
+              },
+            },
+            convertToMp4: body.convertToMp4 ?? false,
+          }),
+        });
+        break;
       }
 
       default:
