@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, CheckCheck, X, Wifi, WifiOff, Zap, Square } from 'lucide-react';
+import MediaMessage from './MediaMessage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,7 +57,7 @@ const WhatsAppTab = () => {
   const selectedChatRef = useRef<Chat | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const { toast } = useToast();
-  const { loading, error, fetchChats, fetchMessages, sendText, sendMedia, sendAudio, checkConnection, fetchProfilePicture } = useEvolutionApi();
+  const { loading, error, fetchChats, fetchMessages, sendText, sendMedia, sendAudio, checkConnection, fetchProfilePicture, getBase64FromMedia } = useEvolutionApi();
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -501,52 +502,42 @@ const WhatsAppTab = () => {
                   <div className={fromMe ? 'max-w-[80%] px-3 py-1.5 rounded-xl shadow-sm bg-primary/15 text-foreground rounded-tr-sm' : 'max-w-[80%] px-3 py-1.5 rounded-xl shadow-sm bg-card text-foreground rounded-tl-sm'}>
                     {!fromMe && pushName && <p className="text-[10px] font-medium text-primary mb-0.5">{pushName}</p>}
 
-                    {hasImage && (() => {
-                      const thumbB64 = safe(m?.imageMessage?.jpegThumbnail);
-                      const thumbSrc = thumbB64 ? (thumbB64.startsWith('data:') ? thumbB64 : `data:image/jpeg;base64,${thumbB64}`) : '';
-                      const mediaUrl = safe(m?.imageMessage?.mediaUrl);
-                      const src = thumbSrc || mediaUrl;
-                      return (
-                        <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30">
-                          {src ? (
-                            <img src={src} alt="Imagem" className="max-w-full max-h-60 rounded-lg object-cover" loading="lazy" />
-                          ) : (
-                            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground"><Image size={16} /> Imagem</div>
-                          )}
-                          {imgCaption && <p className="text-sm px-2 py-1">{imgCaption}</p>}
-                        </div>
-                      );
-                    })()}
-                    {hasVideo && (() => {
-                      const thumbB64 = safe(m?.videoMessage?.jpegThumbnail);
-                      const thumbSrc = thumbB64 ? (thumbB64.startsWith('data:') ? thumbB64 : `data:image/jpeg;base64,${thumbB64}`) : '';
-                      return (
-                        <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30">
-                          {thumbSrc ? (
-                            <div className="relative">
-                              <img src={thumbSrc} alt="Vídeo" className="max-w-full max-h-60 rounded-lg object-cover" loading="lazy" />
-                              <div className="absolute inset-0 flex items-center justify-center"><div className="bg-black/50 rounded-full p-2"><Video size={24} className="text-white" /></div></div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground"><Video size={16} /> Vídeo</div>
-                          )}
-                          {vidCaption && <p className="text-sm px-2 py-1">{vidCaption}</p>}
-                        </div>
-                      );
-                    })()}
-                    {hasAudio && (() => {
-                      const seconds = safeNum(m?.audioMessage?.seconds);
-                      const ptt = !!m?.audioMessage?.ptt;
-                      return (
-                        <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30 flex items-center gap-2 p-3">
-                          <Mic size={16} className="text-primary shrink-0" />
-                          <div className="flex-1">
-                            <div className="h-1.5 bg-primary/30 rounded-full w-full max-w-[180px]"><div className="h-full bg-primary rounded-full" style={{ width: '100%' }} /></div>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground shrink-0">{seconds > 0 ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : ptt ? 'PTT' : 'Áudio'}</span>
-                        </div>
-                      );
-                    })()}
+                    {hasImage && (
+                      <MediaMessage
+                        type="image"
+                        thumbnailBase64={safe(m?.imageMessage?.jpegThumbnail)}
+                        caption={imgCaption}
+                        messageId={safe(msgKey.id)}
+                        remoteJid={safe(msgKey.remoteJid)}
+                        fromMe={fromMe}
+                        mimetype={safe(m?.imageMessage?.mimetype)}
+                        onLoadMedia={getBase64FromMedia}
+                      />
+                    )}
+                    {hasVideo && (
+                      <MediaMessage
+                        type="video"
+                        thumbnailBase64={safe(m?.videoMessage?.jpegThumbnail)}
+                        caption={vidCaption}
+                        messageId={safe(msgKey.id)}
+                        remoteJid={safe(msgKey.remoteJid)}
+                        fromMe={fromMe}
+                        mimetype={safe(m?.videoMessage?.mimetype)}
+                        onLoadMedia={getBase64FromMedia}
+                      />
+                    )}
+                    {hasAudio && (
+                      <MediaMessage
+                        type="audio"
+                        seconds={safeNum(m?.audioMessage?.seconds)}
+                        ptt={!!m?.audioMessage?.ptt}
+                        messageId={safe(msgKey.id)}
+                        remoteJid={safe(msgKey.remoteJid)}
+                        fromMe={fromMe}
+                        mimetype={safe(m?.audioMessage?.mimetype)}
+                        onLoadMedia={getBase64FromMedia}
+                      />
+                    )}
                     {hasDoc && (
                       <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30">
                         <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground cursor-pointer hover:bg-secondary/50" onClick={() => {

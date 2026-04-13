@@ -152,6 +152,18 @@ export function useEvolutionApi() {
     }
   }, []);
 
+  const getBase64FromMedia = useCallback(async (messageId: string, remoteJid: string, fromMe: boolean, convertToMp4 = false): Promise<{ base64: string; mimetype: string } | null> => {
+    try {
+      const data = await callEvolution('getBase64FromMedia', { messageId, remoteJid, fromMe, convertToMp4 });
+      if (data?.base64) {
+        return { base64: data.base64, mimetype: data.mimetype || data.mediaType || '' };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -162,5 +174,6 @@ export function useEvolutionApi() {
     sendAudio,
     checkConnection,
     fetchProfilePicture,
+    getBase64FromMedia,
   };
 }
