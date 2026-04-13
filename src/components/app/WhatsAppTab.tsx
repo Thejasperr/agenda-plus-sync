@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, CheckCheck, X, Wifi, WifiOff, Zap, Square } from 'lucide-react';
+import MediaMessage from './MediaMessage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
