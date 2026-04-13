@@ -502,14 +502,14 @@ const WhatsAppTab = () => {
                     {!fromMe && pushName && <p className="text-[10px] font-medium text-primary mb-0.5">{pushName}</p>}
 
                     {hasImage && (() => {
-                      const imgUrl = safe(m?.imageMessage?.url) || safe(m?.imageMessage?.directPath) || safe(m?.imageMessage?.mediaUrl);
                       const thumbB64 = safe(m?.imageMessage?.jpegThumbnail);
                       const thumbSrc = thumbB64 ? (thumbB64.startsWith('data:') ? thumbB64 : `data:image/jpeg;base64,${thumbB64}`) : '';
-                      const src = imgUrl || thumbSrc;
+                      const mediaUrl = safe(m?.imageMessage?.mediaUrl);
+                      const src = thumbSrc || mediaUrl;
                       return (
                         <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30">
                           {src ? (
-                            <img src={src} alt="Imagem" className="max-w-full max-h-60 rounded-lg object-cover cursor-pointer" onClick={() => src && window.open(src, '_blank')} loading="lazy" />
+                            <img src={src} alt="Imagem" className="max-w-full max-h-60 rounded-lg object-cover" loading="lazy" />
                           ) : (
                             <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground"><Image size={16} /> Imagem</div>
                           )}
@@ -518,15 +518,12 @@ const WhatsAppTab = () => {
                       );
                     })()}
                     {hasVideo && (() => {
-                      const vidUrl = safe(m?.videoMessage?.url) || safe(m?.videoMessage?.directPath) || safe(m?.videoMessage?.mediaUrl);
                       const thumbB64 = safe(m?.videoMessage?.jpegThumbnail);
                       const thumbSrc = thumbB64 ? (thumbB64.startsWith('data:') ? thumbB64 : `data:image/jpeg;base64,${thumbB64}`) : '';
                       return (
                         <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30">
-                          {vidUrl ? (
-                            <video src={vidUrl} controls className="max-w-full max-h-60 rounded-lg" preload="metadata" />
-                          ) : thumbSrc ? (
-                            <div className="relative cursor-pointer" onClick={() => vidUrl && window.open(vidUrl, '_blank')}>
+                          {thumbSrc ? (
+                            <div className="relative">
                               <img src={thumbSrc} alt="Vídeo" className="max-w-full max-h-60 rounded-lg object-cover" loading="lazy" />
                               <div className="absolute inset-0 flex items-center justify-center"><div className="bg-black/50 rounded-full p-2"><Video size={24} className="text-white" /></div></div>
                             </div>
@@ -538,14 +535,15 @@ const WhatsAppTab = () => {
                       );
                     })()}
                     {hasAudio && (() => {
-                      const audioUrl = safe(m?.audioMessage?.url) || safe(m?.audioMessage?.directPath) || safe(m?.audioMessage?.mediaUrl);
+                      const seconds = safeNum(m?.audioMessage?.seconds);
+                      const ptt = !!m?.audioMessage?.ptt;
                       return (
-                        <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30">
-                          {audioUrl ? (
-                            <audio src={audioUrl} controls className="w-full max-w-[250px]" preload="metadata" />
-                          ) : (
-                            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground"><Mic size={16} /> Áudio</div>
-                          )}
+                        <div className="mb-1 rounded-lg overflow-hidden bg-secondary/30 flex items-center gap-2 p-3">
+                          <Mic size={16} className="text-primary shrink-0" />
+                          <div className="flex-1">
+                            <div className="h-1.5 bg-primary/30 rounded-full w-full max-w-[180px]"><div className="h-full bg-primary rounded-full" style={{ width: '100%' }} /></div>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground shrink-0">{seconds > 0 ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : ptt ? 'PTT' : 'Áudio'}</span>
                         </div>
                       );
                     })()}
