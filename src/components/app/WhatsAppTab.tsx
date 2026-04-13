@@ -33,6 +33,11 @@ const safeSortMessages = (msgs: any[]): any[] => {
 
 const cleanBase64 = (base64String: string): string => {
   if (!base64String) return '';
+  // Strip data URI prefix (e.g., "data:audio/ogg;base64,") to send raw base64
+  const idx = base64String.indexOf(',');
+  if (idx !== -1 && base64String.startsWith('data:')) {
+    return base64String.substring(idx + 1).trim();
+  }
   return base64String.trim();
 };
 
