@@ -126,8 +126,7 @@ const WhatsAppTab = () => {
         body,
         icon: '/placeholder.svg',
         tag: 'whatsapp-msg',
-        renotify: true,
-      });
+      } as NotificationOptions);
       notification.onclick = () => {
         window.focus();
         notification.close();
