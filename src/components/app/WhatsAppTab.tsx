@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, CheckCheck, X, Wifi, WifiOff, Zap, Square } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, CheckCheck, X, Wifi, WifiOff, Zap, Square, Calendar, AlertCircle } from 'lucide-react';
 import MediaMessage from './MediaMessage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useEvolutionApi, type Chat, type Message } from '@/hooks/useEvolutionApi';
-import { useEvolutionWebSocket } from '@/hooks/useEvolutionWebSocket';
+import { useEvolutionRealtime } from '@/hooks/useEvolutionRealtime';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -34,13 +36,40 @@ const safeSortMessages = (msgs: any[]): any[] => {
 
 const cleanBase64 = (base64String: string): string => {
   if (!base64String) return '';
-  // Strip data URI prefix (e.g., "data:audio/ogg;base64,") to send raw base64
   const idx = base64String.indexOf(',');
   if (idx !== -1 && base64String.startsWith('data:')) {
     return base64String.substring(idx + 1).trim();
   }
   return base64String.trim();
 };
+
+// Normalize phone for matching: keep only digits, remove country code prefix variations
+const normalizePhone = (phone: string): string => {
+  const digits = phone.replace(/\D/g, '');
+  // Remove leading 55 (Brazil) if present and result is still 10-11 digits
+  if (digits.startsWith('55') && digits.length >= 12) {
+    return digits.substring(2);
+  }
+  return digits;
+};
+
+interface Agendamento {
+  id: string;
+  nome: string;
+  telefone: string;
+  data_agendamento: string;
+  hora_agendamento: string;
+  preco: number;
+  status: string;
+  forma_pagamento: string | null;
+  procedimento_id: string | null;
+}
+
+interface Servico {
+  id: string;
+  nome_procedimento: string;
+  valor: number;
+}
 
 const WhatsAppTab = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -52,6 +81,9 @@ const WhatsAppTab = () => {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [profilePics, setProfilePics] = useState<Record<string, string>>({});
   const [isRecording, setIsRecording] = useState(false);
+  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [showAgendamentoForm, setShowAgendamentoForm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedChatRef = useRef<Chat | null>(null);
@@ -63,12 +95,48 @@ const WhatsAppTab = () => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
+  // Fetch agendamentos and servicos
+  useEffect(() => {
+    const fetchData = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: ag } = await supabase
+        .from('agendamentos')
+        .select('id, nome, telefone, data_agendamento, hora_agendamento, preco, status, forma_pagamento, procedimento_id')
+        .gte('data_agendamento', today)
+        .in('status', ['A fazer', 'Em andamento']);
+      if (ag) setAgendamentos(ag);
+
+      const { data: sv } = await supabase.from('servicos').select('id, nome_procedimento, valor');
+      if (sv) setServicos(sv);
+    };
+    fetchData();
+  }, []);
+
   const getContactName = useCallback((chat: any): string => {
     if (chat?.name && typeof chat.name === 'string') return chat.name;
     if (chat?.pushName && typeof chat.pushName === 'string') return chat.pushName;
     const jid = safe(chat?.remoteJid);
     return jid.replace('@s.whatsapp.net', '').replace('@g.us', '') || 'Desconhecido';
   }, []);
+
+  const getPhoneFromJid = useCallback((jid: string): string => {
+    return jid.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
+  }, []);
+
+  // Get pending agendamentos for a given JID
+  const getAgendamentosPendentes = useCallback((jid: string): Agendamento[] => {
+    const phone = normalizePhone(getPhoneFromJid(jid));
+    return agendamentos.filter(ag => {
+      const agPhone = normalizePhone(ag.telefone);
+      return agPhone === phone || phone.endsWith(agPhone) || agPhone.endsWith(phone);
+    });
+  }, [agendamentos, getPhoneFromJid]);
+
+  const getServicoNome = useCallback((procedimentoId: string | null): string => {
+    if (!procedimentoId) return '';
+    const s = servicos.find(sv => sv.id === procedimentoId);
+    return s?.nome_procedimento || '';
+  }, [servicos]);
 
   const getMessageContent = useCallback((msg: any): string => {
     try {
@@ -126,7 +194,7 @@ const WhatsAppTab = () => {
 
   const showBrowserNotification = useCallback((title: string, body: string) => {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    if (document.visibilityState === 'visible') return; // Only notify when tab is not focused
+    if (document.visibilityState === 'visible') return;
     try {
       const notification = new Notification(title, {
         body,
@@ -140,7 +208,8 @@ const WhatsAppTab = () => {
     } catch { /* silent */ }
   }, []);
 
-  const { wsConnected } = useEvolutionWebSocket({
+  // Use Supabase Realtime instead of WebSocket
+  const { realtimeConnected } = useEvolutionRealtime({
     onMessage: useCallback((data: any) => {
       const currentChat = selectedChatRef.current;
       if (!data) return;
@@ -153,7 +222,6 @@ const WhatsAppTab = () => {
         const isCurrentChat = currentChat && remoteJid === safe(currentChat.remoteJid);
         const isFromMe = msg?.key?.fromMe === true;
 
-        // Browser notification for incoming messages when tab is not focused
         if (!isFromMe) {
           const senderName = safe(msg?.pushName) || remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
           const content = getMessageContent(msg);
@@ -327,6 +395,23 @@ const WhatsAppTab = () => {
     }
   };
 
+  const handleCriarAgendamento = async () => {
+    if (!selectedChat) return;
+    const jid = safe(selectedChat.remoteJid);
+    const phone = getPhoneFromJid(jid);
+    const name = getContactName(selectedChat);
+    
+    // Navigate to calendario page with pre-filled data via URL params
+    // For now, open the calendar page
+    window.location.hash = '';
+    // Store data for the calendario page
+    sessionStorage.setItem('agendamento_prefill', JSON.stringify({
+      telefone: phone,
+      nome: name,
+    }));
+    toast({ title: 'Agendamento', description: `Vá para a aba Calendário para agendar para ${name}` });
+  };
+
   const getInitials = (name: string): string => {
     if (!name) return '??';
     return name.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '??';
@@ -360,6 +445,7 @@ const WhatsAppTab = () => {
     ? chats.filter(chat => getContactName(chat).toLowerCase().includes(searchQuery.toLowerCase()))
     : [];
 
+  // Chat list view
   if (!selectedChat) {
     return (
       <div className="flex flex-col h-full">
@@ -367,7 +453,7 @@ const WhatsAppTab = () => {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-foreground">WhatsApp</h2>
             <div className="flex items-center gap-2">
-              {wsConnected && (
+              {realtimeConnected && (
                 <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                   <Zap size={10} /> Tempo real
                 </span>
@@ -410,6 +496,7 @@ const WhatsAppTab = () => {
                 const pic = profilePics[jid] || '';
                 const ts = safeNum(chat.lastMessageTimestamp);
                 const unreadCount = safeNum(chat.unreadCount);
+                const pendentes = getAgendamentosPendentes(jid);
 
                 return (
                   <button
@@ -425,10 +512,25 @@ const WhatsAppTab = () => {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm truncate">{name}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-medium text-sm truncate">{name}</span>
+                          {pendentes.length > 0 && (
+                            <AlertCircle size={14} className="text-amber-500 shrink-0" />
+                          )}
+                        </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{ts > 0 ? formatTime(ts) : ''}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{getLastMessagePreview(chat)}</p>
+                      {pendentes.length > 0 ? (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[10px] text-amber-600 truncate">
+                            📅 {pendentes[0].data_agendamento.split('-').reverse().join('/')} {pendentes[0].hora_agendamento.substring(0, 5)}
+                            {pendentes[0].procedimento_id ? ` • ${getServicoNome(pendentes[0].procedimento_id)}` : ''}
+                            {!pendentes[0].forma_pagamento ? ' • Não pago' : ''}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{getLastMessagePreview(chat)}</p>
+                      )}
                     </div>
                     {unreadCount > 0 && (
                       <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1">
@@ -450,9 +552,11 @@ const WhatsAppTab = () => {
   const selectedJid = safe(selectedChat.remoteJid);
   const selectedPic = profilePics[selectedJid] || '';
   const selectedName = getContactName(selectedChat);
+  const chatAgendamentos = getAgendamentosPendentes(selectedJid);
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center gap-3 px-3 py-2 border-b border-border/50 bg-card sticky top-0 z-10">
         <button onClick={() => { setSelectedChat(null); setMessages([]); }} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
           <ArrowLeft size={20} />
@@ -465,8 +569,38 @@ const WhatsAppTab = () => {
           <h3 className="font-medium text-sm truncate">{selectedName}</h3>
           <p className="text-[10px] text-muted-foreground">{selectedJid.includes('@g.us') ? 'Grupo' : 'Online'}</p>
         </div>
+        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={handleCriarAgendamento}>
+          <Calendar size={14} /> Agendar
+        </Button>
       </div>
 
+      {/* Pending appointment banner */}
+      {chatAgendamentos.length > 0 && (
+        <div className="px-3 py-2 bg-amber-50 border-b border-amber-200">
+          {chatAgendamentos.map(ag => (
+            <div key={ag.id} className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Calendar size={12} className="text-amber-600" />
+                <span className="text-amber-800">
+                  {ag.data_agendamento.split('-').reverse().join('/')} às {ag.hora_agendamento.substring(0, 5)}
+                  {ag.procedimento_id ? ` • ${getServicoNome(ag.procedimento_id)}` : ''}
+                </span>
+              </div>
+              {!ag.forma_pagamento ? (
+                <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 bg-amber-100">
+                  Não pago
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] border-green-400 text-green-700 bg-green-100">
+                  Pago
+                </Badge>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Messages */}
       <ScrollArea className="flex-1 bg-secondary/20">
         <div className="p-3 space-y-1">
           {messages.length === 0 && !loading && <div className="text-center py-12 text-muted-foreground text-sm">Nenhuma mensagem ainda</div>}
@@ -571,6 +705,7 @@ const WhatsAppTab = () => {
         </div>
       </ScrollArea>
 
+      {/* Attach menu */}
       {showAttachMenu && (
         <div className="flex items-center gap-2 px-3 py-2 bg-card border-t border-border/30">
           <input
@@ -600,6 +735,7 @@ const WhatsAppTab = () => {
         </div>
       )}
 
+      {/* Input */}
       <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-card">
         <button onClick={() => setShowAttachMenu(!showAttachMenu)} className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground">
           <Paperclip size={18} />
