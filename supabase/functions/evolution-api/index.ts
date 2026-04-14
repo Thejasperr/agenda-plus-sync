@@ -209,6 +209,13 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'getWebhookToken': {
+        return new Response(JSON.stringify({ token: EVOLUTION_API_KEY }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
