@@ -164,6 +164,29 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'setWebhook': {
+        const body = await req.json();
+        const webhookUrl = body.webhookUrl;
+        if (!webhookUrl) {
+          return new Response(JSON.stringify({ error: 'webhookUrl is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        response = await fetch(`${baseUrl}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            url: webhookUrl,
+            webhook_by_events: false,
+            webhook_base64: false,
+            events: [
+              'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE',
+              'CONNECTION_UPDATE',
+            ],
+          }),
+        });
+        break;
+      }
+
       case 'getBase64FromMedia': {
         const body = await req.json();
         if (!body.messageId || !body.remoteJid) {
