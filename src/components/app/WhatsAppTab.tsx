@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, CheckCheck, X, Wifi, WifiOff, Zap, Square, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, Mic, Image, Video, File, Search, Phone, CheckCheck, X, Zap, Square, Calendar, AlertCircle } from 'lucide-react';
 import MediaMessage from './MediaMessage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { useEvolutionApi, type Chat, type Message } from '@/hooks/useEvolutionApi';
 import { useEvolutionRealtime } from '@/hooks/useEvolutionRealtime';
 import { useToast } from '@/hooks/use-toast';
@@ -43,10 +48,8 @@ const cleanBase64 = (base64String: string): string => {
   return base64String.trim();
 };
 
-// Normalize phone for matching: keep only digits, remove country code prefix variations
 const normalizePhone = (phone: string): string => {
   const digits = phone.replace(/\D/g, '');
-  // Remove leading 55 (Brazil) if present and result is still 10-11 digits
   if (digits.startsWith('55') && digits.length >= 12) {
     return digits.substring(2);
   }
@@ -71,7 +74,12 @@ interface Servico {
   valor: number;
 }
 
-const WhatsAppTab = () => {
+interface WhatsAppTabProps {
+  initialJid?: string | null;
+  onClearInitialJid?: () => void;
+}
+
+const WhatsAppTab = ({ initialJid, onClearInitialJid }: WhatsAppTabProps) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -83,7 +91,14 @@ const WhatsAppTab = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [showAgendamentoForm, setShowAgendamentoForm] = useState(false);
+  const [showAgendamentoDialog, setShowAgendamentoDialog] = useState(false);
+  const [agendamentoForm, setAgendamentoForm] = useState({
+    data_agendamento: format(new Date(), 'yyyy-MM-dd'),
+    hora_agendamento: '',
+    procedimento_ids: [] as string[],
+    preco: 0,
+    observacoes: '',
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedChatRef = useRef<Chat | null>(null);
@@ -98,12 +113,10 @@ const WhatsAppTab = () => {
   // Fetch agendamentos and servicos
   useEffect(() => {
     const fetchData = async () => {
-      const today = new Date().toISOString().split('T')[0];
       const { data: ag } = await supabase
         .from('agendamentos')
         .select('id, nome, telefone, data_agendamento, hora_agendamento, preco, status, forma_pagamento, procedimento_id')
-        .gte('data_agendamento', today)
-        .in('status', ['A fazer', 'Em andamento']);
+        .in('status', ['A fazer', 'Em andamento', 'Agendado']);
       if (ag) setAgendamentos(ag);
 
       const { data: sv } = await supabase.from('servicos').select('id, nome_procedimento, valor');
@@ -111,6 +124,17 @@ const WhatsAppTab = () => {
     };
     fetchData();
   }, []);
+
+  // Auto-calculate price when procedures change
+  useEffect(() => {
+    if (agendamentoForm.procedimento_ids.length > 0) {
+      const total = agendamentoForm.procedimento_ids.reduce((sum, procId) => {
+        const servico = servicos.find(s => s.id === procId);
+        return sum + (servico?.valor || 0);
+      }, 0);
+      setAgendamentoForm(prev => ({ ...prev, preco: total }));
+    }
+  }, [agendamentoForm.procedimento_ids, servicos]);
 
   const getContactName = useCallback((chat: any): string => {
     if (chat?.name && typeof chat.name === 'string') return chat.name;
@@ -123,7 +147,6 @@ const WhatsAppTab = () => {
     return jid.replace('@s.whatsapp.net', '').replace('@g.us', '').replace('@lid', '');
   }, []);
 
-  // Get pending agendamentos for a given JID
   const getAgendamentosPendentes = useCallback((jid: string): Agendamento[] => {
     const phone = normalizePhone(getPhoneFromJid(jid));
     return agendamentos.filter(ag => {
@@ -278,6 +301,32 @@ const WhatsAppTab = () => {
     });
   }, [fetchChats]);
 
+  // Handle initialJid - open the matching chat automatically
+  useEffect(() => {
+    if (!initialJid || chats.length === 0) return;
+    const normalizedInitial = normalizePhone(getPhoneFromJid(initialJid));
+    const matchingChat = chats.find(c => {
+      const chatPhone = normalizePhone(getPhoneFromJid(safe(c.remoteJid)));
+      return chatPhone === normalizedInitial || chatPhone.endsWith(normalizedInitial) || normalizedInitial.endsWith(chatPhone);
+    });
+    if (matchingChat) {
+      handleOpenChat(matchingChat);
+      onClearInitialJid?.();
+    } else {
+      // Create a temporary chat entry for this JID
+      const tempChat: Chat = {
+        id: initialJid,
+        remoteJid: initialJid,
+        name: initialJid.replace('@s.whatsapp.net', ''),
+        lastMessage: '',
+        lastMessageTimestamp: Math.floor(Date.now() / 1000),
+        unreadCount: 0,
+      };
+      handleOpenChat(tempChat);
+      onClearInitialJid?.();
+    }
+  }, [initialJid, chats, handleOpenChat, onClearInitialJid, getPhoneFromJid]);
+
   useEffect(() => {
     if (chats.length === 0) return;
     chats.forEach((chat) => {
@@ -397,19 +446,86 @@ const WhatsAppTab = () => {
 
   const handleCriarAgendamento = async () => {
     if (!selectedChat) return;
+    setAgendamentoForm({
+      data_agendamento: format(new Date(), 'yyyy-MM-dd'),
+      hora_agendamento: '',
+      procedimento_ids: [],
+      preco: 0,
+      observacoes: '',
+    });
+    setShowAgendamentoDialog(true);
+  };
+
+  const handleSubmitAgendamento = async () => {
+    if (!selectedChat) return;
     const jid = safe(selectedChat.remoteJid);
-    const phone = getPhoneFromJid(jid);
+    const phone = normalizePhone(getPhoneFromJid(jid));
     const name = getContactName(selectedChat);
-    
-    // Navigate to calendario page with pre-filled data via URL params
-    // For now, open the calendar page
-    window.location.hash = '';
-    // Store data for the calendario page
-    sessionStorage.setItem('agendamento_prefill', JSON.stringify({
-      telefone: phone,
-      nome: name,
-    }));
-    toast({ title: 'Agendamento', description: `Vá para a aba Calendário para agendar para ${name}` });
+
+    if (!agendamentoForm.data_agendamento || !agendamentoForm.hora_agendamento || agendamentoForm.preco <= 0) {
+      toast({ title: 'Erro', description: 'Preencha data, hora e preço', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      // Check if client exists
+      const { data: existingClients } = await supabase
+        .from('clientes')
+        .select('id, telefone, nome')
+        .or(`telefone.eq.${phone},telefone.eq.${phone.length === 11 ? phone : ''}`);
+
+      let clienteExiste = existingClients && existingClients.length > 0;
+
+      if (!clienteExiste) {
+        // Create client automatically
+        await supabase.from('clientes').insert([{
+          nome: name,
+          telefone: phone,
+        }]);
+      }
+
+      // Create agendamento
+      const agendamentoData = {
+        nome: name,
+        telefone: phone,
+        preco: agendamentoForm.preco,
+        data_agendamento: agendamentoForm.data_agendamento,
+        hora_agendamento: agendamentoForm.hora_agendamento,
+        procedimento_id: agendamentoForm.procedimento_ids.length > 0 ? agendamentoForm.procedimento_ids[0] : null,
+        status: 'Agendado',
+        observacoes: agendamentoForm.observacoes || null,
+      };
+
+      const { data: newAg, error: agError } = await supabase
+        .from('agendamentos')
+        .insert([agendamentoData])
+        .select()
+        .single();
+
+      if (agError) throw agError;
+
+      // Insert procedimentos
+      if (agendamentoForm.procedimento_ids.length > 0 && newAg) {
+        const procedimentosData = agendamentoForm.procedimento_ids.map((procId, index) => ({
+          agendamento_id: newAg.id,
+          procedimento_id: procId,
+          ordem: index + 1,
+        }));
+        await supabase.from('agendamento_procedimentos').insert(procedimentosData);
+      }
+
+      // Refresh agendamentos
+      const { data: ag } = await supabase
+        .from('agendamentos')
+        .select('id, nome, telefone, data_agendamento, hora_agendamento, preco, status, forma_pagamento, procedimento_id')
+        .in('status', ['A fazer', 'Em andamento', 'Agendado']);
+      if (ag) setAgendamentos(ag);
+
+      setShowAgendamentoDialog(false);
+      toast({ title: 'Sucesso', description: `Agendamento criado para ${name}!` });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err?.message || 'Falha ao criar agendamento', variant: 'destructive' });
+    }
   };
 
   const getInitials = (name: string): string => {
@@ -458,12 +574,6 @@ const WhatsAppTab = () => {
                   <Zap size={10} /> Tempo real
                 </span>
               )}
-              {isConnected !== null && (
-                <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-                  {isConnected ? 'Conectado' : 'Desconectado'}
-                </span>
-              )}
             </div>
           </div>
           <div className="relative">
@@ -497,6 +607,7 @@ const WhatsAppTab = () => {
                 const ts = safeNum(chat.lastMessageTimestamp);
                 const unreadCount = safeNum(chat.unreadCount);
                 const pendentes = getAgendamentosPendentes(jid);
+                const lastMsg = getLastMessagePreview(chat);
 
                 return (
                   <button
@@ -520,7 +631,8 @@ const WhatsAppTab = () => {
                         </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{ts > 0 ? formatTime(ts) : ''}</span>
                       </div>
-                      {pendentes.length > 0 ? (
+                      {/* Show appointment info if exists */}
+                      {pendentes.length > 0 && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <span className="text-[10px] text-amber-600 truncate">
                             📅 {pendentes[0].data_agendamento.split('-').reverse().join('/')} {pendentes[0].hora_agendamento.substring(0, 5)}
@@ -528,9 +640,9 @@ const WhatsAppTab = () => {
                             {!pendentes[0].forma_pagamento ? ' • Não pago' : ''}
                           </span>
                         </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{getLastMessagePreview(chat)}</p>
                       )}
+                      {/* Always show last message preview */}
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{lastMsg}</p>
                     </div>
                     {unreadCount > 0 && (
                       <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1">
@@ -556,7 +668,7 @@ const WhatsAppTab = () => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
+      {/* Header - removed "Online" text */}
       <div className="flex items-center gap-3 px-3 py-2 border-b border-border/50 bg-card sticky top-0 z-10">
         <button onClick={() => { setSelectedChat(null); setMessages([]); }} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
           <ArrowLeft size={20} />
@@ -567,7 +679,7 @@ const WhatsAppTab = () => {
         </Avatar>
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-sm truncate">{selectedName}</h3>
-          <p className="text-[10px] text-muted-foreground">{selectedJid.includes('@g.us') ? 'Grupo' : 'Online'}</p>
+          {selectedJid.includes('@g.us') && <p className="text-[10px] text-muted-foreground">Grupo</p>}
         </div>
         <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={handleCriarAgendamento}>
           <Calendar size={14} /> Agendar
@@ -757,6 +869,87 @@ const WhatsAppTab = () => {
           </button>
         )}
       </div>
+
+      {/* Agendamento Dialog */}
+      <Dialog open={showAgendamentoDialog} onOpenChange={setShowAgendamentoDialog}>
+        <DialogContent className="w-[95%] max-w-md mx-auto max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Novo Agendamento - {selectedName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Data *</Label>
+              <Input
+                type="date"
+                value={agendamentoForm.data_agendamento}
+                onChange={e => setAgendamentoForm(prev => ({ ...prev, data_agendamento: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Hora *</Label>
+              <Input
+                type="time"
+                value={agendamentoForm.hora_agendamento}
+                onChange={e => setAgendamentoForm(prev => ({ ...prev, hora_agendamento: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Procedimentos</Label>
+              <div className="space-y-2">
+                {agendamentoForm.procedimento_ids.map((procId, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Select value={procId} onValueChange={value => {
+                      const newIds = [...agendamentoForm.procedimento_ids];
+                      newIds[index] = value;
+                      setAgendamentoForm(prev => ({ ...prev, procedimento_ids: newIds }));
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {servicos.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.nome_procedimento} - R$ {s.valor.toFixed(2)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => {
+                      const newIds = agendamentoForm.procedimento_ids.filter((_, i) => i !== index);
+                      setAgendamentoForm(prev => ({ ...prev, procedimento_ids: newIds }));
+                    }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => {
+                  setAgendamentoForm(prev => ({ ...prev, procedimento_ids: [...prev.procedimento_ids, ''] }));
+                }}>
+                  + Adicionar procedimento
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label>Preço (R$) *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={agendamentoForm.preco}
+                onChange={e => setAgendamentoForm(prev => ({ ...prev, preco: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea
+                value={agendamentoForm.observacoes}
+                onChange={e => setAgendamentoForm(prev => ({ ...prev, observacoes: e.target.value }))}
+                placeholder="Observações..."
+              />
+            </div>
+            <Button onClick={handleSubmitAgendamento} className="w-full">
+              Criar Agendamento
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
