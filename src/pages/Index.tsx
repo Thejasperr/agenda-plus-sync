@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, Package, MessageCircle } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
@@ -14,6 +14,7 @@ type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'whatsap
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [whatsappJid, setWhatsappJid] = useState<string | null>(null);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -25,6 +26,14 @@ const Index = () => {
       toast({ title: "Erro", description: "Erro ao fazer logout.", variant: "destructive" });
     }
   };
+
+  const navigateToWhatsApp = useCallback((telefone: string) => {
+    // Normalize phone to JID format
+    const digits = telefone.replace(/\D/g, '');
+    const fullNumber = digits.startsWith('55') ? digits : `55${digits}`;
+    setWhatsappJid(`${fullNumber}@s.whatsapp.net`);
+    setActiveTab('whatsapp');
+  }, []);
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart3 },
@@ -39,9 +48,9 @@ const Index = () => {
     switch (activeTab) {
       case 'dashboard': return <DashboardTab />;
       case 'clientes': return <ClientesTab />;
-      case 'calendario': return <CalendarioPage />;
+      case 'calendario': return <CalendarioPage onNavigateToWhatsApp={navigateToWhatsApp} />;
       case 'transacoes': return <TransacoesTab />;
-      case 'whatsapp': return <WhatsAppTab />;
+      case 'whatsapp': return <WhatsAppTab initialJid={whatsappJid} onClearInitialJid={() => setWhatsappJid(null)} />;
       case 'configuracoes': return <ConfiguracoesTab />;
       default: return <DashboardTab />;
     }
@@ -84,7 +93,10 @@ const Index = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === 'whatsapp') setWhatsappJid(null);
+                  setActiveTab(tab.id);
+                }}
                 className={`flex flex-col items-center py-2 px-2 rounded-xl transition-all duration-200 ${
                   isActive 
                     ? 'text-primary bg-primary/10 scale-105' 
