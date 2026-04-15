@@ -40,7 +40,11 @@ interface Agendamento {
 }
 
 
-const CalendarioPage = () => {
+interface CalendarioPageProps {
+  onNavigateToWhatsApp?: (telefone: string) => void;
+}
+
+const CalendarioPage = ({ onNavigateToWhatsApp }: CalendarioPageProps) => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [servicos, setServicos] = useState<{
@@ -668,9 +672,13 @@ const CalendarioPage = () => {
     }
   };
   const openWhatsApp = (telefone: string, nome: string, data: string, hora: string) => {
-    const message = encodeURIComponent(`Olá ${nome}! Confirmando seu agendamento para ${data} às ${hora}. Aguardamos você!`);
-    const phoneNumber = telefone.replace(/\D/g, '');
-    window.open(`https://wa.me/55${phoneNumber}?text=${message}`, '_blank');
+    if (onNavigateToWhatsApp) {
+      onNavigateToWhatsApp(telefone);
+    } else {
+      const message = encodeURIComponent(`Olá ${nome}! Confirmando seu agendamento para ${data} às ${hora}. Aguardamos você!`);
+      const phoneNumber = telefone.replace(/\D/g, '');
+      window.open(`https://wa.me/55${phoneNumber}?text=${message}`, '_blank');
+    }
   };
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let telefone = e.target.value;
