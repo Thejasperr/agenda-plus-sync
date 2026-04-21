@@ -240,7 +240,7 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                       <p className="text-sm font-bold text-foreground">R$ {totalGasto.toFixed(2)}</p>
                       <p className="text-[10px] text-muted-foreground">{concluidos.length} atendimento(s)</p>
                     </Card>
-                    <Card className="p-3">
+                    <Card className="p-3 relative">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
                         <Wallet className="h-3 w-3" /> Crédito
                       </div>
@@ -248,6 +248,14 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                         R$ {credito.toFixed(2)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">a haver</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full mt-2 h-7 text-[10px] gap-1"
+                        onClick={() => setCreditoOpen(true)}
+                      >
+                        <Plus className="h-3 w-3" /> Adicionar
+                      </Button>
                     </Card>
                     <Card className="p-3">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
