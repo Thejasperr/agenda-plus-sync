@@ -60,6 +60,7 @@ const WhatsAppPage: React.FC = () => {
   const [novoClienteNome, setNovoClienteNome] = useState('');
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [chatStatus, setChatStatus] = useState<Record<string, { credito: number; devendo: number; ativos: number }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +68,54 @@ const WhatsAppPage: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const activeChatRef = useRef<Chat | null>(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
+
+  // Normaliza telefone para chave de comparação (últimos 8 dígitos)
+  const phoneKey = (tel: string | null | undefined) => {
+    const d = (tel || '').replace(/\D/g, '');
+    return d.length >= 8 ? d.slice(-8) : d;
+  };
+
+  // Carrega status (crédito / devendo / agendamentos ativos) para todos os contatos da lista
+  const loadChatStatus = async () => {
+    if (!user) return;
+    const [{ data: clientes }, { data: ags }] = await Promise.all([
+      supabase.from('clientes').select('telefone, saldo_credito').eq('user_id', user.id),
+      supabase.from('agendamentos').select('telefone, data_agendamento, status').eq('user_id', user.id),
+    ]);
+
+    const map: Record<string, { credito: number; devendo: number; ativos: number }> = {};
+
+    (clientes || []).forEach((c: any) => {
+      const k = phoneKey(c.telefone);
+      if (!k) return;
+      const saldo = Number(c.saldo_credito || 0);
+      if (!map[k]) map[k] = { credito: 0, devendo: 0, ativos: 0 };
+      map[k].credito += saldo > 0 ? saldo : 0;
+      map[k].devendo += saldo < 0 ? Math.abs(saldo) : 0;
+    });
+
+    (ags || []).forEach((a: any) => {
+      const k = phoneKey(a.telefone);
+      if (!k) return;
+      if (!map[k]) map[k] = { credito: 0, devendo: 0, ativos: 0 };
+      const d = a.data_agendamento ? parseISO(a.data_agendamento) : null;
+      const ativo = a.status !== 'Concluído' && a.status !== 'Cancelado' && d && (isToday(d) || !isPast(d));
+      if (ativo) map[k].ativos += 1;
+      // Pendência financeira: passou e não foi concluído/cancelado
+      const pendenteFin = a.status !== 'Concluído' && a.status !== 'Cancelado' && d && isPast(d) && !isToday(d);
+      if (pendenteFin) {
+        // soma simbólica para sinalizar pendência (não temos preço aqui, só um flag)
+        map[k].devendo += 0.0001;
+      }
+    });
+
+    setChatStatus(map);
+  };
+
+  useEffect(() => { loadChatStatus(); }, [user]);
+
+  // Recarrega status quando agendamentos / clientes / transações mudarem
+  useAgendamentosRealtime(() => { loadChatStatus(); });
 
   // Carregar chats
   const loadChats = async () => {
