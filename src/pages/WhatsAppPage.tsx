@@ -54,6 +54,7 @@ const WhatsAppPage: React.FC = () => {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
+  const [novoClienteNome, setNovoClienteNome] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
