@@ -18,6 +18,7 @@ import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
 import PagamentoAntecipadoDialog from '@/components/PagamentoAntecipadoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 interface Agendamento {
   id: string;
   nome: string;
