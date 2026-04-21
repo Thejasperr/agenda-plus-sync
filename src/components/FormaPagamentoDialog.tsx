@@ -48,15 +48,36 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   const [loading, setLoading] = useState(true);
   const [pixPayload, setPixPayload] = useState<string>('');
   const [loadingPix, setLoadingPix] = useState(false);
+  const [pagarParaOutro, setPagarParaOutro] = useState(false);
+  const [clientesDisponiveis, setClientesDisponiveis] = useState<ClienteOption[]>([]);
+  const [clienteCreditoId, setClienteCreditoId] = useState<string>('');
+  const [buscaCliente, setBuscaCliente] = useState('');
   const qrCodeContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       fetchFormasPagamento();
+      fetchClientes();
       setValorPago(valorServico.toFixed(2));
+      setPagarParaOutro(false);
+      setClienteCreditoId('');
+      setBuscaCliente('');
     }
   }, [open, valorServico]);
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome, telefone')
+        .order('nome');
+      if (error) throw error;
+      setClientesDisponiveis((data as ClienteOption[]) || []);
+    } catch (e) {
+      console.error('Erro ao buscar clientes:', e);
+    }
+  };
 
   // Regenerar QR Code quando o valor pago mudar
   useEffect(() => {
