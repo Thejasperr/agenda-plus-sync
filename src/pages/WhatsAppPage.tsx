@@ -318,7 +318,7 @@ const WhatsAppPage: React.FC = () => {
             </div>
 
             {/* Mensagens */}
-            <ScrollArea className="flex-1 bg-muted/30">
+            <ScrollArea className="flex-1 min-h-0 bg-muted/30">
               <div className="p-4 space-y-2">
                 {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
                 <div ref={messagesEndRef} />
