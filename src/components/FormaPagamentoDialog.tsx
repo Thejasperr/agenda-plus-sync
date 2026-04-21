@@ -5,17 +5,24 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { QrCode, Copy, Download, Printer, Share2, Loader2 } from 'lucide-react';
+import { QrCode, Copy, Download, Printer, Share2, Loader2, Gift, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePixPayload } from '@/lib/pixQrCode';
 import { QRCodeSVG } from 'qrcode.react';
+import { Switch } from '@/components/ui/switch';
 
 interface FormaPagamento {
   id: string;
   nome: string;
   ativa: boolean;
   qr_code_pix: string | null;
+}
+
+interface ClienteOption {
+  id: string;
+  nome: string;
+  telefone: string;
 }
 
 interface FormaPagamentoDialogProps {
