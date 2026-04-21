@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { format, isSameDay, addDays } from 'date-fns';
+import { format, isSameDay, addDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
 import PagamentoAntecipadoDialog from '@/components/PagamentoAntecipadoDialog';
@@ -206,7 +206,26 @@ const CalendarioPage = () => {
       setDialogOpen(true);
     };
     window.addEventListener('whatsapp:agendar', handler);
-    return () => window.removeEventListener('whatsapp:agendar', handler);
+
+    const editHandler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as { id?: string } | undefined;
+      if (!detail?.id) return;
+      const { data: ag } = await supabase
+        .from('agendamentos')
+        .select('*')
+        .eq('id', detail.id)
+        .maybeSingle();
+      if (ag) {
+        setSelectedDate(parseISO(ag.data_agendamento));
+        await handleEdit(ag as Agendamento);
+      }
+    };
+    window.addEventListener('whatsapp:editar', editHandler);
+
+    return () => {
+      window.removeEventListener('whatsapp:agendar', handler);
+      window.removeEventListener('whatsapp:editar', editHandler);
+    };
   }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
