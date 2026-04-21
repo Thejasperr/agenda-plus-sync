@@ -344,6 +344,56 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
           }}
         />
       )}
+
+      <Dialog open={creditoOpen} onOpenChange={setCreditoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar crédito</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Lance um valor pago antecipadamente para <span className="font-medium text-foreground">{nome}</span>.
+              O crédito será aplicado automaticamente como desconto em agendamentos futuros.
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="credito_valor">Valor (R$) *</Label>
+              <Input
+                id="credito_valor"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={creditoValor}
+                onChange={(e) => setCreditoValor(e.target.value)}
+                autoFocus
+              />
+              {credito > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Saldo atual: R$ {credito.toFixed(2)}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="credito_obs">Observação (opcional)</Label>
+              <Textarea
+                id="credito_obs"
+                rows={2}
+                placeholder="Ex.: pago pela mãe para a filha"
+                value={creditoObs}
+                onChange={(e) => setCreditoObs(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCreditoOpen(false)} disabled={savingCredito}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAdicionarCredito} disabled={savingCredito}>
+              {savingCredito ? 'Salvando...' : 'Adicionar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
