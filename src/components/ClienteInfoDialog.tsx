@@ -13,6 +13,7 @@ import { format, parseISO, isToday, isFuture, isPast, startOfDay } from 'date-fn
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import FormaPagamentoDialog from './FormaPagamentoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 
 interface ClienteInfoDialogProps {
   open: boolean;
@@ -80,6 +81,11 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   useEffect(() => {
     if (open && telefone) load();
   }, [open, telefone, load]);
+
+  // Sincronização em tempo real: se algo mudar enquanto o modal está aberto, recarrega
+  useAgendamentosRealtime(() => {
+    if (open && telefone) load();
+  });
 
   const calcValorFinal = (a: Agendamento) => {
     let v = Number(a.preco) || 0;

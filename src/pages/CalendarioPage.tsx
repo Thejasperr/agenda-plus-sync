@@ -18,6 +18,7 @@ import { format, isSameDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
 import PagamentoAntecipadoDialog from '@/components/PagamentoAntecipadoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 interface Agendamento {
   id: string;
   nome: string;
@@ -169,6 +170,11 @@ const CalendarioPage = () => {
     fetchClientes();
     fetchFormasPagamento();
   }, []);
+
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchAgendamentos();
+  });
 
   // Prefill vindo do WhatsApp: abre dialog com nome/telefone
   useEffect(() => {

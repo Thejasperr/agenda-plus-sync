@@ -8,6 +8,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } fro
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 
 interface Agendamento {
   id: string;
@@ -47,6 +48,11 @@ const DashboardTab = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchDashboardData();
+  });
 
   const fetchDashboardData = async () => {
     try {

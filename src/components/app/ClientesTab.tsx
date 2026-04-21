@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, clienteSchema } from '@/lib/security';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 
 interface Cliente {
   id: string;
@@ -59,6 +60,12 @@ const ClientesTab = () => {
     fetchClientes();
     fetchAgendamentos();
   }, []);
+
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchClientes();
+    fetchAgendamentos();
+  });
 
   const fetchClientes = async () => {
     try {
