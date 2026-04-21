@@ -350,16 +350,16 @@ const WhatsAppPage: React.FC = () => {
     <div className="h-full min-h-0 flex bg-background overflow-hidden">
       {/* Lista chats */}
       <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 md:border-r border-border min-h-0`}>
-        <div className="p-3 border-b border-border space-y-2 bg-card shrink-0">
+        <div className="p-2.5 sm:p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-foreground flex-1">Conversas</h2>
-            <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading}>
+            <h2 className="text-base sm:text-lg font-bold text-foreground flex-1">Conversas</h2>
+            <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading} className="h-8 w-8 p-0">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conversa..." className="pl-9 h-10" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." className="pl-9 h-9 sm:h-10" />
           </div>
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'private' | 'group')}>
             <TabsList className="grid grid-cols-2 w-full">
@@ -391,9 +391,9 @@ const WhatsAppPage: React.FC = () => {
               <button
                 key={chat.id}
                 onClick={() => setActiveChat(chat)}
-                className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
+                className={`w-full flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
               >
-                <Avatar className="h-12 w-12">
+                <Avatar className="h-11 w-11 sm:h-12 sm:w-12 shrink-0">
                   <AvatarImage src={chat.profile_pic_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
@@ -401,13 +401,13 @@ const WhatsAppPage: React.FC = () => {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 flex-wrap">
-                    <p className="font-semibold text-sm truncate text-foreground">{chat.nome}</p>
-                    {chat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                    <p className="font-semibold text-sm truncate text-foreground max-w-full">{chat.nome}</p>
+                    {chat.cliente_id && <BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
                     <TooltipProvider delayDuration={150}>
                       {temAtivos && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-full px-1 sm:px-1.5 py-0.5 shrink-0">
                               <CalendarCheck className="h-2.5 w-2.5" />
                               {status.ativos}
                             </span>
@@ -418,7 +418,7 @@ const WhatsAppPage: React.FC = () => {
                       {temCredito && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-green-500/10 text-green-700 border border-green-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium bg-green-500/10 text-green-700 border border-green-500/30 rounded-full px-1 sm:px-1.5 py-0.5 shrink-0">
                               <Wallet className="h-2.5 w-2.5" />
                               R$ {status.credito.toFixed(0)}
                             </span>
@@ -429,9 +429,9 @@ const WhatsAppPage: React.FC = () => {
                       {temDevendo && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-1.5 py-0.5 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-1 sm:px-1.5 py-0.5 shrink-0">
                               <AlertCircle className="h-2.5 w-2.5" />
-                              {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : 'pend.'}
+                              {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : '!'}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
@@ -445,7 +445,7 @@ const WhatsAppPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{chat.last_message || chat.telefone}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-1 shrink-0">
                   {chat.last_message_at && (
                     <span className="text-[10px] text-muted-foreground">
                       {format(new Date(chat.last_message_at), 'HH:mm')}
@@ -468,11 +468,11 @@ const WhatsAppPage: React.FC = () => {
         {activeChat ? (
           <>
             {/* Header da conversa */}
-            <div className="p-3 border-b border-border bg-card flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" onClick={() => setActiveChat(null)}>
+            <div className="p-2 sm:p-3 border-b border-border bg-card flex items-center gap-2 sm:gap-3">
+              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9 shrink-0" onClick={() => setActiveChat(null)}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                 <AvatarImage src={activeChat.profile_pic_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary">{activeChat.nome?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
@@ -483,29 +483,29 @@ const WhatsAppPage: React.FC = () => {
                 title="Ver informações do cliente"
               >
                 <div className="flex items-center gap-1">
-                  <p className="font-semibold text-foreground truncate">{activeChat.nome}</p>
+                  <p className="font-semibold text-sm sm:text-base text-foreground truncate">{activeChat.nome}</p>
                   {activeChat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
                 </div>
-                <p className="text-xs text-muted-foreground">{activeChat.telefone}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{activeChat.telefone}</p>
               </button>
               {!activeChat.cliente_id && (
-                <Button size="sm" variant="outline" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
-                  <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
+                <Button size="sm" variant="outline" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
+                  <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               )}
-              <Button size="sm" variant="default" onClick={() => {
+              <Button size="sm" variant="default" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => {
                 if (!activeChat) return;
                 window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
                   detail: { nome: activeChat.nome, telefone: activeChat.telefone },
                 }));
               }}>
-                <CalendarPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Agendar</span>
+                <CalendarPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Agendar</span>
               </Button>
             </div>
 
             {/* Mensagens */}
             <ScrollArea className="flex-1 min-h-0 bg-muted/30">
-              <div className="p-4 space-y-2">
+              <div className="p-2 sm:p-4 space-y-2">
                 {messages.map((m) => (
                   <MessageBubble
                     key={m.id}
@@ -520,7 +520,7 @@ const WhatsAppPage: React.FC = () => {
 
             {/* Reply preview */}
             {replyTo && (
-              <div className="px-3 pt-2 border-t border-border bg-card">
+              <div className="px-2 sm:px-3 pt-2 border-t border-border bg-card">
                 <div className="flex items-start gap-2 bg-muted/50 rounded-lg p-2 border-l-4 border-primary">
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-semibold text-primary">
@@ -530,7 +530,7 @@ const WhatsAppPage: React.FC = () => {
                       {replyTo.content || replyTo.caption || `[${replyTo.message_type}]`}
                     </p>
                   </div>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setReplyTo(null)}>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setReplyTo(null)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -538,33 +538,33 @@ const WhatsAppPage: React.FC = () => {
             )}
 
             {/* Input */}
-            <div className="p-3 border-t border-border bg-card flex items-end gap-2">
+            <div className="p-2 sm:p-3 border-t border-border bg-card flex items-end gap-1 sm:gap-2">
               <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (f) sendFile(f); e.target.value = '';
               }} accept="image/*,video/*,audio/*,application/pdf,application/zip,image/gif" />
               <input ref={stickerInputRef} type="file" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (f) sendFile(f, { asSticker: true }); e.target.value = '';
               }} accept="image/webp,image/png,image/jpeg" />
-              <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} title="Enviar arquivo, imagem, vídeo ou GIF">
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => fileInputRef.current?.click()} title="Enviar arquivo, imagem, vídeo ou GIF">
                 <Paperclip className="h-5 w-5" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 hidden sm:inline-flex" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
                 <Smile className="h-5 w-5" />
               </Button>
               <Input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
-                placeholder={replyTo ? 'Responder...' : 'Digite uma mensagem...'}
+                placeholder={replyTo ? 'Responder...' : 'Mensagem...'}
                 disabled={recording}
-                className="flex-1"
+                className="flex-1 h-9 sm:h-10"
               />
               {text.trim() ? (
-                <Button size="icon" onClick={sendText}><Send className="h-5 w-5" /></Button>
+                <Button size="icon" className="h-9 w-9 shrink-0" onClick={sendText}><Send className="h-5 w-5" /></Button>
               ) : recording ? (
-                <Button size="icon" variant="destructive" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
+                <Button size="icon" variant="destructive" className="h-9 w-9 shrink-0" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
               ) : (
-                <Button size="icon" variant="ghost" onClick={startRecording}><Mic className="h-5 w-5" /></Button>
+                <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={startRecording}><Mic className="h-5 w-5" /></Button>
               )}
             </div>
           </>
@@ -630,13 +630,13 @@ const MessageBubble: React.FC<{
       {isMe && onReply && (
         <button
           onClick={onReply}
-          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
           title="Responder"
         >
           <Reply className="h-3.5 w-3.5" />
         </button>
       )}
-      <div className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+      <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
         {quoted && (
           <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
             <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
@@ -648,23 +648,23 @@ const MessageBubble: React.FC<{
           </div>
         )}
         {message.message_type === 'image' && message.media_url && (
-          <img src={message.media_url} alt="" className="rounded-lg max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
+          <img src={message.media_url} alt="" className="rounded-lg max-w-full sm:max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
         )}
         {message.message_type === 'video' && message.media_url && (
-          <video src={message.media_url} controls className="rounded-lg max-w-xs mb-1" />
+          <video src={message.media_url} controls className="rounded-lg max-w-full sm:max-w-xs mb-1" />
         )}
         {message.message_type === 'audio' && message.media_url && (
           <audio src={message.media_url} controls className="max-w-full" />
         )}
         {message.message_type === 'document' && message.media_url && (
           <a href={message.media_url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 rounded ${isMe ? 'bg-primary-foreground/10' : 'bg-muted'}`}>
-            <FileText className="h-5 w-5" />
+            <FileText className="h-5 w-5 shrink-0" />
             <span className="text-sm truncate">{message.media_filename || 'Arquivo'}</span>
-            <Download className="h-4 w-4 ml-auto" />
+            <Download className="h-4 w-4 ml-auto shrink-0" />
           </a>
         )}
         {message.message_type === 'sticker' && message.media_url && (
-          <img src={message.media_url} alt="sticker" className="w-32 h-32 object-contain" />
+          <img src={message.media_url} alt="sticker" className="w-28 h-28 sm:w-32 sm:h-32 object-contain" />
         )}
         {(message.content || message.caption) && (
           <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.caption}</p>
@@ -676,7 +676,7 @@ const MessageBubble: React.FC<{
       {!isMe && onReply && (
         <button
           onClick={onReply}
-          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
           title="Responder"
         >
           <Reply className="h-3.5 w-3.5" />
