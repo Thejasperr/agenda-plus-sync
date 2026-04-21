@@ -1,4 +1,4 @@
-// Sincroniza chats existentes da Evolution API para o banco
+// Sincroniza chats existentes da Evolution API para o banco (otimizado em batch)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -29,51 +29,88 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // 1) Buscar chats da Evolution
     const url = `${EVOLUTION_API_URL.replace(/\/$/, "")}/chat/findChats/${EVOLUTION_INSTANCE}`;
-    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY }, body: JSON.stringify({}) });
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+      body: JSON.stringify({}),
+    });
     const txt = await r.text();
     let chats: any[] = [];
     try { chats = JSON.parse(txt); } catch { chats = []; }
     if (!Array.isArray(chats)) chats = chats?.chats || [];
 
-    let inserted = 0;
+    // 2) Pré-carregar todos os clientes do user uma única vez
+    const { data: clientes } = await admin
+      .from("clientes")
+      .select("id, nome, telefone")
+      .eq("user_id", userId);
+    const clientesByTail: Record<string, { id: string; nome: string }> = {};
+    for (const cli of clientes || []) {
+      const tail = (cli.telefone || "").replace(/\D/g, "").slice(-8);
+      if (tail && !clientesByTail[tail]) clientesByTail[tail] = { id: cli.id, nome: cli.nome };
+    }
+
+    // 3) Pré-carregar todos os chats existentes uma única vez
+    const { data: existingChats } = await admin
+      .from("whatsapp_chats")
+      .select("id, remote_jid")
+      .eq("user_id", userId);
+    const existingByJid: Record<string, string> = {};
+    for (const ec of existingChats || []) existingByJid[ec.remote_jid] = ec.id;
+
+    // 4) Montar arrays de upserts
+    const toInsert: any[] = [];
+    const toUpdate: { id: string; payload: any }[] = [];
+
     for (const c of chats) {
       const remoteJid = c.remoteJid || c.id;
       if (!remoteJid || remoteJid === "status@broadcast") continue;
       const telefone = jidToPhone(remoteJid);
-
-      // tenta vincular cliente
-      let clienteId: string | null = null;
-      let clienteNome: string | null = null;
-      if (telefone) {
-        const { data: cli } = await admin.from("clientes").select("id, nome").eq("user_id", userId).ilike("telefone", `%${telefone.slice(-8)}%`).limit(1).maybeSingle();
-        if (cli) { clienteId = cli.id; clienteNome = cli.nome; }
-      }
-
-      const nome = clienteNome || c.pushName || c.name || telefone;
+      const tail = telefone.slice(-8);
+      const cli = tail ? clientesByTail[tail] : null;
+      const nome = cli?.nome || c.pushName || c.name || telefone;
       const lastTs = c.updatedAt ? new Date(c.updatedAt).toISOString() : null;
+      const lastMsg = c.lastMessage?.message?.conversation || null;
+      const profilePic = c.profilePicUrl || null;
 
-      const { data: existing } = await admin.from("whatsapp_chats").select("id").eq("user_id", userId).eq("remote_jid", remoteJid).maybeSingle();
-      if (existing) {
-        await admin.from("whatsapp_chats").update({
-          nome, telefone, cliente_id: clienteId, profile_pic_url: c.profilePicUrl || null,
-          last_message: c.lastMessage?.message?.conversation || null,
-          last_message_at: lastTs,
-        }).eq("id", existing.id);
+      const payload = {
+        user_id: userId,
+        remote_jid: remoteJid,
+        telefone,
+        nome,
+        cliente_id: cli?.id || null,
+        profile_pic_url: profilePic,
+        last_message: lastMsg,
+        last_message_at: lastTs,
+      };
+
+      if (existingByJid[remoteJid]) {
+        toUpdate.push({ id: existingByJid[remoteJid], payload });
       } else {
-        await admin.from("whatsapp_chats").insert({
-          user_id: userId, remote_jid: remoteJid, telefone, nome,
-          cliente_id: clienteId, profile_pic_url: c.profilePicUrl || null,
-          last_message: c.lastMessage?.message?.conversation || null,
-          last_message_at: lastTs,
-        });
-        inserted++;
+        toInsert.push(payload);
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, total: chats.length, inserted }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // 5) Insert em chunks de 200
+    let inserted = 0;
+    for (let i = 0; i < toInsert.length; i += 200) {
+      const chunk = toInsert.slice(i, i + 200);
+      const { error } = await admin.from("whatsapp_chats").insert(chunk);
+      if (error) console.error("Insert chunk erro:", error);
+      else inserted += chunk.length;
+    }
+
+    // 6) Updates: limita a 50 mais recentes para não estourar tempo
+    const recentUpdates = toUpdate.slice(0, 50);
+    await Promise.all(recentUpdates.map(u =>
+      admin.from("whatsapp_chats").update(u.payload).eq("id", u.id)
+    ));
+
+    return new Response(JSON.stringify({
+      ok: true, total: chats.length, inserted, updated: recentUpdates.length,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Sync erro:", e);
     return new Response(JSON.stringify({ error: String((e as Error).message || e) }), {
