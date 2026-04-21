@@ -358,8 +358,51 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       // Diferença: positivo = pagou a mais (crédito), negativo = pagou a menos (dívida)
       const diferenca = valorPagoNum - valorServico;
 
-      // Atualizar saldo do cliente quando houver diferença
-      if (diferenca !== 0 && clienteTelefone) {
+      // Validar seleção de cliente quando "pagar para outro" estiver ativo
+      if (pagarParaOutro && diferenca > 0 && !clienteCreditoId) {
+        toast({
+          title: "Selecione um cliente",
+          description: "Escolha o perfil que receberá o crédito",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Crédito excedente vai para outro cliente (ex: mãe pagando pela filha)
+      if (diferenca > 0 && pagarParaOutro && clienteCreditoId) {
+        const { data: outroCliente } = await supabase
+          .from('clientes')
+          .select('id, nome, saldo_credito')
+          .eq('id', clienteCreditoId)
+          .maybeSingle();
+
+        if (outroCliente) {
+          const novoSaldo = (Number(outroCliente.saldo_credito) || 0) + diferenca;
+          await supabase
+            .from('clientes')
+            .update({ saldo_credito: novoSaldo })
+            .eq('id', clienteCreditoId);
+
+          // Registrar transação de crédito antecipado
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('transacoes').insert({
+              tipo: 'Crédito antecipado',
+              tipo_operacao: 'entrada',
+              valor: diferenca,
+              user_id: user.id,
+              forma_pagamento: formaSelecionada,
+              observacoes: `Pago por ${clienteTelefone} para ${outroCliente.nome}`,
+            });
+          }
+
+          toast({
+            title: "Crédito transferido",
+            description: `R$ ${diferenca.toFixed(2)} adicionados ao saldo de ${outroCliente.nome}`,
+          });
+        }
+      } else if (diferenca !== 0 && clienteTelefone) {
+        // Comportamento padrão: crédito/débito para o próprio cliente
         const { data: clienteData } = await supabase
           .from('clientes')
           .select('saldo_credito')
