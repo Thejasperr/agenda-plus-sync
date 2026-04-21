@@ -50,12 +50,13 @@ const WhatsAppPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'private' | 'group'>('private');
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stickerInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const activeChatRef = useRef<Chat | null>(null);
