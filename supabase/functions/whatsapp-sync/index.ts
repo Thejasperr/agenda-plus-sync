@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     let inserted = 0;
     for (const c of chats) {
       const remoteJid = c.remoteJid || c.id;
-      if (!remoteJid || remoteJid.endsWith("@g.us") || remoteJid === "status@broadcast") continue;
+      if (!remoteJid || remoteJid === "status@broadcast") continue;
       const telefone = jidToPhone(remoteJid);
 
       // tenta vincular cliente
