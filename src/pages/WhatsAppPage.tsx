@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
@@ -47,6 +48,7 @@ const WhatsAppPage: React.FC = () => {
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'private' | 'group'>('private');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
@@ -111,7 +113,11 @@ const WhatsAppPage: React.FC = () => {
     return () => { supabase.removeChannel(ch); };
   }, [activeChat?.id]);
 
-  const filteredChats = chats.filter(c =>
+  const isGroup = (jid: string) => jid?.endsWith('@g.us');
+  const privateChats = chats.filter(c => !isGroup(c.remote_jid));
+  const groupChats = chats.filter(c => isGroup(c.remote_jid));
+  const baseList = tab === 'private' ? privateChats : groupChats;
+  const filteredChats = baseList.filter(c =>
     c.nome?.toLowerCase().includes(search.toLowerCase()) ||
     c.telefone?.includes(search)
   );
@@ -210,10 +216,10 @@ const WhatsAppPage: React.FC = () => {
   const showList = !activeChat;
 
   return (
-    <div className="h-full flex bg-background">
+    <div className="h-full min-h-0 flex bg-background overflow-hidden">
       {/* Lista chats */}
-      <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 md:border-r border-border`}>
-        <div className="p-3 border-b border-border space-y-2 bg-card">
+      <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 md:border-r border-border min-h-0`}>
+        <div className="p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-foreground flex-1">Conversas</h2>
             <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading}>
@@ -224,11 +230,25 @@ const WhatsAppPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conversa..." className="pl-9 h-10" />
           </div>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as 'private' | 'group')}>
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="private" className="gap-1.5">
+                <UserIcon className="h-3.5 w-3.5" />
+                Privadas
+                <span className="ml-1 text-[10px] bg-muted-foreground/20 rounded-full px-1.5">{privateChats.length}</span>
+              </TabsTrigger>
+              <TabsTrigger value="group" className="gap-1.5">
+                <UsersIcon className="h-3.5 w-3.5" />
+                Grupos
+                <span className="ml-1 text-[10px] bg-muted-foreground/20 rounded-full px-1.5">{groupChats.length}</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           {filteredChats.length === 0 && !loading && (
             <div className="p-6 text-center text-sm text-muted-foreground">
-              Nenhuma conversa. Clique em <RefreshCw className="inline h-3 w-3" /> para sincronizar.
+              {tab === 'group' ? 'Nenhum grupo.' : 'Nenhuma conversa.'} Clique em <RefreshCw className="inline h-3 w-3" /> para sincronizar.
             </div>
           )}
           {filteredChats.map((chat) => (
@@ -239,7 +259,9 @@ const WhatsAppPage: React.FC = () => {
             >
               <Avatar className="h-12 w-12">
                 <AvatarImage src={chat.profile_pic_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary">{chat.nome?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
@@ -266,7 +288,7 @@ const WhatsAppPage: React.FC = () => {
       </div>
 
       {/* Conversa */}
-      <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-1 flex-col`}>
+      <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-1 flex-col min-h-0`}>
         {activeChat ? (
           <>
             {/* Header da conversa */}
@@ -296,7 +318,7 @@ const WhatsAppPage: React.FC = () => {
             </div>
 
             {/* Mensagens */}
-            <ScrollArea className="flex-1 bg-muted/30">
+            <ScrollArea className="flex-1 min-h-0 bg-muted/30">
               <div className="p-4 space-y-2">
                 {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
                 <div ref={messagesEndRef} />
