@@ -1,13 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus } from 'lucide-react';
 import { format, parseISO, isToday, isFuture, isPast, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 import FormaPagamentoDialog from './FormaPagamentoDialog';
 
 interface ClienteInfoDialogProps {
@@ -44,6 +48,11 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [pagamentoAg, setPagamentoAg] = useState<Agendamento | null>(null);
+  const [creditoOpen, setCreditoOpen] = useState(false);
+  const [creditoValor, setCreditoValor] = useState('');
+  const [creditoObs, setCreditoObs] = useState('');
+  const [savingCredito, setSavingCredito] = useState(false);
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,6 +120,62 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
 
   const podeConfirmar = (a: Agendamento) => a.status !== 'Concluído' && a.status !== 'Cancelado';
 
+  const handleAdicionarCredito = async () => {
+    const valor = parseFloat(creditoValor);
+    if (isNaN(valor) || valor <= 0) {
+      toast({ title: 'Valor inválido', description: 'Informe um valor maior que zero.', variant: 'destructive' });
+      return;
+    }
+    setSavingCredito(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      let clienteId = cliente?.id;
+      let saldoAtual = Number(cliente?.saldo_credito || 0);
+
+      // Se ainda não existe cliente, cria com o telefone/nome do contato
+      if (!clienteId) {
+        const { data: novoCli, error: errCli } = await supabase
+          .from('clientes')
+          .insert([{ nome, telefone, saldo_credito: 0, user_id: user.id }])
+          .select('id, saldo_credito')
+          .single();
+        if (errCli) throw errCli;
+        clienteId = novoCli.id;
+        saldoAtual = Number(novoCli.saldo_credito || 0);
+      }
+
+      const novoSaldo = saldoAtual + valor;
+      const { error: errUpd } = await supabase
+        .from('clientes')
+        .update({ saldo_credito: novoSaldo })
+        .eq('id', clienteId);
+      if (errUpd) throw errUpd;
+
+      // Registrar transação de entrada (crédito antecipado)
+      await supabase.from('transacoes').insert([{
+        tipo: 'Crédito antecipado',
+        tipo_operacao: 'entrada',
+        valor,
+        data_transacao: format(new Date(), 'yyyy-MM-dd'),
+        observacoes: `Crédito adicionado para ${nome}${creditoObs ? ` — ${creditoObs}` : ''}`,
+        user_id: user.id,
+      }]);
+
+      toast({ title: 'Crédito adicionado', description: `R$ ${valor.toFixed(2)} adicionado ao saldo de ${nome}.` });
+      setCreditoOpen(false);
+      setCreditoValor('');
+      setCreditoObs('');
+      load();
+    } catch (e: any) {
+      console.error('Erro ao adicionar crédito:', e);
+      toast({ title: 'Erro', description: e.message || 'Não foi possível adicionar o crédito.', variant: 'destructive' });
+    } finally {
+      setSavingCredito(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Concluído': return 'bg-green-500/10 text-green-700 border-green-500/30';
@@ -175,7 +240,7 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                       <p className="text-sm font-bold text-foreground">R$ {totalGasto.toFixed(2)}</p>
                       <p className="text-[10px] text-muted-foreground">{concluidos.length} atendimento(s)</p>
                     </Card>
-                    <Card className="p-3">
+                    <Card className="p-3 relative">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
                         <Wallet className="h-3 w-3" /> Crédito
                       </div>
@@ -183,6 +248,14 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                         R$ {credito.toFixed(2)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">a haver</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full mt-2 h-7 text-[10px] gap-1"
+                        onClick={() => setCreditoOpen(true)}
+                      >
+                        <Plus className="h-3 w-3" /> Adicionar
+                      </Button>
                     </Card>
                     <Card className="p-3">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
@@ -271,6 +344,56 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
           }}
         />
       )}
+
+      <Dialog open={creditoOpen} onOpenChange={setCreditoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar crédito</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Lance um valor pago antecipadamente para <span className="font-medium text-foreground">{nome}</span>.
+              O crédito será aplicado automaticamente como desconto em agendamentos futuros.
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="credito_valor">Valor (R$) *</Label>
+              <Input
+                id="credito_valor"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={creditoValor}
+                onChange={(e) => setCreditoValor(e.target.value)}
+                autoFocus
+              />
+              {credito > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Saldo atual: R$ {credito.toFixed(2)}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="credito_obs">Observação (opcional)</Label>
+              <Textarea
+                id="credito_obs"
+                rows={2}
+                placeholder="Ex.: pago pela mãe para a filha"
+                value={creditoObs}
+                onChange={(e) => setCreditoObs(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCreditoOpen(false)} disabled={savingCredito}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAdicionarCredito} disabled={savingCredito}>
+              {savingCredito ? 'Salvando...' : 'Adicionar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
