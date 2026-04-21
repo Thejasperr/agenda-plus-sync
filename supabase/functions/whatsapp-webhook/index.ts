@@ -90,15 +90,22 @@ async function uploadMedia(userId: string, messageId: string, base64: string, mi
 }
 
 async function findUserByInstance(): Promise<string | null> {
-  // A instância da Evolution é única para o app, então pegamos o owner do app.
-  // Estratégia: usa o último user_id que tem agendamentos. Se houver múltiplos, ajustar mapping.
-  const { data } = await admin
+  // Estratégia: prioriza chats existentes (mais confiável), depois clientes.
+  const { data: chat } = await admin
+    .from("whatsapp_chats")
+    .select("user_id")
+    .not("user_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+  if (chat?.user_id) return chat.user_id;
+
+  const { data: cli } = await admin
     .from("clientes")
     .select("user_id")
     .not("user_id", "is", null)
     .limit(1)
     .maybeSingle();
-  return data?.user_id ?? null;
+  return cli?.user_id ?? null;
 }
 
 async function ensureChat(userId: string, remoteJid: string, pushName?: string): Promise<string | null> {
