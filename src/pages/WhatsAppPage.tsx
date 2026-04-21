@@ -380,13 +380,18 @@ const WhatsAppPage: React.FC = () => {
                 <AvatarImage src={activeChat.profile_pic_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary">{activeChat.nome?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={() => setClienteInfoOpen(true)}
+                className="flex-1 min-w-0 text-left hover:opacity-80 transition"
+                title="Ver informações do cliente"
+              >
                 <div className="flex items-center gap-1">
                   <p className="font-semibold text-foreground truncate">{activeChat.nome}</p>
                   {activeChat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
                 </div>
                 <p className="text-xs text-muted-foreground">{activeChat.telefone}</p>
-              </div>
+              </button>
               {!activeChat.cliente_id && (
                 <Button size="sm" variant="outline" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
                   <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
