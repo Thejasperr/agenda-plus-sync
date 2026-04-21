@@ -169,6 +169,38 @@ const CalendarioPage = () => {
     fetchClientes();
     fetchFormasPagamento();
   }, []);
+
+  // Prefill vindo do WhatsApp: abre dialog com nome/telefone
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { nome?: string; telefone?: string } | undefined;
+      if (!detail) return;
+      const today = new Date();
+      setSelectedDate(today);
+      setEditingAgendamento(null);
+      setSelectedTimeSlot('');
+      setFormData({
+        nome: detail.nome || '',
+        telefone: detail.telefone || '',
+        procedimento_ids: [],
+        preco: 0,
+        tem_desconto: false,
+        porcentagem_desconto: 0,
+        pagamento_antecipado: false,
+        porcentagem_pagamento_antecipado: 0,
+        data_agendamento: format(today, 'yyyy-MM-dd'),
+        hora_agendamento: '',
+        tem_retorno: false,
+        data_retorno: '',
+        preco_retorno: 0,
+        status: 'Agendado',
+        observacoes: ''
+      });
+      setDialogOpen(true);
+    };
+    window.addEventListener('whatsapp:agendar', handler);
+    return () => window.removeEventListener('whatsapp:agendar', handler);
+  }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Agendado':
