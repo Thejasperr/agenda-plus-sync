@@ -631,6 +631,62 @@ export type Database = {
           },
         ]
       }
+      whatsapp_chats: {
+        Row: {
+          archived: boolean
+          cliente_id: string | null
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          nome: string
+          profile_pic_url: string | null
+          remote_jid: string
+          telefone: string
+          unread_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          nome: string
+          profile_pic_url?: string | null
+          remote_jid: string
+          telefone: string
+          unread_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          archived?: boolean
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          nome?: string
+          profile_pic_url?: string | null
+          remote_jid?: string
+          telefone?: string
+          unread_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_chats_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_events: {
         Row: {
           created_at: string
@@ -660,6 +716,77 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          caption: string | null
+          chat_id: string
+          content: string | null
+          created_at: string
+          from_me: boolean
+          id: string
+          media_duration: number | null
+          media_filename: string | null
+          media_mime_type: string | null
+          media_url: string | null
+          message_id: string | null
+          message_type: string
+          quoted_message_id: string | null
+          raw_data: Json | null
+          remote_jid: string
+          status: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          chat_id: string
+          content?: string | null
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          media_duration?: number | null
+          media_filename?: string | null
+          media_mime_type?: string | null
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          quoted_message_id?: string | null
+          raw_data?: Json | null
+          remote_jid: string
+          status?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Update: {
+          caption?: string | null
+          chat_id?: string
+          content?: string | null
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          media_duration?: number | null
+          media_filename?: string | null
+          media_mime_type?: string | null
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          quoted_message_id?: string | null
+          raw_data?: Json | null
+          remote_jid?: string
+          status?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_chats"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
