@@ -59,6 +59,8 @@ const WhatsAppPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const activeChatRef = useRef<Chat | null>(null);
+  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
   // Carregar chats
   const loadChats = async () => {
@@ -76,11 +78,54 @@ const WhatsAppPage: React.FC = () => {
 
   useEffect(() => { loadChats(); }, [user]);
 
-  // Realtime chats
+  // Sort chats: mais recentes no topo, sempre
+  const sortChats = (list: Chat[]) =>
+    [...list].sort((a, b) => {
+      const ta = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+      const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+      return tb - ta;
+    });
+
+  // Realtime chats (UPDATE/INSERT/DELETE)
   useEffect(() => {
     if (!user) return;
     const ch = supabase.channel('wa-chats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_chats', filter: `user_id=eq.${user.id}` }, () => loadChats())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_chats', filter: `user_id=eq.${user.id}` }, (payload) => {
+        setChats((prev) => {
+          if (payload.eventType === 'DELETE') {
+            return prev.filter(c => c.id !== (payload.old as any).id);
+          }
+          const next = payload.new as Chat;
+          const exists = prev.some(c => c.id === next.id);
+          const merged = exists ? prev.map(c => c.id === next.id ? { ...c, ...next } : c) : [next, ...prev];
+          return sortChats(merged);
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user]);
+
+  // Realtime global de mensagens — empurra o chat correspondente para o topo imediatamente
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase.channel('wa-msgs-global')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `user_id=eq.${user.id}` }, (payload) => {
+        const msg = payload.new as Message;
+        setChats((prev) => {
+          const idx = prev.findIndex(c => c.id === msg.chat_id);
+          if (idx === -1) return prev;
+          const updated = {
+            ...prev[idx],
+            last_message: msg.content || msg.caption || `[${msg.message_type}]`,
+            last_message_at: msg.timestamp,
+            unread_count: msg.from_me || activeChatRef.current?.id === msg.chat_id
+              ? prev[idx].unread_count
+              : (prev[idx].unread_count || 0) + 1,
+          };
+          const without = prev.filter((_, i) => i !== idx);
+          return [updated, ...without];
+        });
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user]);
