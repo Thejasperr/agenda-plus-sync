@@ -113,7 +113,11 @@ const WhatsAppPage: React.FC = () => {
     return () => { supabase.removeChannel(ch); };
   }, [activeChat?.id]);
 
-  const filteredChats = chats.filter(c =>
+  const isGroup = (jid: string) => jid?.endsWith('@g.us');
+  const privateChats = chats.filter(c => !isGroup(c.remote_jid));
+  const groupChats = chats.filter(c => isGroup(c.remote_jid));
+  const baseList = tab === 'private' ? privateChats : groupChats;
+  const filteredChats = baseList.filter(c =>
     c.nome?.toLowerCase().includes(search.toLowerCase()) ||
     c.telefone?.includes(search)
   );
