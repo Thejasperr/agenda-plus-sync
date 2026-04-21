@@ -6,9 +6,11 @@ import ConfiguracoesTab from '@/components/app/ConfiguracoesTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
 import DashboardTab from '@/components/app/DashboardTab';
 import WhatsAppPage from '@/pages/WhatsAppPage';
+import InstallPwaPrompt from '@/components/InstallPwaPrompt';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useWhatsAppNotifications } from '@/hooks/useWhatsAppNotifications';
 
 type TabType = 'dashboard' | 'calendario' | 'whatsapp' | 'clientes' | 'transacoes' | 'configuracoes';
 
@@ -16,6 +18,9 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+
+  // Notificações instantâneas de novas mensagens WhatsApp
+  useWhatsAppNotifications();
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -101,6 +106,9 @@ const Index = () => {
           })}
         </div>
       </div>
+
+      {/* Prompt de instalação PWA + ativar notificações */}
+      <InstallPwaPrompt />
     </div>
   );
 };
