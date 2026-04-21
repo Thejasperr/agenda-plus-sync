@@ -36,6 +36,8 @@ interface Agendamento {
   forma_pagamento: string | null;
   pagamento_antecipado: boolean | null;
   porcentagem_pagamento_antecipado: number | null;
+  procedimento_id: string | null;
+  procedimentos_nomes?: string;
 }
 
 interface Cliente {
