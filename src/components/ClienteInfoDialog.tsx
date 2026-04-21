@@ -363,10 +363,10 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
             size="sm"
             variant="outline"
             className="flex-1 min-w-[90px] h-8 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => handleCancelar(a)}
+            onClick={() => handleExcluir(a)}
           >
-            <XCircle className="h-3.5 w-3.5 mr-1" />
-            Cancelar
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Excluir
           </Button>
         </div>
       )}
