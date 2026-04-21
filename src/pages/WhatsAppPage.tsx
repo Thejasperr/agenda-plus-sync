@@ -468,11 +468,11 @@ const WhatsAppPage: React.FC = () => {
         {activeChat ? (
           <>
             {/* Header da conversa */}
-            <div className="p-3 border-b border-border bg-card flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" onClick={() => setActiveChat(null)}>
+            <div className="p-2 sm:p-3 border-b border-border bg-card flex items-center gap-2 sm:gap-3">
+              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9 shrink-0" onClick={() => setActiveChat(null)}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                 <AvatarImage src={activeChat.profile_pic_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary">{activeChat.nome?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
@@ -483,29 +483,29 @@ const WhatsAppPage: React.FC = () => {
                 title="Ver informações do cliente"
               >
                 <div className="flex items-center gap-1">
-                  <p className="font-semibold text-foreground truncate">{activeChat.nome}</p>
+                  <p className="font-semibold text-sm sm:text-base text-foreground truncate">{activeChat.nome}</p>
                   {activeChat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
                 </div>
-                <p className="text-xs text-muted-foreground">{activeChat.telefone}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{activeChat.telefone}</p>
               </button>
               {!activeChat.cliente_id && (
-                <Button size="sm" variant="outline" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
-                  <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
+                <Button size="sm" variant="outline" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
+                  <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               )}
-              <Button size="sm" variant="default" onClick={() => {
+              <Button size="sm" variant="default" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => {
                 if (!activeChat) return;
                 window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
                   detail: { nome: activeChat.nome, telefone: activeChat.telefone },
                 }));
               }}>
-                <CalendarPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Agendar</span>
+                <CalendarPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Agendar</span>
               </Button>
             </div>
 
             {/* Mensagens */}
             <ScrollArea className="flex-1 min-h-0 bg-muted/30">
-              <div className="p-4 space-y-2">
+              <div className="p-2 sm:p-4 space-y-2">
                 {messages.map((m) => (
                   <MessageBubble
                     key={m.id}
@@ -520,7 +520,7 @@ const WhatsAppPage: React.FC = () => {
 
             {/* Reply preview */}
             {replyTo && (
-              <div className="px-3 pt-2 border-t border-border bg-card">
+              <div className="px-2 sm:px-3 pt-2 border-t border-border bg-card">
                 <div className="flex items-start gap-2 bg-muted/50 rounded-lg p-2 border-l-4 border-primary">
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-semibold text-primary">
@@ -530,7 +530,7 @@ const WhatsAppPage: React.FC = () => {
                       {replyTo.content || replyTo.caption || `[${replyTo.message_type}]`}
                     </p>
                   </div>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setReplyTo(null)}>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setReplyTo(null)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -538,33 +538,33 @@ const WhatsAppPage: React.FC = () => {
             )}
 
             {/* Input */}
-            <div className="p-3 border-t border-border bg-card flex items-end gap-2">
+            <div className="p-2 sm:p-3 border-t border-border bg-card flex items-end gap-1 sm:gap-2">
               <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (f) sendFile(f); e.target.value = '';
               }} accept="image/*,video/*,audio/*,application/pdf,application/zip,image/gif" />
               <input ref={stickerInputRef} type="file" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (f) sendFile(f, { asSticker: true }); e.target.value = '';
               }} accept="image/webp,image/png,image/jpeg" />
-              <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} title="Enviar arquivo, imagem, vídeo ou GIF">
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => fileInputRef.current?.click()} title="Enviar arquivo, imagem, vídeo ou GIF">
                 <Paperclip className="h-5 w-5" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 hidden sm:inline-flex" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
                 <Smile className="h-5 w-5" />
               </Button>
               <Input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
-                placeholder={replyTo ? 'Responder...' : 'Digite uma mensagem...'}
+                placeholder={replyTo ? 'Responder...' : 'Mensagem...'}
                 disabled={recording}
-                className="flex-1"
+                className="flex-1 h-9 sm:h-10"
               />
               {text.trim() ? (
-                <Button size="icon" onClick={sendText}><Send className="h-5 w-5" /></Button>
+                <Button size="icon" className="h-9 w-9 shrink-0" onClick={sendText}><Send className="h-5 w-5" /></Button>
               ) : recording ? (
-                <Button size="icon" variant="destructive" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
+                <Button size="icon" variant="destructive" className="h-9 w-9 shrink-0" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
               ) : (
-                <Button size="icon" variant="ghost" onClick={startRecording}><Mic className="h-5 w-5" /></Button>
+                <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={startRecording}><Mic className="h-5 w-5" /></Button>
               )}
             </div>
           </>
