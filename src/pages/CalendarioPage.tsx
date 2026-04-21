@@ -549,6 +549,33 @@ const CalendarioPage = () => {
           title: "Sucesso",
           description: "Agendamento criado com sucesso!"
         });
+
+        // Enviar mensagem curta de confirmação no WhatsApp se existir chat
+        try {
+          const digits = (formData.telefone || '').replace(/\D/g, '');
+          const last8 = digits.slice(-8);
+          if (last8) {
+            const { data: chatRow } = await supabase
+              .from('whatsapp_chats')
+              .select('id, remote_jid, telefone')
+              .ilike('telefone', `%${last8}%`)
+              .limit(1)
+              .maybeSingle();
+
+            if (chatRow?.remote_jid) {
+              await supabase.functions.invoke('whatsapp-send', {
+                body: {
+                  chat_id: chatRow.id,
+                  remote_jid: chatRow.remote_jid,
+                  type: 'text',
+                  content: 'agendada 🫶',
+                },
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Não foi possível enviar confirmação automática:', e);
+        }
       }
 
       // Inserir novos procedimentos
