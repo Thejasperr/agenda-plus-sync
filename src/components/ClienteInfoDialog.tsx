@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus } from 'lucide-react';
-import { format, parseISO, isToday, isFuture, isPast, startOfDay } from 'date-fns';
+import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil } from 'lucide-react';
+import { format, parseISO, isToday, isFuture, isPast, startOfDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import FormaPagamentoDialog from './FormaPagamentoDialog';
@@ -53,6 +53,10 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const [creditoValor, setCreditoValor] = useState('');
   const [creditoObs, setCreditoObs] = useState('');
   const [savingCredito, setSavingCredito] = useState(false);
+  const [editarCreditoOpen, setEditarCreditoOpen] = useState(false);
+  const [novoSaldoEdit, setNovoSaldoEdit] = useState('');
+  const [editObs, setEditObs] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -113,10 +117,11 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const concluidos = agendamentos.filter(a => a.status === 'Concluído');
   const totalGasto = concluidos.reduce((sum, a) => sum + calcValorFinal(a), 0);
 
-  // Pendências em agendamento (não concluídos no passado)
+  // Pendências em agendamento (não concluídos no passado) — excluindo o mês atual
+  const hojeRef = new Date();
   const devendoList = agendamentos.filter(a => {
     const d = parseISO(a.data_agendamento);
-    return isPast(d) && !isToday(d) && a.status !== 'Concluído' && a.status !== 'Cancelado';
+    return isPast(d) && !isToday(d) && !isSameMonth(d, hojeRef) && a.status !== 'Concluído' && a.status !== 'Cancelado';
   });
 
   // Saldo: positivo = crédito a haver; negativo = está devendo
@@ -179,6 +184,54 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
       toast({ title: 'Erro', description: e.message || 'Não foi possível adicionar o crédito.', variant: 'destructive' });
     } finally {
       setSavingCredito(false);
+    }
+  };
+
+  const handleEditarCredito = async () => {
+    const novo = parseFloat(novoSaldoEdit);
+    if (isNaN(novo) || novo < 0) {
+      toast({ title: 'Valor inválido', description: 'Informe um valor válido (0 ou maior).', variant: 'destructive' });
+      return;
+    }
+    if (!cliente?.id) {
+      toast({ title: 'Cliente não cadastrado', description: 'Use "Adicionar" para criar o saldo.', variant: 'destructive' });
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const saldoAtual = Number(cliente.saldo_credito || 0);
+      const diferenca = novo - saldoAtual;
+
+      const { error: errUpd } = await supabase
+        .from('clientes')
+        .update({ saldo_credito: novo })
+        .eq('id', cliente.id);
+      if (errUpd) throw errUpd;
+
+      if (diferenca !== 0) {
+        await supabase.from('transacoes').insert([{
+          tipo: 'Ajuste de crédito',
+          tipo_operacao: diferenca > 0 ? 'entrada' : 'saida',
+          valor: Math.abs(diferenca),
+          data_transacao: format(new Date(), 'yyyy-MM-dd'),
+          observacoes: `Ajuste manual de saldo de ${nome} (de R$ ${saldoAtual.toFixed(2)} para R$ ${novo.toFixed(2)})${editObs ? ` — ${editObs}` : ''}`,
+          user_id: user.id,
+        }]);
+      }
+
+      toast({ title: 'Saldo atualizado', description: `Novo saldo: R$ ${novo.toFixed(2)}` });
+      setEditarCreditoOpen(false);
+      setNovoSaldoEdit('');
+      setEditObs('');
+      load();
+    } catch (e: any) {
+      console.error('Erro ao editar crédito:', e);
+      toast({ title: 'Erro', description: e.message || 'Não foi possível atualizar o saldo.', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -254,14 +307,29 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                         R$ {credito.toFixed(2)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">a haver</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full mt-2 h-7 text-[10px] gap-1"
-                        onClick={() => setCreditoOpen(true)}
-                      >
-                        <Plus className="h-3 w-3" /> Adicionar
-                      </Button>
+                      <div className="flex gap-1 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-7 text-[10px] gap-1 px-1"
+                          onClick={() => setCreditoOpen(true)}
+                        >
+                          <Plus className="h-3 w-3" /> Add
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-7 text-[10px] gap-1 px-1"
+                          onClick={() => {
+                            setNovoSaldoEdit(credito.toFixed(2));
+                            setEditObs('');
+                            setEditarCreditoOpen(true);
+                          }}
+                          disabled={!cliente}
+                        >
+                          <Pencil className="h-3 w-3" /> Editar
+                        </Button>
+                      </div>
                     </Card>
                     <Card className="p-3">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
@@ -308,7 +376,7 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                     <section>
                       <h3 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1.5">
                         <AlertCircle className="h-3.5 w-3.5" />
-                        Pendências de pagamento ({devendoList.length})
+                        Pendências de meses anteriores ({devendoList.length})
                       </h3>
                       <div className="space-y-2">{devendoList.map(renderAgendamento)}</div>
                     </section>
@@ -396,6 +464,54 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
             </Button>
             <Button onClick={handleAdicionarCredito} disabled={savingCredito}>
               {savingCredito ? 'Salvando...' : 'Adicionar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editarCreditoOpen} onOpenChange={setEditarCreditoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar saldo de crédito</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Ajuste manualmente o saldo de <span className="font-medium text-foreground">{nome}</span>.
+              A diferença será registrada como ajuste nas transações.
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="edit_saldo">Novo saldo (R$) *</Label>
+              <Input
+                id="edit_saldo"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={novoSaldoEdit}
+                onChange={(e) => setNovoSaldoEdit(e.target.value)}
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Saldo atual: R$ {credito.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="edit_obs">Motivo do ajuste (opcional)</Label>
+              <Textarea
+                id="edit_obs"
+                rows={2}
+                placeholder="Ex.: correção de lançamento"
+                value={editObs}
+                onChange={(e) => setEditObs(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditarCreditoOpen(false)} disabled={savingEdit}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditarCredito} disabled={savingEdit}>
+              {savingEdit ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
         </DialogContent>
