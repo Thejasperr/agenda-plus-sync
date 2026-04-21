@@ -158,7 +158,7 @@ async function processMessageUpsert(payload: any) {
     if (!m) continue;
     const key = m.key || {};
     const remoteJid = key.remoteJid;
-    if (!remoteJid || remoteJid.endsWith("@g.us")) continue; // ignora grupos
+    if (!remoteJid) continue;
 
     const messageId = key.id;
     const fromMe = !!key.fromMe;
