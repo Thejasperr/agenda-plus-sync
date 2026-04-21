@@ -284,17 +284,17 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     }
   };
 
-  const handleCancelar = async (a: Agendamento) => {
-    if (!confirm(`Cancelar o agendamento de ${a.procedimentos_nomes || 'procedimento'} em ${format(parseISO(a.data_agendamento), "dd/MM/yyyy", { locale: ptBR })} às ${a.hora_agendamento?.slice(0, 5)}?`)) return;
-    const { error } = await supabase
-      .from('agendamentos')
-      .update({ status: 'Cancelado' })
-      .eq('id', a.id);
+  const handleExcluir = async (a: Agendamento) => {
+    if (!confirm(`Excluir o agendamento de ${a.procedimentos_nomes || 'procedimento'} em ${format(parseISO(a.data_agendamento), "dd/MM/yyyy", { locale: ptBR })} às ${a.hora_agendamento?.slice(0, 5)}?\n\nEsta ação não pode ser desfeita.`)) return;
+    // Remove vínculos e transações associadas, depois o agendamento
+    await supabase.from('agendamento_procedimentos').delete().eq('agendamento_id', a.id);
+    await supabase.from('transacoes').delete().eq('agendamento_id', a.id);
+    const { error } = await supabase.from('agendamentos').delete().eq('id', a.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Agendamento cancelado' });
+    toast({ title: 'Agendamento excluído' });
     load();
   };
 
