@@ -53,6 +53,10 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const [creditoValor, setCreditoValor] = useState('');
   const [creditoObs, setCreditoObs] = useState('');
   const [savingCredito, setSavingCredito] = useState(false);
+  const [editarCreditoOpen, setEditarCreditoOpen] = useState(false);
+  const [novoSaldoEdit, setNovoSaldoEdit] = useState('');
+  const [editObs, setEditObs] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
