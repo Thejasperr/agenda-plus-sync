@@ -307,14 +307,29 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                         R$ {credito.toFixed(2)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">a haver</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full mt-2 h-7 text-[10px] gap-1"
-                        onClick={() => setCreditoOpen(true)}
-                      >
-                        <Plus className="h-3 w-3" /> Adicionar
-                      </Button>
+                      <div className="flex gap-1 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-7 text-[10px] gap-1 px-1"
+                          onClick={() => setCreditoOpen(true)}
+                        >
+                          <Plus className="h-3 w-3" /> Add
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-7 text-[10px] gap-1 px-1"
+                          onClick={() => {
+                            setNovoSaldoEdit(credito.toFixed(2));
+                            setEditObs('');
+                            setEditarCreditoOpen(true);
+                          }}
+                          disabled={!cliente}
+                        >
+                          <Pencil className="h-3 w-3" /> Editar
+                        </Button>
+                      </div>
                     </Card>
                     <Card className="p-3">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
