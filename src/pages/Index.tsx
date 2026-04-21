@@ -19,8 +19,8 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
-  // Notificações instantâneas de novas mensagens WhatsApp
-  useWhatsAppNotifications();
+  // Notificações instantâneas de novas mensagens WhatsApp + contador
+  const { unreadTotal } = useWhatsAppNotifications();
 
   useEffect(() => {
     const handler = (e: Event) => {
