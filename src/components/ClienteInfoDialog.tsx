@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil, ChevronDown, XCircle, Sparkles } from 'lucide-react';
+import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil, ChevronDown, XCircle, Sparkles, Edit2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO, isToday, isFuture, isPast, startOfDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
