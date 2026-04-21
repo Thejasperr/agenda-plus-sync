@@ -5,17 +5,24 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { QrCode, Copy, Download, Printer, Share2, Loader2 } from 'lucide-react';
+import { QrCode, Copy, Download, Printer, Share2, Loader2, Gift, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePixPayload } from '@/lib/pixQrCode';
 import { QRCodeSVG } from 'qrcode.react';
+import { Switch } from '@/components/ui/switch';
 
 interface FormaPagamento {
   id: string;
   nome: string;
   ativa: boolean;
   qr_code_pix: string | null;
+}
+
+interface ClienteOption {
+  id: string;
+  nome: string;
+  telefone: string;
 }
 
 interface FormaPagamentoDialogProps {
@@ -41,15 +48,36 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
   const [loading, setLoading] = useState(true);
   const [pixPayload, setPixPayload] = useState<string>('');
   const [loadingPix, setLoadingPix] = useState(false);
+  const [pagarParaOutro, setPagarParaOutro] = useState(false);
+  const [clientesDisponiveis, setClientesDisponiveis] = useState<ClienteOption[]>([]);
+  const [clienteCreditoId, setClienteCreditoId] = useState<string>('');
+  const [buscaCliente, setBuscaCliente] = useState('');
   const qrCodeContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       fetchFormasPagamento();
+      fetchClientes();
       setValorPago(valorServico.toFixed(2));
+      setPagarParaOutro(false);
+      setClienteCreditoId('');
+      setBuscaCliente('');
     }
   }, [open, valorServico]);
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome, telefone')
+        .order('nome');
+      if (error) throw error;
+      setClientesDisponiveis((data as ClienteOption[]) || []);
+    } catch (e) {
+      console.error('Erro ao buscar clientes:', e);
+    }
+  };
 
   // Regenerar QR Code quando o valor pago mudar
   useEffect(() => {
@@ -330,8 +358,51 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
       // Diferença: positivo = pagou a mais (crédito), negativo = pagou a menos (dívida)
       const diferenca = valorPagoNum - valorServico;
 
-      // Atualizar saldo do cliente quando houver diferença
-      if (diferenca !== 0 && clienteTelefone) {
+      // Validar seleção de cliente quando "pagar para outro" estiver ativo
+      if (pagarParaOutro && diferenca > 0 && !clienteCreditoId) {
+        toast({
+          title: "Selecione um cliente",
+          description: "Escolha o perfil que receberá o crédito",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Crédito excedente vai para outro cliente (ex: mãe pagando pela filha)
+      if (diferenca > 0 && pagarParaOutro && clienteCreditoId) {
+        const { data: outroCliente } = await supabase
+          .from('clientes')
+          .select('id, nome, saldo_credito')
+          .eq('id', clienteCreditoId)
+          .maybeSingle();
+
+        if (outroCliente) {
+          const novoSaldo = (Number(outroCliente.saldo_credito) || 0) + diferenca;
+          await supabase
+            .from('clientes')
+            .update({ saldo_credito: novoSaldo })
+            .eq('id', clienteCreditoId);
+
+          // Registrar transação de crédito antecipado
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('transacoes').insert({
+              tipo: 'Crédito antecipado',
+              tipo_operacao: 'entrada',
+              valor: diferenca,
+              user_id: user.id,
+              forma_pagamento: formaSelecionada,
+              observacoes: `Pago por ${clienteTelefone} para ${outroCliente.nome}`,
+            });
+          }
+
+          toast({
+            title: "Crédito transferido",
+            description: `R$ ${diferenca.toFixed(2)} adicionados ao saldo de ${outroCliente.nome}`,
+          });
+        }
+      } else if (diferenca !== 0 && clienteTelefone) {
+        // Comportamento padrão: crédito/débito para o próprio cliente
         const { data: clienteData } = await supabase
           .from('clientes')
           .select('saldo_credito')
@@ -414,7 +485,7 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
             />
             {parseFloat(valorPago) > valorServico && (
               <p className="text-sm text-green-600 mt-1">
-                Crédito de R$ {(parseFloat(valorPago) - valorServico).toFixed(2)} será adicionado ao cliente
+                Crédito de R$ {(parseFloat(valorPago) - valorServico).toFixed(2)} será adicionado{pagarParaOutro ? ' ao perfil escolhido' : ' ao cliente'}
               </p>
             )}
             {!isNaN(parseFloat(valorPago)) && parseFloat(valorPago) < valorServico && parseFloat(valorPago) >= 0 && (
@@ -423,6 +494,85 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
               </p>
             )}
           </div>
+
+          {/* Pagar para alguém - aparece quando há crédito excedente */}
+          {parseFloat(valorPago) > valorServico && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    <Label htmlFor="pagar-outro" className="cursor-pointer text-sm font-medium">
+                      Pagar para alguém
+                    </Label>
+                  </div>
+                  <Switch
+                    id="pagar-outro"
+                    checked={pagarParaOutro}
+                    onCheckedChange={(v) => {
+                      setPagarParaOutro(v);
+                      if (!v) {
+                        setClienteCreditoId('');
+                        setBuscaCliente('');
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ex: a mãe paga e o crédito de R$ {(parseFloat(valorPago) - valorServico).toFixed(2)} fica no perfil da filha.
+                </p>
+
+                {pagarParaOutro && (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar cliente por nome ou telefone..."
+                        value={buscaCliente}
+                        onChange={(e) => setBuscaCliente(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    <div className="max-h-40 overflow-y-auto rounded-md border bg-background">
+                      {clientesDisponiveis
+                        .filter((c) => {
+                          const q = buscaCliente.toLowerCase().trim();
+                          if (!q) return true;
+                          return (
+                            c.nome.toLowerCase().includes(q) ||
+                            c.telefone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))
+                          );
+                        })
+                        .slice(0, 30)
+                        .map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setClienteCreditoId(c.id)}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors border-b last:border-b-0 ${
+                              clienteCreditoId === c.id ? 'bg-primary/10 font-medium' : ''
+                            }`}
+                          >
+                            <div>{c.nome}</div>
+                            <div className="text-xs text-muted-foreground">{c.telefone}</div>
+                          </button>
+                        ))}
+                      {clientesDisponiveis.length === 0 && (
+                        <div className="p-3 text-xs text-muted-foreground text-center">
+                          Nenhum cliente cadastrado
+                        </div>
+                      )}
+                    </div>
+                    {clienteCreditoId && (
+                      <p className="text-xs text-primary font-medium">
+                        ✓ Crédito irá para: {clientesDisponiveis.find(c => c.id === clienteCreditoId)?.nome}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div>
             <Label htmlFor="forma_pagamento">Selecione a forma de pagamento *</Label>
