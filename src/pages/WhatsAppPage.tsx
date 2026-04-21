@@ -54,7 +54,6 @@ const WhatsAppPage: React.FC = () => {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
-  const [agendarOpen, setAgendarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -373,7 +372,13 @@ const WhatsAppPage: React.FC = () => {
                   <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               )}
-              <Button size="sm" variant="default" onClick={() => setAgendarOpen(true)}>
+              <Button size="sm" variant="default" onClick={() => {
+                if (!activeChat) return;
+                window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
+                  detail: { nome: activeChat.nome, telefone: activeChat.telefone },
+                }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { tab: 'calendario' } }));
+              }}>
                 <CalendarPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Agendar</span>
               </Button>
             </div>
@@ -435,13 +440,6 @@ const WhatsAppPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog agendar inline */}
-      <AgendarInlineDialog
-        open={agendarOpen}
-        onOpenChange={setAgendarOpen}
-        chat={activeChat}
-        onCreated={() => { toast({ title: 'Agendamento criado!' }); }}
-      />
     </div>
   );
 };
@@ -479,71 +477,6 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
         </p>
       </div>
     </div>
-  );
-};
-
-// Dialog rápido de agendamento
-const AgendarInlineDialog: React.FC<{
-  open: boolean;
-  onOpenChange: (b: boolean) => void;
-  chat: Chat | null;
-  onCreated: () => void;
-}> = ({ open, onOpenChange, chat, onCreated }) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [hora, setHora] = useState('09:00');
-  const [servicoId, setServicoId] = useState('');
-  const [preco, setPreco] = useState('');
-  const [servicos, setServicos] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!open || !user) return;
-    supabase.from('servicos').select('*').eq('user_id', user.id).then(({ data }) => setServicos(data || []));
-  }, [open, user]);
-
-  useEffect(() => {
-    const s = servicos.find((x) => x.id === servicoId);
-    if (s) setPreco(String(s.valor));
-  }, [servicoId, servicos]);
-
-  const handleSave = async () => {
-    if (!chat || !user) return;
-    const { error } = await supabase.from('agendamentos').insert({
-      user_id: user.id, nome: chat.nome, telefone: chat.telefone,
-      data_agendamento: data, hora_agendamento: hora,
-      procedimento_id: servicoId || null, preco: parseFloat(preco || '0'),
-      status: 'A fazer',
-    });
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-    onCreated();
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Agendar — {chat?.nome}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div><Label>Data</Label><Input type="date" value={data} onChange={(e) => setData(e.target.value)} /></div>
-            <div><Label>Hora</Label><Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></div>
-          </div>
-          <div>
-            <Label>Serviço</Label>
-            <select value={servicoId} onChange={(e) => setServicoId(e.target.value)} className="w-full h-11 rounded-xl border border-border/60 bg-background px-4 text-sm">
-              <option value="">Selecione…</option>
-              {servicos.map((s) => <option key={s.id} value={s.id}>{s.nome_procedimento} — R$ {s.valor}</option>)}
-            </select>
-          </div>
-          <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} /></div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave}>Agendar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 };
 

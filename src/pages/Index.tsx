@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, MessageCircle } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
@@ -16,6 +16,15 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.tab) setActiveTab(detail.tab as TabType);
+    };
+    window.addEventListener('app:navigate', handler);
+    return () => window.removeEventListener('app:navigate', handler);
+  }, []);
 
   const handleSignOut = async () => {
     try {
