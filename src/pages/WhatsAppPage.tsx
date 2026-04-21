@@ -382,39 +382,84 @@ const WhatsAppPage: React.FC = () => {
               {tab === 'group' ? 'Nenhum grupo.' : 'Nenhuma conversa.'} Clique em <RefreshCw className="inline h-3 w-3" /> para sincronizar.
             </div>
           )}
-          {filteredChats.map((chat) => (
-            <button
-              key={chat.id}
-              onClick={() => setActiveChat(chat)}
-              className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
-            >
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={chat.profile_pic_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <p className="font-semibold text-sm truncate text-foreground">{chat.nome}</p>
-                  {chat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+          {filteredChats.map((chat) => {
+            const status = chatStatus[phoneKey(chat.telefone)] || { credito: 0, devendo: 0, ativos: 0 };
+            const temCredito = status.credito > 0;
+            const temDevendo = status.devendo > 0;
+            const temAtivos = status.ativos > 0;
+            return (
+              <button
+                key={chat.id}
+                onClick={() => setActiveChat(chat)}
+                className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={chat.profile_pic_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <p className="font-semibold text-sm truncate text-foreground">{chat.nome}</p>
+                    {chat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                    <TooltipProvider delayDuration={150}>
+                      {temAtivos && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                              <CalendarCheck className="h-2.5 w-2.5" />
+                              {status.ativos}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{status.ativos} agendamento(s) ativo(s)</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {temCredito && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-green-500/10 text-green-700 border border-green-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                              <Wallet className="h-2.5 w-2.5" />
+                              R$ {status.credito.toFixed(0)}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Crédito a haver: R$ {status.credito.toFixed(2)}</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {temDevendo && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-1.5 py-0.5 shrink-0">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                              {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : 'pend.'}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {status.devendo >= 1
+                              ? `Devendo: R$ ${status.devendo.toFixed(2)}`
+                              : 'Possui agendamento pendente de pagamento'}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </TooltipProvider>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{chat.last_message || chat.telefone}</p>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{chat.last_message || chat.telefone}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                {chat.last_message_at && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(chat.last_message_at), 'HH:mm')}
-                  </span>
-                )}
-                {chat.unread_count > 0 && (
-                  <span className="bg-primary text-primary-foreground text-[10px] rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center font-bold">
-                    {chat.unread_count}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+                <div className="flex flex-col items-end gap-1">
+                  {chat.last_message_at && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(new Date(chat.last_message_at), 'HH:mm')}
+                    </span>
+                  )}
+                  {chat.unread_count > 0 && (
+                    <span className="bg-primary text-primary-foreground text-[10px] rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center font-bold">
+                      {chat.unread_count}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </ScrollArea>
       </div>
 
