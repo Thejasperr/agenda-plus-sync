@@ -88,18 +88,26 @@ const Index = () => {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const showBadge = tab.id === 'whatsapp' && unreadTotal > 0;
             
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center py-2 px-2 rounded-xl transition-all duration-200 ${
+                className={`relative flex flex-col items-center py-2 px-2 rounded-xl transition-all duration-200 ${
                   isActive 
                     ? 'text-primary bg-primary/10 scale-105' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Icon size={20} />
+                <div className="relative">
+                  <Icon size={20} />
+                  {showBadge && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                      {unreadTotal > 99 ? '99+' : unreadTotal}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] mt-1 font-medium">{tab.label}</span>
               </button>
             );
