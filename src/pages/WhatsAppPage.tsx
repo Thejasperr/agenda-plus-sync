@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import ClienteInfoDialog from '@/components/ClienteInfoDialog';
 
 interface Chat {
   id: string;
@@ -55,6 +56,7 @@ const WhatsAppPage: React.FC = () => {
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
   const [novoClienteNome, setNovoClienteNome] = useState('');
+  const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -378,13 +380,18 @@ const WhatsAppPage: React.FC = () => {
                 <AvatarImage src={activeChat.profile_pic_url || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary">{activeChat.nome?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={() => setClienteInfoOpen(true)}
+                className="flex-1 min-w-0 text-left hover:opacity-80 transition"
+                title="Ver informações do cliente"
+              >
                 <div className="flex items-center gap-1">
                   <p className="font-semibold text-foreground truncate">{activeChat.nome}</p>
                   {activeChat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
                 </div>
                 <p className="text-xs text-muted-foreground">{activeChat.telefone}</p>
-              </div>
+              </button>
               {!activeChat.cliente_id && (
                 <Button size="sm" variant="outline" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
                   <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
@@ -500,6 +507,16 @@ const WhatsAppPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog info do cliente */}
+      {activeChat && (
+        <ClienteInfoDialog
+          open={clienteInfoOpen}
+          onOpenChange={setClienteInfoOpen}
+          telefone={activeChat.telefone}
+          nome={activeChat.nome}
+        />
+      )}
 
     </div>
   );
