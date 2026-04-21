@@ -538,9 +538,56 @@ const WhatsAppPage: React.FC = () => {
                 className="flex-1 min-w-0 text-left hover:opacity-80 transition"
                 title="Ver informações do cliente"
               >
-                <div className="flex items-center gap-1">
-                  <p className="font-semibold text-sm sm:text-base text-foreground truncate">{activeChat.nome}</p>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <p className="font-semibold text-sm sm:text-base text-foreground truncate max-w-[140px] sm:max-w-none">{activeChat.nome}</p>
                   {activeChat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                  {(() => {
+                    const status = chatStatus[phoneKey(activeChat.telefone)];
+                    if (!status) return null;
+                    return (
+                      <TooltipProvider>
+                        {status.ativos > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5 bg-primary/15 text-primary shrink-0">
+                                <CalendarCheck className="h-3 w-3" />
+                                {status.ativos}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {status.ativos === 1 ? '1 agendamento ativo' : `${status.ativos} agendamentos ativos`}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {status.credito > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                <Wallet className="h-3 w-3" />
+                                R$ {status.credito.toFixed(0)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Crédito: R$ {status.credito.toFixed(2)}</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {status.devendo > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5 bg-destructive/15 text-destructive shrink-0">
+                                <AlertCircle className="h-3 w-3" />
+                                {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : '!'}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {status.devendo >= 1
+                                ? `Devendo: R$ ${status.devendo.toFixed(2)}`
+                                : 'Possui agendamento pendente de pagamento'}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </TooltipProvider>
+                    );
+                  })()}
                 </div>
                 <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{activeChat.telefone}</p>
               </button>
