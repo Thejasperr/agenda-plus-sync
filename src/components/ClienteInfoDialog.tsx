@@ -187,6 +187,54 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     }
   };
 
+  const handleEditarCredito = async () => {
+    const novo = parseFloat(novoSaldoEdit);
+    if (isNaN(novo) || novo < 0) {
+      toast({ title: 'Valor inválido', description: 'Informe um valor válido (0 ou maior).', variant: 'destructive' });
+      return;
+    }
+    if (!cliente?.id) {
+      toast({ title: 'Cliente não cadastrado', description: 'Use "Adicionar" para criar o saldo.', variant: 'destructive' });
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const saldoAtual = Number(cliente.saldo_credito || 0);
+      const diferenca = novo - saldoAtual;
+
+      const { error: errUpd } = await supabase
+        .from('clientes')
+        .update({ saldo_credito: novo })
+        .eq('id', cliente.id);
+      if (errUpd) throw errUpd;
+
+      if (diferenca !== 0) {
+        await supabase.from('transacoes').insert([{
+          tipo: 'Ajuste de crédito',
+          tipo_operacao: diferenca > 0 ? 'entrada' : 'saida',
+          valor: Math.abs(diferenca),
+          data_transacao: format(new Date(), 'yyyy-MM-dd'),
+          observacoes: `Ajuste manual de saldo de ${nome} (de R$ ${saldoAtual.toFixed(2)} para R$ ${novo.toFixed(2)})${editObs ? ` — ${editObs}` : ''}`,
+          user_id: user.id,
+        }]);
+      }
+
+      toast({ title: 'Saldo atualizado', description: `Novo saldo: R$ ${novo.toFixed(2)}` });
+      setEditarCreditoOpen(false);
+      setNovoSaldoEdit('');
+      setEditObs('');
+      load();
+    } catch (e: any) {
+      console.error('Erro ao editar crédito:', e);
+      toast({ title: 'Erro', description: e.message || 'Não foi possível atualizar o saldo.', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Concluído': return 'bg-green-500/10 text-green-700 border-green-500/30';
