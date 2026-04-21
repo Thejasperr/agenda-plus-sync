@@ -391,9 +391,9 @@ const WhatsAppPage: React.FC = () => {
               <button
                 key={chat.id}
                 onClick={() => setActiveChat(chat)}
-                className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
+                className={`w-full flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
               >
-                <Avatar className="h-12 w-12">
+                <Avatar className="h-11 w-11 sm:h-12 sm:w-12 shrink-0">
                   <AvatarImage src={chat.profile_pic_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
@@ -401,13 +401,13 @@ const WhatsAppPage: React.FC = () => {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 flex-wrap">
-                    <p className="font-semibold text-sm truncate text-foreground">{chat.nome}</p>
-                    {chat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                    <p className="font-semibold text-sm truncate text-foreground max-w-full">{chat.nome}</p>
+                    {chat.cliente_id && <BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
                     <TooltipProvider delayDuration={150}>
                       {temAtivos && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-full px-1 sm:px-1.5 py-0.5 shrink-0">
                               <CalendarCheck className="h-2.5 w-2.5" />
                               {status.ativos}
                             </span>
@@ -418,7 +418,7 @@ const WhatsAppPage: React.FC = () => {
                       {temCredito && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-green-500/10 text-green-700 border border-green-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium bg-green-500/10 text-green-700 border border-green-500/30 rounded-full px-1 sm:px-1.5 py-0.5 shrink-0">
                               <Wallet className="h-2.5 w-2.5" />
                               R$ {status.credito.toFixed(0)}
                             </span>
@@ -429,9 +429,9 @@ const WhatsAppPage: React.FC = () => {
                       {temDevendo && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-1.5 py-0.5 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-1 sm:px-1.5 py-0.5 shrink-0">
                               <AlertCircle className="h-2.5 w-2.5" />
-                              {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : 'pend.'}
+                              {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : '!'}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
@@ -445,7 +445,7 @@ const WhatsAppPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{chat.last_message || chat.telefone}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-1 shrink-0">
                   {chat.last_message_at && (
                     <span className="text-[10px] text-muted-foreground">
                       {format(new Date(chat.last_message_at), 'HH:mm')}
