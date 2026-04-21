@@ -397,29 +397,61 @@ const WhatsAppPage: React.FC = () => {
             {/* Mensagens */}
             <ScrollArea className="flex-1 min-h-0 bg-muted/30">
               <div className="p-4 space-y-2">
-                {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+                {messages.map((m) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
+                    onReply={() => setReplyTo(m)}
+                  />
+                ))}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
+
+            {/* Reply preview */}
+            {replyTo && (
+              <div className="px-3 pt-2 border-t border-border bg-card">
+                <div className="flex items-start gap-2 bg-muted/50 rounded-lg p-2 border-l-4 border-primary">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-primary">
+                      {replyTo.from_me ? 'Você' : activeChat.nome}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {replyTo.content || replyTo.caption || `[${replyTo.message_type}]`}
+                    </p>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setReplyTo(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-3 border-t border-border bg-card flex items-end gap-2">
               <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (f) sendFile(f); e.target.value = '';
-              }} accept="image/*,video/*,audio/*,application/pdf,application/zip" />
-              <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+              }} accept="image/*,video/*,audio/*,application/pdf,application/zip,image/gif" />
+              <input ref={stickerInputRef} type="file" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0]; if (f) sendFile(f, { asSticker: true }); e.target.value = '';
+              }} accept="image/webp,image/png,image/jpeg" />
+              <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} title="Enviar arquivo, imagem, vídeo ou GIF">
                 <Paperclip className="h-5 w-5" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
+                <Smile className="h-5 w-5" />
               </Button>
               <Input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
-                placeholder="Digite uma mensagem..."
-                disabled={sending || recording}
+                placeholder={replyTo ? 'Responder...' : 'Digite uma mensagem...'}
+                disabled={recording}
                 className="flex-1"
               />
               {text.trim() ? (
-                <Button size="icon" onClick={sendText} disabled={sending}><Send className="h-5 w-5" /></Button>
+                <Button size="icon" onClick={sendText}><Send className="h-5 w-5" /></Button>
               ) : recording ? (
                 <Button size="icon" variant="destructive" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
               ) : (
