@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil, ChevronDown, XCircle, Sparkles, Edit2 } from 'lucide-react';
+import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil, ChevronDown, Sparkles, Edit2, Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO, isToday, isFuture, isPast, startOfDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -284,17 +284,17 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     }
   };
 
-  const handleCancelar = async (a: Agendamento) => {
-    if (!confirm(`Cancelar o agendamento de ${a.procedimentos_nomes || 'procedimento'} em ${format(parseISO(a.data_agendamento), "dd/MM/yyyy", { locale: ptBR })} às ${a.hora_agendamento?.slice(0, 5)}?`)) return;
-    const { error } = await supabase
-      .from('agendamentos')
-      .update({ status: 'Cancelado' })
-      .eq('id', a.id);
+  const handleExcluir = async (a: Agendamento) => {
+    if (!confirm(`Excluir o agendamento de ${a.procedimentos_nomes || 'procedimento'} em ${format(parseISO(a.data_agendamento), "dd/MM/yyyy", { locale: ptBR })} às ${a.hora_agendamento?.slice(0, 5)}?\n\nEsta ação não pode ser desfeita.`)) return;
+    // Remove vínculos e transações associadas, depois o agendamento
+    await supabase.from('agendamento_procedimentos').delete().eq('agendamento_id', a.id);
+    await supabase.from('transacoes').delete().eq('agendamento_id', a.id);
+    const { error } = await supabase.from('agendamentos').delete().eq('id', a.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Agendamento cancelado' });
+    toast({ title: 'Agendamento excluído' });
     load();
   };
 
@@ -363,10 +363,10 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
             size="sm"
             variant="outline"
             className="flex-1 min-w-[90px] h-8 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => handleCancelar(a)}
+            onClick={() => handleExcluir(a)}
           >
-            <XCircle className="h-3.5 w-3.5 mr-1" />
-            Cancelar
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Excluir
           </Button>
         </div>
       )}
