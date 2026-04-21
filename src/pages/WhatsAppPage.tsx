@@ -386,7 +386,7 @@ const WhatsAppPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground">{activeChat.telefone}</p>
               </div>
               {!activeChat.cliente_id && (
-                <Button size="sm" variant="outline" onClick={() => setAddClienteOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
                   <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               )}
