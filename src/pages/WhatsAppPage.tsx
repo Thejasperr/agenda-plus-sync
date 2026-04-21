@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,9 +10,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { format, parseISO, isPast, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ClienteInfoDialog from '@/components/ClienteInfoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 
 interface Chat {
   id: string;
@@ -58,6 +60,7 @@ const WhatsAppPage: React.FC = () => {
   const [novoClienteNome, setNovoClienteNome] = useState('');
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [chatStatus, setChatStatus] = useState<Record<string, { credito: number; devendo: number; ativos: number }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +68,54 @@ const WhatsAppPage: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const activeChatRef = useRef<Chat | null>(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
+
+  // Normaliza telefone para chave de comparação (últimos 8 dígitos)
+  const phoneKey = (tel: string | null | undefined) => {
+    const d = (tel || '').replace(/\D/g, '');
+    return d.length >= 8 ? d.slice(-8) : d;
+  };
+
+  // Carrega status (crédito / devendo / agendamentos ativos) para todos os contatos da lista
+  const loadChatStatus = async () => {
+    if (!user) return;
+    const [{ data: clientes }, { data: ags }] = await Promise.all([
+      supabase.from('clientes').select('telefone, saldo_credito').eq('user_id', user.id),
+      supabase.from('agendamentos').select('telefone, data_agendamento, status').eq('user_id', user.id),
+    ]);
+
+    const map: Record<string, { credito: number; devendo: number; ativos: number }> = {};
+
+    (clientes || []).forEach((c: any) => {
+      const k = phoneKey(c.telefone);
+      if (!k) return;
+      const saldo = Number(c.saldo_credito || 0);
+      if (!map[k]) map[k] = { credito: 0, devendo: 0, ativos: 0 };
+      map[k].credito += saldo > 0 ? saldo : 0;
+      map[k].devendo += saldo < 0 ? Math.abs(saldo) : 0;
+    });
+
+    (ags || []).forEach((a: any) => {
+      const k = phoneKey(a.telefone);
+      if (!k) return;
+      if (!map[k]) map[k] = { credito: 0, devendo: 0, ativos: 0 };
+      const d = a.data_agendamento ? parseISO(a.data_agendamento) : null;
+      const ativo = a.status !== 'Concluído' && a.status !== 'Cancelado' && d && (isToday(d) || !isPast(d));
+      if (ativo) map[k].ativos += 1;
+      // Pendência financeira: passou e não foi concluído/cancelado
+      const pendenteFin = a.status !== 'Concluído' && a.status !== 'Cancelado' && d && isPast(d) && !isToday(d);
+      if (pendenteFin) {
+        // soma simbólica para sinalizar pendência (não temos preço aqui, só um flag)
+        map[k].devendo += 0.0001;
+      }
+    });
+
+    setChatStatus(map);
+  };
+
+  useEffect(() => { loadChatStatus(); }, [user]);
+
+  // Recarrega status quando agendamentos / clientes / transações mudarem
+  useAgendamentosRealtime(() => { loadChatStatus(); });
 
   // Carregar chats
   const loadChats = async () => {
@@ -331,39 +382,84 @@ const WhatsAppPage: React.FC = () => {
               {tab === 'group' ? 'Nenhum grupo.' : 'Nenhuma conversa.'} Clique em <RefreshCw className="inline h-3 w-3" /> para sincronizar.
             </div>
           )}
-          {filteredChats.map((chat) => (
-            <button
-              key={chat.id}
-              onClick={() => setActiveChat(chat)}
-              className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
-            >
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={chat.profile_pic_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <p className="font-semibold text-sm truncate text-foreground">{chat.nome}</p>
-                  {chat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+          {filteredChats.map((chat) => {
+            const status = chatStatus[phoneKey(chat.telefone)] || { credito: 0, devendo: 0, ativos: 0 };
+            const temCredito = status.credito > 0;
+            const temDevendo = status.devendo > 0;
+            const temAtivos = status.ativos > 0;
+            return (
+              <button
+                key={chat.id}
+                onClick={() => setActiveChat(chat)}
+                className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition border-b border-border/50 text-left ${activeChat?.id === chat.id ? 'bg-muted' : ''}`}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={chat.profile_pic_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {isGroup(chat.remote_jid) ? <UsersIcon className="h-5 w-5" /> : (chat.nome?.[0]?.toUpperCase() || '?')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <p className="font-semibold text-sm truncate text-foreground">{chat.nome}</p>
+                    {chat.cliente_id && <BadgeCheck className="h-4 w-4 text-primary shrink-0" />}
+                    <TooltipProvider delayDuration={150}>
+                      {temAtivos && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                              <CalendarCheck className="h-2.5 w-2.5" />
+                              {status.ativos}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{status.ativos} agendamento(s) ativo(s)</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {temCredito && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-green-500/10 text-green-700 border border-green-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                              <Wallet className="h-2.5 w-2.5" />
+                              R$ {status.credito.toFixed(0)}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Crédito a haver: R$ {status.credito.toFixed(2)}</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {temDevendo && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/30 rounded-full px-1.5 py-0.5 shrink-0">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                              {status.devendo >= 1 ? `R$ ${status.devendo.toFixed(0)}` : 'pend.'}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {status.devendo >= 1
+                              ? `Devendo: R$ ${status.devendo.toFixed(2)}`
+                              : 'Possui agendamento pendente de pagamento'}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </TooltipProvider>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{chat.last_message || chat.telefone}</p>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{chat.last_message || chat.telefone}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                {chat.last_message_at && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(chat.last_message_at), 'HH:mm')}
-                  </span>
-                )}
-                {chat.unread_count > 0 && (
-                  <span className="bg-primary text-primary-foreground text-[10px] rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center font-bold">
-                    {chat.unread_count}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+                <div className="flex flex-col items-end gap-1">
+                  {chat.last_message_at && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(new Date(chat.last_message_at), 'HH:mm')}
+                    </span>
+                  )}
+                  {chat.unread_count > 0 && (
+                    <span className="bg-primary text-primary-foreground text-[10px] rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center font-bold">
+                      {chat.unread_count}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </ScrollArea>
       </div>
 
