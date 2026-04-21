@@ -120,6 +120,62 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
 
   const podeConfirmar = (a: Agendamento) => a.status !== 'Concluído' && a.status !== 'Cancelado';
 
+  const handleAdicionarCredito = async () => {
+    const valor = parseFloat(creditoValor);
+    if (isNaN(valor) || valor <= 0) {
+      toast({ title: 'Valor inválido', description: 'Informe um valor maior que zero.', variant: 'destructive' });
+      return;
+    }
+    setSavingCredito(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      let clienteId = cliente?.id;
+      let saldoAtual = Number(cliente?.saldo_credito || 0);
+
+      // Se ainda não existe cliente, cria com o telefone/nome do contato
+      if (!clienteId) {
+        const { data: novoCli, error: errCli } = await supabase
+          .from('clientes')
+          .insert([{ nome, telefone, saldo_credito: 0, user_id: user.id }])
+          .select('id, saldo_credito')
+          .single();
+        if (errCli) throw errCli;
+        clienteId = novoCli.id;
+        saldoAtual = Number(novoCli.saldo_credito || 0);
+      }
+
+      const novoSaldo = saldoAtual + valor;
+      const { error: errUpd } = await supabase
+        .from('clientes')
+        .update({ saldo_credito: novoSaldo })
+        .eq('id', clienteId);
+      if (errUpd) throw errUpd;
+
+      // Registrar transação de entrada (crédito antecipado)
+      await supabase.from('transacoes').insert([{
+        tipo: 'Crédito antecipado',
+        tipo_operacao: 'entrada',
+        valor,
+        data_transacao: format(new Date(), 'yyyy-MM-dd'),
+        observacoes: `Crédito adicionado para ${nome}${creditoObs ? ` — ${creditoObs}` : ''}`,
+        user_id: user.id,
+      }]);
+
+      toast({ title: 'Crédito adicionado', description: `R$ ${valor.toFixed(2)} adicionado ao saldo de ${nome}.` });
+      setCreditoOpen(false);
+      setCreditoValor('');
+      setCreditoObs('');
+      load();
+    } catch (e: any) {
+      console.error('Erro ao adicionar crédito:', e);
+      toast({ title: 'Erro', description: e.message || 'Não foi possível adicionar o crédito.', variant: 'destructive' });
+    } finally {
+      setSavingCredito(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Concluído': return 'bg-green-500/10 text-green-700 border-green-500/30';
