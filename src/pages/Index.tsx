@@ -44,18 +44,6 @@ const Index = () => {
     { id: 'configuracoes' as TabType, label: 'Config', icon: Settings },
   ];
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return <DashboardTab />;
-      case 'clientes': return <ClientesTab />;
-      case 'calendario': return <CalendarioPage />;
-      case 'whatsapp': return <WhatsAppPage />;
-      case 'transacoes': return <TransacoesTab />;
-      case 'configuracoes': return <ConfiguracoesTab />;
-      default: return <DashboardTab />;
-    }
-  };
-
   return (
     <div className="mobile-container">
       {/* Header */}
@@ -78,16 +66,16 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Content */}
-      {activeTab === 'whatsapp' ? (
-        <div className="overflow-hidden" style={{ height: 'calc(100vh - 3.5rem - 4rem)' }}>
-          {renderTabContent()}
-        </div>
-      ) : (
-        <div className="mobile-content">
-          {renderTabContent()}
-        </div>
-      )}
+      {/* Content — todas as abas montadas para que dialogs (ex.: agendar do WhatsApp) funcionem em qualquer aba */}
+      <div className={activeTab === 'whatsapp' ? 'overflow-hidden' : 'mobile-content'} style={activeTab === 'whatsapp' ? { height: 'calc(100vh - 3.5rem - 4rem)' } : undefined}>
+        <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}><DashboardTab /></div>
+        <div style={{ display: activeTab === 'clientes' ? 'block' : 'none' }}><ClientesTab /></div>
+        <div style={{ display: activeTab === 'transacoes' ? 'block' : 'none' }}><TransacoesTab /></div>
+        <div style={{ display: activeTab === 'configuracoes' ? 'block' : 'none' }}><ConfiguracoesTab /></div>
+        <div style={{ display: activeTab === 'whatsapp' ? 'block' : 'none', height: '100%' }}><WhatsAppPage /></div>
+        {/* CalendarioPage SEMPRE montado para que o dialog de "Agendar" do WhatsApp funcione fora da aba calendário */}
+        <div style={{ display: activeTab === 'calendario' ? 'block' : 'none' }}><CalendarioPage /></div>
+      </div>
 
       {/* Navigation */}
       <div className="mobile-nav">

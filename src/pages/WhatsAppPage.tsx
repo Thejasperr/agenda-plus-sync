@@ -389,7 +389,6 @@ const WhatsAppPage: React.FC = () => {
                 window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
                   detail: { nome: activeChat.nome, telefone: activeChat.telefone },
                 }));
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { tab: 'calendario' } }));
               }}>
                 <CalendarPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Agendar</span>
               </Button>
