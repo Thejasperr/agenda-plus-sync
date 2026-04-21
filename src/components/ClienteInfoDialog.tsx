@@ -468,6 +468,54 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={editarCreditoOpen} onOpenChange={setEditarCreditoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar saldo de crédito</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Ajuste manualmente o saldo de <span className="font-medium text-foreground">{nome}</span>.
+              A diferença será registrada como ajuste nas transações.
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="edit_saldo">Novo saldo (R$) *</Label>
+              <Input
+                id="edit_saldo"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={novoSaldoEdit}
+                onChange={(e) => setNovoSaldoEdit(e.target.value)}
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Saldo atual: R$ {credito.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="edit_obs">Motivo do ajuste (opcional)</Label>
+              <Textarea
+                id="edit_obs"
+                rows={2}
+                placeholder="Ex.: correção de lançamento"
+                value={editObs}
+                onChange={(e) => setEditObs(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditarCreditoOpen(false)} disabled={savingEdit}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditarCredito} disabled={savingEdit}>
+              {savingEdit ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
