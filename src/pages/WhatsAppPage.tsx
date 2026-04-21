@@ -488,12 +488,35 @@ const WhatsAppPage: React.FC = () => {
   );
 };
 
-// Bubble com renderização de mídia
-const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
+// Bubble com renderização de mídia + reply
+const MessageBubble: React.FC<{
+  message: Message;
+  quoted?: Message | null;
+  onReply?: () => void;
+}> = ({ message, quoted, onReply }) => {
   const isMe = message.from_me;
   return (
-    <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+    <div className={`group flex items-end gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+      {isMe && onReply && (
+        <button
+          onClick={onReply}
+          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          title="Responder"
+        >
+          <Reply className="h-3.5 w-3.5" />
+        </button>
+      )}
       <div className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+        {quoted && (
+          <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
+            <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
+              {quoted.from_me ? 'Você' : 'Mensagem'}
+            </p>
+            <p className="truncate opacity-80">
+              {quoted.content || quoted.caption || `[${quoted.message_type}]`}
+            </p>
+          </div>
+        )}
         {message.message_type === 'image' && message.media_url && (
           <img src={message.media_url} alt="" className="rounded-lg max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
         )}
@@ -520,6 +543,15 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
           {format(new Date(message.timestamp), 'HH:mm')}
         </p>
       </div>
+      {!isMe && onReply && (
+        <button
+          onClick={onReply}
+          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          title="Responder"
+        >
+          <Reply className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 };
