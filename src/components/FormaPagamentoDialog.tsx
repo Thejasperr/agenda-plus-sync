@@ -306,6 +306,49 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     });
   };
 
+  const sendWhatsAppPaymentSummary = async (
+    valorPagoNum: number,
+    diferenca: number,
+    forma: string,
+  ) => {
+    if (!clienteTelefone) return;
+    try {
+      // Buscar chat correspondente
+      const digits = clienteTelefone.replace(/\D/g, '');
+      const { data: chats } = await supabase
+        .from('whatsapp_chats')
+        .select('id, remote_jid')
+        .or(`telefone.eq.${clienteTelefone},telefone.eq.${digits},telefone.ilike.%${digits.slice(-8)}%`)
+        .limit(1);
+      const chat = chats?.[0];
+      if (!chat) return;
+
+      let mensagem = `✅ *Pagamento confirmado*\n\n` +
+        `Serviço: R$ ${valorServico.toFixed(2)}\n` +
+        `Pago: R$ ${valorPagoNum.toFixed(2)}\n` +
+        `Forma: ${forma}`;
+
+      if (diferenca > 0) {
+        mensagem += `\n\n💰 Você pagou *R$ ${diferenca.toFixed(2)} a mais*. Esse valor foi adicionado como crédito para o próximo atendimento.`;
+      } else if (diferenca < 0) {
+        mensagem += `\n\n⚠️ Faltou *R$ ${Math.abs(diferenca).toFixed(2)}* para completar o pagamento. Esse valor ficou registrado como pendência.`;
+      } else {
+        mensagem += `\n\nObrigado! 🙌`;
+      }
+
+      await supabase.functions.invoke('whatsapp-send', {
+        body: {
+          chat_id: chat.id,
+          remote_jid: chat.remote_jid,
+          type: 'text',
+          content: mensagem,
+        },
+      });
+    } catch (e) {
+      console.error('Erro ao enviar resumo no WhatsApp:', e);
+    }
+  };
+
   const handleConfirm = async () => {
     if (!formaSelecionada) {
       toast({
@@ -327,36 +370,40 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     }
 
     try {
-      // Calcular o excedente
-      const excedente = valorPagoNum - valorServico;
+      // Diferença: positivo = pagou a mais (crédito), negativo = pagou a menos (dívida)
+      const diferenca = valorPagoNum - valorServico;
 
-      // Se houver excedente, adicionar ao saldo do cliente
-      if (excedente > 0) {
-        const { data: clienteData, error: clienteError } = await supabase
+      // Atualizar saldo do cliente quando houver diferença
+      if (diferenca !== 0 && clienteTelefone) {
+        const { data: clienteData } = await supabase
           .from('clientes')
           .select('saldo_credito')
           .eq('telefone', clienteTelefone)
-          .single();
+          .maybeSingle();
 
-        if (clienteError) throw clienteError;
+        if (clienteData) {
+          const novoSaldo = (Number(clienteData.saldo_credito) || 0) + diferenca;
+          await supabase
+            .from('clientes')
+            .update({ saldo_credito: novoSaldo })
+            .eq('telefone', clienteTelefone);
 
-        const novoSaldo = (clienteData.saldo_credito || 0) + excedente;
-
-        const { error: updateError } = await supabase
-          .from('clientes')
-          .update({ saldo_credito: novoSaldo })
-          .eq('telefone', clienteTelefone);
-
-        if (updateError) throw updateError;
-
-        toast({
-          title: "Crédito adicionado",
-          description: `R$ ${excedente.toFixed(2)} foi adicionado ao saldo do cliente`,
-        });
+          if (diferenca > 0) {
+            toast({
+              title: "Crédito adicionado",
+              description: `R$ ${diferenca.toFixed(2)} foi adicionado ao saldo do cliente`,
+            });
+          } else {
+            toast({
+              title: "Pendência registrada",
+              description: `Cliente ficou devendo R$ ${Math.abs(diferenca).toFixed(2)}`,
+              variant: "destructive",
+            });
+          }
+        }
       }
 
       // Atualizar agendamento com status concluído e forma de pagamento
-      // O trigger do banco criará automaticamente a transação
       const { error } = await supabase
         .from('agendamentos')
         .update({ 
@@ -366,6 +413,9 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
         .eq('id', agendamentoId);
 
       if (error) throw error;
+
+      // Enviar resumo no WhatsApp (não bloqueia)
+      sendWhatsAppPaymentSummary(valorPagoNum, diferenca, formaSelecionada);
 
       onConfirm(formaSelecionada);
       setFormaSelecionada('');
@@ -411,6 +461,11 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
             {parseFloat(valorPago) > valorServico && (
               <p className="text-sm text-green-600 mt-1">
                 Crédito de R$ {(parseFloat(valorPago) - valorServico).toFixed(2)} será adicionado ao cliente
+              </p>
+            )}
+            {!isNaN(parseFloat(valorPago)) && parseFloat(valorPago) < valorServico && parseFloat(valorPago) >= 0 && (
+              <p className="text-sm text-destructive mt-1">
+                Faltam R$ {(valorServico - parseFloat(valorPago)).toFixed(2)} — ficará como pendência do cliente
               </p>
             )}
           </div>
