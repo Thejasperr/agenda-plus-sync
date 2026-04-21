@@ -335,10 +335,10 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
 
       {/* 3. Ações */}
       {podeConfirmar(a) && (
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
           <Button
             size="sm"
-            className="flex-1 h-8 text-xs"
+            className="flex-1 min-w-[110px] h-8 text-xs"
             onClick={() => setPagamentoAg(a)}
           >
             <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
@@ -347,7 +347,22 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 h-8 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+            className="flex-1 min-w-[90px] h-8 text-xs"
+            onClick={() => {
+              onOpenChange(false);
+              window.dispatchEvent(new CustomEvent('app:navigate', { detail: { tab: 'calendario' } }));
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('whatsapp:editar', { detail: { id: a.id } }));
+              }, 150);
+            }}
+          >
+            <Edit2 className="h-3.5 w-3.5 mr-1" />
+            Editar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 min-w-[90px] h-8 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
             onClick={() => handleCancelar(a)}
           >
             <XCircle className="h-3.5 w-3.5 mr-1" />
