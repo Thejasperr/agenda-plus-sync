@@ -298,29 +298,85 @@ const WhatsAppPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Gravação áudio
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      audioChunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size) audioChunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach(t => t.stop());
-        const file = new File([blob], `audio-${Date.now()}.webm`, { type: 'audio/webm' });
-        await sendFile(file);
-      };
-      mr.start();
-      mediaRecorderRef.current = mr;
-      setRecording(true);
-    } catch (e) {
-      toast({ title: 'Microfone bloqueado', description: 'Permita acesso ao microfone', variant: 'destructive' });
+  // Gravação áudio — chamada DIRETO do clique (preserva o gesto do usuário)
+  const startRecording = () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast({
+        title: 'Recurso indisponível',
+        description: 'Seu navegador não suporta gravação. Use o app instalado (PWA) ou o Chrome/Safari atualizado.',
+        variant: 'destructive',
+      });
+      return;
     }
+
+    // Inicia a chamada SINCRONAMENTE dentro do gesto, depois trata o promise
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        // Escolhe o melhor mimeType suportado (Safari iOS prefere mp4)
+        const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac'];
+        const mimeType = candidates.find((m) =>
+          typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(m)
+        );
+
+        let mr: MediaRecorder;
+        try {
+          mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        } catch (err) {
+          console.error('MediaRecorder error:', err);
+          stream.getTracks().forEach((t) => t.stop());
+          toast({
+            title: 'Erro ao iniciar gravação',
+            description: 'Formato de áudio não suportado neste dispositivo.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        audioChunksRef.current = [];
+        mr.ondataavailable = (e) => {
+          if (e.data.size) audioChunksRef.current.push(e.data);
+        };
+        mr.onstop = async () => {
+          const type = mr.mimeType || 'audio/webm';
+          const ext = type.includes('mp4') ? 'm4a' : 'webm';
+          const blob = new Blob(audioChunksRef.current, { type });
+          stream.getTracks().forEach((t) => t.stop());
+          const file = new File([blob], `audio-${Date.now()}.${ext}`, { type });
+          await sendFile(file);
+        };
+        mr.onerror = (e) => {
+          console.error('Recorder error:', e);
+          stream.getTracks().forEach((t) => t.stop());
+          setRecording(false);
+          toast({ title: 'Erro na gravação', variant: 'destructive' });
+        };
+        mr.start();
+        mediaRecorderRef.current = mr;
+        setRecording(true);
+      })
+      .catch((err: any) => {
+        console.error('getUserMedia error:', err);
+        let description = 'Não foi possível acessar o microfone.';
+        if (err?.name === 'NotAllowedError') {
+          description = 'Permissão negada. Habilite o microfone nas configurações do navegador/app.';
+        } else if (err?.name === 'NotFoundError') {
+          description = 'Nenhum microfone encontrado neste dispositivo.';
+        } else if (err?.name === 'NotReadableError') {
+          description = 'Microfone em uso por outro aplicativo.';
+        } else if (err?.name === 'SecurityError') {
+          description = 'Acesso bloqueado. O app precisa estar em HTTPS.';
+        }
+        toast({ title: 'Microfone bloqueado', description, variant: 'destructive' });
+      });
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
+    try {
+      mediaRecorderRef.current?.stop();
+    } catch (err) {
+      console.error('stopRecording error:', err);
+    }
     setRecording(false);
   };
 
