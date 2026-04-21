@@ -49,6 +49,7 @@ const CalendarioPage = () => {
     nome_procedimento: string;
     valor: number;
     duracao_minutos: number | null;
+    categoria: string;
   }[]>([]);
   const [clientes, setClientes] = useState<{
     telefone: string;
