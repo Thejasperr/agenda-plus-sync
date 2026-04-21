@@ -70,7 +70,7 @@ const Index = () => {
       </div>
 
       {/* Content */}
-      <div className="mobile-content">
+      <div className={activeTab === 'whatsapp' ? 'flex-1 pb-20 overflow-hidden' : 'mobile-content'}>
         {renderTabContent()}
       </div>
 
