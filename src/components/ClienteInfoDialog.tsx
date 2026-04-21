@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Calendar, Clock, DollarSign, TrendingUp, Wallet, AlertCircle, History, CalendarCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { format, parseISO, isToday, isFuture, isPast, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import FormaPagamentoDialog from './FormaPagamentoDialog';
 
 interface ClienteInfoDialogProps {
   open: boolean;
@@ -33,6 +35,7 @@ interface Agendamento {
 interface Cliente {
   id: string;
   nome: string;
+  telefone: string;
   saldo_credito: number;
 }
 
@@ -40,35 +43,34 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const [loading, setLoading] = useState(true);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
+  const [pagamentoAg, setPagamentoAg] = useState<Agendamento | null>(null);
 
-  useEffect(() => {
-    if (!open || !telefone) return;
-    const load = async () => {
-      setLoading(true);
-      // Normaliza telefone (apenas dígitos)
-      const digits = telefone.replace(/\D/g, '');
+  const load = useCallback(async () => {
+    setLoading(true);
+    const digits = telefone.replace(/\D/g, '');
 
-      // Cliente
-      const { data: clientes } = await supabase
+    const [{ data: clientes }, { data: ags }] = await Promise.all([
+      supabase
         .from('clientes')
-        .select('id, nome, saldo_credito')
+        .select('id, nome, telefone, saldo_credito')
         .or(`telefone.eq.${telefone},telefone.eq.${digits},telefone.ilike.%${digits.slice(-8)}%`)
-        .limit(1);
-      setCliente(clientes?.[0] || null);
-
-      // Agendamentos por telefone
-      const { data: ags } = await supabase
+        .limit(1),
+      supabase
         .from('agendamentos')
         .select('*')
         .or(`telefone.eq.${telefone},telefone.eq.${digits},telefone.ilike.%${digits.slice(-8)}%`)
         .order('data_agendamento', { ascending: false })
-        .order('hora_agendamento', { ascending: false });
-      setAgendamentos((ags || []) as Agendamento[]);
+        .order('hora_agendamento', { ascending: false }),
+    ]);
 
-      setLoading(false);
-    };
-    load();
-  }, [open, telefone]);
+    setCliente((clientes?.[0] as Cliente) || null);
+    setAgendamentos((ags || []) as Agendamento[]);
+    setLoading(false);
+  }, [telefone]);
+
+  useEffect(() => {
+    if (open && telefone) load();
+  }, [open, telefone, load]);
 
   const calcValorFinal = (a: Agendamento) => {
     let v = Number(a.preco) || 0;
@@ -77,8 +79,6 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     }
     return v;
   };
-
-  const hoje = startOfDay(new Date());
 
   const ativosHoje = agendamentos.filter(a => {
     const d = parseISO(a.data_agendamento);
@@ -92,21 +92,24 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
 
   const historico = agendamentos.filter(a => {
     const d = parseISO(a.data_agendamento);
-    return (isPast(d) && !isToday(d)) || a.status === 'Concluído' || a.status === 'Cancelado';
+    return ((isPast(d) && !isToday(d)) || a.status === 'Concluído' || a.status === 'Cancelado');
   });
 
   const concluidos = agendamentos.filter(a => a.status === 'Concluído');
   const totalGasto = concluidos.reduce((sum, a) => sum + calcValorFinal(a), 0);
 
-  // Devendo: agendamentos passados não cancelados e não concluídos (atendido sem registrar pagamento)
-  // ou concluídos sem forma_pagamento registrada (raro)
+  // Pendências em agendamento (não concluídos no passado)
   const devendoList = agendamentos.filter(a => {
     const d = parseISO(a.data_agendamento);
     return isPast(d) && !isToday(d) && a.status !== 'Concluído' && a.status !== 'Cancelado';
   });
-  const totalDevendo = devendoList.reduce((sum, a) => sum + calcValorFinal(a), 0);
 
-  const saldoCredito = Number(cliente?.saldo_credito || 0);
+  // Saldo: positivo = crédito a haver; negativo = está devendo
+  const saldo = Number(cliente?.saldo_credito || 0);
+  const credito = saldo > 0 ? saldo : 0;
+  const devendoSaldo = saldo < 0 ? Math.abs(saldo) : 0;
+
+  const podeConfirmar = (a: Agendamento) => a.status !== 'Concluído' && a.status !== 'Cancelado';
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -120,7 +123,7 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const renderAgendamento = (a: Agendamento) => (
     <Card key={a.id} className="p-3">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground flex-wrap">
           <Calendar className="h-3.5 w-3.5 text-primary" />
           {format(parseISO(a.data_agendamento), "dd 'de' MMM yyyy", { locale: ptBR })}
           <Clock className="h-3.5 w-3.5 text-muted-foreground ml-1" />
@@ -136,118 +139,139 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
         {a.forma_pagamento && <span className="text-muted-foreground">{a.forma_pagamento}</span>}
       </div>
       {a.observacoes && <p className="text-xs text-muted-foreground mt-1.5 italic">{a.observacoes}</p>}
+      {podeConfirmar(a) && (
+        <Button
+          size="sm"
+          className="w-full mt-2 h-8 text-xs"
+          onClick={() => setPagamentoAg(a)}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+          Confirmar pagamento
+        </Button>
+      )}
     </Card>
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] p-0 gap-0 flex flex-col">
-        <DialogHeader className="p-4 pb-3 border-b border-border shrink-0">
-          <DialogTitle className="text-base">{nome}</DialogTitle>
-          <p className="text-xs text-muted-foreground">{telefone}</p>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg max-h-[85vh] p-0 gap-0 flex flex-col">
+          <DialogHeader className="p-4 pb-3 border-b border-border shrink-0">
+            <DialogTitle className="text-base">{nome}</DialogTitle>
+            <p className="text-xs text-muted-foreground">{telefone}</p>
+          </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-4 space-y-4">
-            {loading ? (
-              <p className="text-center text-sm text-muted-foreground py-8">Carregando...</p>
-            ) : (
-              <>
-                {/* Resumo financeiro */}
-                <div className="grid grid-cols-3 gap-2">
-                  <Card className="p-3">
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                      <TrendingUp className="h-3 w-3" /> Total gasto
-                    </div>
-                    <p className="text-sm font-bold text-foreground">R$ {totalGasto.toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">{concluidos.length} atendimento(s)</p>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                      <Wallet className="h-3 w-3" /> Crédito
-                    </div>
-                    <p className={`text-sm font-bold ${saldoCredito > 0 ? 'text-green-600' : 'text-foreground'}`}>
-                      R$ {saldoCredito.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">a haver</p>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                      <AlertCircle className="h-3 w-3" /> Devendo
-                    </div>
-                    <p className={`text-sm font-bold ${totalDevendo > 0 ? 'text-red-600' : 'text-foreground'}`}>
-                      R$ {totalDevendo.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{devendoList.length} pendente(s)</p>
-                  </Card>
-                </div>
-
-                {!cliente && (
-                  <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2 text-center">
-                    Contato ainda não cadastrado como cliente.
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-4 space-y-4">
+              {loading ? (
+                <p className="text-center text-sm text-muted-foreground py-8">Carregando...</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Card className="p-3">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                        <TrendingUp className="h-3 w-3" /> Total gasto
+                      </div>
+                      <p className="text-sm font-bold text-foreground">R$ {totalGasto.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">{concluidos.length} atendimento(s)</p>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                        <Wallet className="h-3 w-3" /> Crédito
+                      </div>
+                      <p className={`text-sm font-bold ${credito > 0 ? 'text-green-600' : 'text-foreground'}`}>
+                        R$ {credito.toFixed(2)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">a haver</p>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                        <AlertCircle className="h-3 w-3" /> Devendo
+                      </div>
+                      <p className={`text-sm font-bold ${devendoSaldo > 0 || devendoList.length > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                        R$ {devendoSaldo.toFixed(2)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{devendoList.length} pendente(s)</p>
+                    </Card>
                   </div>
-                )}
 
-                {/* Hoje */}
-                <section>
-                  <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                    <CalendarCheck className="h-3.5 w-3.5 text-primary" />
-                    Agendamentos de hoje ({ativosHoje.length})
-                  </h3>
-                  {ativosHoje.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">Nenhum agendamento hoje.</p>
-                  ) : (
-                    <div className="space-y-2">{ativosHoje.map(renderAgendamento)}</div>
+                  {!cliente && (
+                    <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2 text-center">
+                      Contato ainda não cadastrado como cliente.
+                    </div>
                   )}
-                </section>
 
-                {/* Futuros */}
-                <section>
-                  <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-primary" />
-                    Próximos agendamentos ({futuros.length})
-                  </h3>
-                  {futuros.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">Nenhum agendamento futuro.</p>
-                  ) : (
-                    <div className="space-y-2">{futuros.map(renderAgendamento)}</div>
-                  )}
-                </section>
-
-                {/* Pendências */}
-                {devendoList.length > 0 && (
                   <section>
-                    <h3 className="text-xs font-semibold text-red-600 mb-2 flex items-center gap-1.5">
-                      <AlertCircle className="h-3.5 w-3.5" />
-                      Pendências de pagamento ({devendoList.length})
+                    <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                      <CalendarCheck className="h-3.5 w-3.5 text-primary" />
+                      Agendamentos de hoje ({ativosHoje.length})
                     </h3>
-                    <div className="space-y-2">{devendoList.map(renderAgendamento)}</div>
+                    {ativosHoje.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">Nenhum agendamento hoje.</p>
+                    ) : (
+                      <div className="space-y-2">{ativosHoje.map(renderAgendamento)}</div>
+                    )}
                   </section>
-                )}
 
-                {/* Histórico */}
-                <section>
-                  <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                    <History className="h-3.5 w-3.5 text-muted-foreground" />
-                    Histórico ({historico.length})
-                  </h3>
-                  {historico.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">Sem histórico.</p>
-                  ) : (
-                    <div className="space-y-2">{historico.slice(0, 20).map(renderAgendamento)}</div>
+                  <section>
+                    <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-primary" />
+                      Próximos agendamentos ({futuros.length})
+                    </h3>
+                    {futuros.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">Nenhum agendamento futuro.</p>
+                    ) : (
+                      <div className="space-y-2">{futuros.map(renderAgendamento)}</div>
+                    )}
+                  </section>
+
+                  {devendoList.length > 0 && (
+                    <section>
+                      <h3 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1.5">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        Pendências de pagamento ({devendoList.length})
+                      </h3>
+                      <div className="space-y-2">{devendoList.map(renderAgendamento)}</div>
+                    </section>
                   )}
-                  {historico.length > 20 && (
-                    <p className="text-[10px] text-muted-foreground text-center mt-2">
-                      Mostrando últimos 20 de {historico.length}
-                    </p>
-                  )}
-                </section>
-              </>
-            )}
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+
+                  <section>
+                    <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                      <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      Histórico ({historico.length})
+                    </h3>
+                    {historico.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">Sem histórico.</p>
+                    ) : (
+                      <div className="space-y-2">{historico.slice(0, 20).map(renderAgendamento)}</div>
+                    )}
+                    {historico.length > 20 && (
+                      <p className="text-[10px] text-muted-foreground text-center mt-2">
+                        Mostrando últimos 20 de {historico.length}
+                      </p>
+                    )}
+                  </section>
+                </>
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {pagamentoAg && (
+        <FormaPagamentoDialog
+          open={!!pagamentoAg}
+          onOpenChange={(o) => { if (!o) setPagamentoAg(null); }}
+          agendamentoId={pagamentoAg.id}
+          valorServico={calcValorFinal(pagamentoAg)}
+          clienteTelefone={telefone}
+          onConfirm={() => {
+            setPagamentoAg(null);
+            load();
+          }}
+        />
+      )}
+    </>
   );
 };
 
