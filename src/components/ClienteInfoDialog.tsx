@@ -80,8 +80,45 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
         .order('hora_agendamento', { ascending: false }),
     ]);
 
+    const agList = (ags || []) as Agendamento[];
+
+    // Buscar nomes dos procedimentos (multi via agendamento_procedimentos + legado via procedimento_id)
+    if (agList.length > 0) {
+      const ids = agList.map(a => a.id);
+      const procIdsLegado = agList.map(a => a.procedimento_id).filter(Boolean) as string[];
+
+      const [{ data: links }, { data: servicosLegado }] = await Promise.all([
+        supabase
+          .from('agendamento_procedimentos')
+          .select('agendamento_id, ordem, servicos:procedimento_id(nome_procedimento)')
+          .in('agendamento_id', ids)
+          .order('ordem', { ascending: true }),
+        procIdsLegado.length
+          ? supabase.from('servicos').select('id, nome_procedimento').in('id', procIdsLegado)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const linksMap: Record<string, string[]> = {};
+      (links || []).forEach((l: any) => {
+        const nm = l.servicos?.nome_procedimento;
+        if (!nm) return;
+        if (!linksMap[l.agendamento_id]) linksMap[l.agendamento_id] = [];
+        linksMap[l.agendamento_id].push(nm);
+      });
+      const servMap: Record<string, string> = {};
+      (servicosLegado || []).forEach((s: any) => { servMap[s.id] = s.nome_procedimento; });
+
+      agList.forEach(a => {
+        if (linksMap[a.id]?.length) {
+          a.procedimentos_nomes = linksMap[a.id].join(' + ');
+        } else if (a.procedimento_id && servMap[a.procedimento_id]) {
+          a.procedimentos_nomes = servMap[a.procedimento_id];
+        }
+      });
+    }
+
     setCliente((clientes?.[0] as Cliente) || null);
-    setAgendamentos((ags || []) as Agendamento[]);
+    setAgendamentos(agList);
     setLoading(false);
   }, [telefone]);
 
