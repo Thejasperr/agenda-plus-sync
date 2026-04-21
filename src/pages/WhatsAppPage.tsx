@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,9 +10,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { format, parseISO, isPast, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ClienteInfoDialog from '@/components/ClienteInfoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 
 interface Chat {
   id: string;
