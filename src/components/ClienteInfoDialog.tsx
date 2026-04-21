@@ -48,6 +48,11 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [pagamentoAg, setPagamentoAg] = useState<Agendamento | null>(null);
+  const [creditoOpen, setCreditoOpen] = useState(false);
+  const [creditoValor, setCreditoValor] = useState('');
+  const [creditoObs, setCreditoObs] = useState('');
+  const [savingCredito, setSavingCredito] = useState(false);
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
