@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { format, isSameDay, addDays } from 'date-fns';
+import { format, isSameDay, addDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormaPagamentoDialog from '@/components/FormaPagamentoDialog';
 import PagamentoAntecipadoDialog from '@/components/PagamentoAntecipadoDialog';
