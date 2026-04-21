@@ -54,6 +54,7 @@ const WhatsAppPage: React.FC = () => {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
+  const [novoClienteNome, setNovoClienteNome] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -273,12 +274,17 @@ const WhatsAppPage: React.FC = () => {
   // Adicionar como cliente
   const handleAddCliente = async () => {
     if (!activeChat || !user) return;
+    const nomeFinal = novoClienteNome.trim() || activeChat.nome;
+    if (!nomeFinal) {
+      toast({ title: 'Nome obrigatório', variant: 'destructive' });
+      return;
+    }
     const { data, error } = await supabase.from('clientes').insert({
-      nome: activeChat.nome, telefone: activeChat.telefone, user_id: user.id,
+      nome: nomeFinal, telefone: activeChat.telefone, user_id: user.id,
     }).select('id').single();
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-    await supabase.from('whatsapp_chats').update({ cliente_id: data.id }).eq('id', activeChat.id);
-    setActiveChat({ ...activeChat, cliente_id: data.id });
+    await supabase.from('whatsapp_chats').update({ cliente_id: data.id, nome: nomeFinal }).eq('id', activeChat.id);
+    setActiveChat({ ...activeChat, cliente_id: data.id, nome: nomeFinal });
     setAddClienteOpen(false);
     toast({ title: 'Cliente adicionado!' });
     loadChats();
@@ -380,7 +386,7 @@ const WhatsAppPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground">{activeChat.telefone}</p>
               </div>
               {!activeChat.cliente_id && (
-                <Button size="sm" variant="outline" onClick={() => setAddClienteOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
                   <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               )}
@@ -471,10 +477,22 @@ const WhatsAppPage: React.FC = () => {
       <Dialog open={addClienteOpen} onOpenChange={setAddClienteOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Adicionar como cliente</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm">Salvar este contato como cliente?</p>
-            <p><strong>Nome:</strong> {activeChat?.nome}</p>
-            <p><strong>Telefone:</strong> {activeChat?.telefone}</p>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="novo-cliente-nome">Nome</Label>
+              <Input
+                id="novo-cliente-nome"
+                value={novoClienteNome}
+                onChange={(e) => setNovoClienteNome(e.target.value)}
+                placeholder="Nome do cliente"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">Pré-preenchido com o nome do WhatsApp. Edite se necessário.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Telefone</Label>
+              <Input value={activeChat?.telefone || ''} disabled />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddClienteOpen(false)}>Cancelar</Button>
