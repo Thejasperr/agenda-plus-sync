@@ -508,6 +508,16 @@ const WhatsAppPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog info do cliente */}
+      {activeChat && (
+        <ClienteInfoDialog
+          open={clienteInfoOpen}
+          onOpenChange={setClienteInfoOpen}
+          telefone={activeChat.telefone}
+          nome={activeChat.nome}
+        />
+      )}
+
     </div>
   );
 };
