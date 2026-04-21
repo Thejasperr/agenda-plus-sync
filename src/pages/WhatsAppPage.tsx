@@ -380,6 +380,32 @@ const WhatsAppPage: React.FC = () => {
     setRecording(false);
   };
 
+  // Procura um cliente existente pelo telefone (compara últimos 8 dígitos)
+  const findExistingCliente = async (telefone: string): Promise<string | null> => {
+    if (!user) return null;
+    const digits = telefone.replace(/\D/g, '');
+    if (digits.length < 8) return null;
+    const tail = digits.slice(-8);
+    const { data } = await supabase
+      .from('clientes')
+      .select('id, telefone')
+      .eq('user_id', user.id);
+    const match = (data || []).find((c: any) => (c.telefone || '').replace(/\D/g, '').slice(-8) === tail);
+    return match?.id || null;
+  };
+
+  // Auto-vincula cliente existente ao chat ativo (se ainda não estiver vinculado)
+  useEffect(() => {
+    if (!activeChat || activeChat.cliente_id || !user) return;
+    (async () => {
+      const existingId = await findExistingCliente(activeChat.telefone);
+      if (existingId) {
+        await supabase.from('whatsapp_chats').update({ cliente_id: existingId }).eq('id', activeChat.id);
+        setActiveChat((prev) => prev ? { ...prev, cliente_id: existingId } : prev);
+      }
+    })();
+  }, [activeChat?.id, user]);
+
   // Adicionar como cliente
   const handleAddCliente = async () => {
     if (!activeChat || !user) return;
@@ -388,6 +414,18 @@ const WhatsAppPage: React.FC = () => {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
+
+    // Se já existe cliente com este telefone, apenas vincula ao chat
+    const existingId = await findExistingCliente(activeChat.telefone);
+    if (existingId) {
+      await supabase.from('whatsapp_chats').update({ cliente_id: existingId, nome: nomeFinal }).eq('id', activeChat.id);
+      setActiveChat({ ...activeChat, cliente_id: existingId, nome: nomeFinal });
+      setAddClienteOpen(false);
+      toast({ title: 'Cliente vinculado!', description: 'Este contato já estava cadastrado.' });
+      loadChats();
+      return;
+    }
+
     const { data, error } = await supabase.from('clientes').insert({
       nome: nomeFinal, telefone: activeChat.telefone, user_id: user.id,
     }).select('id').single();
