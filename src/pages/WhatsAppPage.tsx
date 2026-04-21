@@ -630,13 +630,13 @@ const MessageBubble: React.FC<{
       {isMe && onReply && (
         <button
           onClick={onReply}
-          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
           title="Responder"
         >
           <Reply className="h-3.5 w-3.5" />
         </button>
       )}
-      <div className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+      <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
         {quoted && (
           <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
             <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
@@ -648,23 +648,23 @@ const MessageBubble: React.FC<{
           </div>
         )}
         {message.message_type === 'image' && message.media_url && (
-          <img src={message.media_url} alt="" className="rounded-lg max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
+          <img src={message.media_url} alt="" className="rounded-lg max-w-full sm:max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
         )}
         {message.message_type === 'video' && message.media_url && (
-          <video src={message.media_url} controls className="rounded-lg max-w-xs mb-1" />
+          <video src={message.media_url} controls className="rounded-lg max-w-full sm:max-w-xs mb-1" />
         )}
         {message.message_type === 'audio' && message.media_url && (
           <audio src={message.media_url} controls className="max-w-full" />
         )}
         {message.message_type === 'document' && message.media_url && (
           <a href={message.media_url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 rounded ${isMe ? 'bg-primary-foreground/10' : 'bg-muted'}`}>
-            <FileText className="h-5 w-5" />
+            <FileText className="h-5 w-5 shrink-0" />
             <span className="text-sm truncate">{message.media_filename || 'Arquivo'}</span>
-            <Download className="h-4 w-4 ml-auto" />
+            <Download className="h-4 w-4 ml-auto shrink-0" />
           </a>
         )}
         {message.message_type === 'sticker' && message.media_url && (
-          <img src={message.media_url} alt="sticker" className="w-32 h-32 object-contain" />
+          <img src={message.media_url} alt="sticker" className="w-28 h-28 sm:w-32 sm:h-32 object-contain" />
         )}
         {(message.content || message.caption) && (
           <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.caption}</p>
@@ -676,7 +676,7 @@ const MessageBubble: React.FC<{
       {!isMe && onReply && (
         <button
           onClick={onReply}
-          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
           title="Responder"
         >
           <Reply className="h-3.5 w-3.5" />
