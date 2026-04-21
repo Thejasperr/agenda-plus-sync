@@ -26,11 +26,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: auth } } });
-    const { data: claims } = await userClient.auth.getClaims(auth.replace("Bearer ", ""));
-    if (!claims?.claims) {
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const userId = claims.claims.sub;
+    const userId = userData.user.id;
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     // Fetch all chats from Evolution
