@@ -196,39 +196,49 @@ const WhatsAppPage: React.FC = () => {
     loadChats();
   };
 
-  // Enviar texto
-  const sendText = async () => {
+  // Enviar texto — não bloqueia o input. Permite enviar várias em sequência.
+  const sendText = () => {
     if (!text.trim() || !activeChat) return;
-    setSending(true);
     const content = text;
+    const quoted = replyTo;
     setText('');
-    const { error } = await supabase.functions.invoke('whatsapp-send', {
-      body: { chat_id: activeChat.id, remote_jid: activeChat.remote_jid, type: 'text', content },
+    setReplyTo(null);
+    supabase.functions.invoke('whatsapp-send', {
+      body: {
+        chat_id: activeChat.id,
+        remote_jid: activeChat.remote_jid,
+        type: 'text',
+        content,
+        quoted: quoted ? { message_id: quoted.message_id, from_me: quoted.from_me, content: quoted.content, caption: quoted.caption } : undefined,
+      },
+    }).then(({ error }) => {
+      if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
     });
-    setSending(false);
-    if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
   };
 
-  // Enviar arquivo
-  const sendFile = async (file: File) => {
+  // Enviar arquivo — não bloqueia. Suporta sticker, gif, image, video, audio, document.
+  const sendFile = (file: File, opts?: { asSticker?: boolean }) => {
     if (!activeChat) return;
-    setSending(true);
+    const quoted = replyTo;
+    setReplyTo(null);
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const base64 = (reader.result as string).split(',')[1];
-      let type: 'image' | 'video' | 'document' | 'audio' = 'document';
-      if (file.type.startsWith('image/')) type = 'image';
+      let type: 'image' | 'video' | 'document' | 'audio' | 'sticker' = 'document';
+      if (opts?.asSticker) type = 'sticker';
+      else if (file.type.startsWith('image/')) type = 'image';
       else if (file.type.startsWith('video/')) type = 'video';
       else if (file.type.startsWith('audio/')) type = 'audio';
 
-      const { error } = await supabase.functions.invoke('whatsapp-send', {
+      supabase.functions.invoke('whatsapp-send', {
         body: {
           chat_id: activeChat.id, remote_jid: activeChat.remote_jid, type,
           media_base64: base64, media_mime: file.type, filename: file.name,
+          quoted: quoted ? { message_id: quoted.message_id, from_me: quoted.from_me, content: quoted.content, caption: quoted.caption } : undefined,
         },
+      }).then(({ error }) => {
+        if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
       });
-      setSending(false);
-      if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
     };
     reader.readAsDataURL(file);
   };
