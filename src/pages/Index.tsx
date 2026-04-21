@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, Package } from 'lucide-react';
+import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, MessageCircle } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
 import ConfiguracoesTab from '@/components/app/ConfiguracoesTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
 import DashboardTab from '@/components/app/DashboardTab';
+import WhatsAppPage from '@/pages/WhatsAppPage';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-type TabType = 'dashboard' | 'clientes' | 'calendario' | 'transacoes' | 'configuracoes';
+type TabType = 'dashboard' | 'calendario' | 'whatsapp' | 'clientes' | 'transacoes' | 'configuracoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -26,10 +27,11 @@ const Index = () => {
   };
 
   const tabs = [
-    { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart3 },
+    { id: 'dashboard' as TabType, label: 'Início', icon: BarChart3 },
+    { id: 'calendario' as TabType, label: 'Agenda', icon: CalendarDays },
+    { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
-    { id: 'calendario' as TabType, label: 'Calendário', icon: CalendarDays },
-    { id: 'transacoes' as TabType, label: 'Transações', icon: TrendingUp },
+    { id: 'transacoes' as TabType, label: 'Caixa', icon: TrendingUp },
     { id: 'configuracoes' as TabType, label: 'Config', icon: Settings },
   ];
 
@@ -38,6 +40,7 @@ const Index = () => {
       case 'dashboard': return <DashboardTab />;
       case 'clientes': return <ClientesTab />;
       case 'calendario': return <CalendarioPage />;
+      case 'whatsapp': return <WhatsAppPage />;
       case 'transacoes': return <TransacoesTab />;
       case 'configuracoes': return <ConfiguracoesTab />;
       default: return <DashboardTab />;
