@@ -371,9 +371,6 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
 
       if (error) throw error;
 
-      // Enviar resumo no WhatsApp (não bloqueia)
-      sendWhatsAppPaymentSummary(valorPagoNum, diferenca, formaSelecionada);
-
       onConfirm(formaSelecionada);
       setFormaSelecionada('');
       setValorPago('');
