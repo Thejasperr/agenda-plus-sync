@@ -1287,11 +1287,22 @@ const CalendarioPage = () => {
                           {(agendamento as any).agendamento_procedimentos.map((proc: any, index: number) => {
                             const servico = servicos.find(s => s.id === proc.procedimento_id);
                             return (
-                              <div key={proc.id} className="flex items-center gap-2">
+                              <div key={proc.id} className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
                                   {index + 1}
                                 </span>
                                 <span>{servico?.nome_procedimento || 'Não encontrado'}</span>
+                                {servico && (
+                                  <span
+                                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                      servico.categoria === 'infantil'
+                                        ? 'bg-pink-100 text-pink-700'
+                                        : 'bg-blue-100 text-blue-700'
+                                    }`}
+                                  >
+                                    {servico.categoria === 'infantil' ? 'Infantil' : 'Adulto'}
+                                  </span>
+                                )}
                                 <span className="text-xs">({servico?.duracao_minutos || 60}min)</span>
                               </div>
                             );
