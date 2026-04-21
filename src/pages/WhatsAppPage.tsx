@@ -477,10 +477,22 @@ const WhatsAppPage: React.FC = () => {
       <Dialog open={addClienteOpen} onOpenChange={setAddClienteOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Adicionar como cliente</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm">Salvar este contato como cliente?</p>
-            <p><strong>Nome:</strong> {activeChat?.nome}</p>
-            <p><strong>Telefone:</strong> {activeChat?.telefone}</p>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="novo-cliente-nome">Nome</Label>
+              <Input
+                id="novo-cliente-nome"
+                value={novoClienteNome}
+                onChange={(e) => setNovoClienteNome(e.target.value)}
+                placeholder="Nome do cliente"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">Pré-preenchido com o nome do WhatsApp. Edite se necessário.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Telefone</Label>
+              <Input value={activeChat?.telefone || ''} disabled />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddClienteOpen(false)}>Cancelar</Button>
