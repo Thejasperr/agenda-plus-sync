@@ -306,49 +306,6 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
     });
   };
 
-  const sendWhatsAppPaymentSummary = async (
-    valorPagoNum: number,
-    diferenca: number,
-    forma: string,
-  ) => {
-    if (!clienteTelefone) return;
-    try {
-      // Buscar chat correspondente
-      const digits = clienteTelefone.replace(/\D/g, '');
-      const { data: chats } = await supabase
-        .from('whatsapp_chats')
-        .select('id, remote_jid')
-        .or(`telefone.eq.${clienteTelefone},telefone.eq.${digits},telefone.ilike.%${digits.slice(-8)}%`)
-        .limit(1);
-      const chat = chats?.[0];
-      if (!chat) return;
-
-      let mensagem = `✅ *Pagamento confirmado*\n\n` +
-        `Serviço: R$ ${valorServico.toFixed(2)}\n` +
-        `Pago: R$ ${valorPagoNum.toFixed(2)}\n` +
-        `Forma: ${forma}`;
-
-      if (diferenca > 0) {
-        mensagem += `\n\n💰 Você pagou *R$ ${diferenca.toFixed(2)} a mais*. Esse valor foi adicionado como crédito para o próximo atendimento.`;
-      } else if (diferenca < 0) {
-        mensagem += `\n\n⚠️ Faltou *R$ ${Math.abs(diferenca).toFixed(2)}* para completar o pagamento. Esse valor ficou registrado como pendência.`;
-      } else {
-        mensagem += `\n\nObrigado! 🙌`;
-      }
-
-      await supabase.functions.invoke('whatsapp-send', {
-        body: {
-          chat_id: chat.id,
-          remote_jid: chat.remote_jid,
-          type: 'text',
-          content: mensagem,
-        },
-      });
-    } catch (e) {
-      console.error('Erro ao enviar resumo no WhatsApp:', e);
-    }
-  };
-
   const handleConfirm = async () => {
     if (!formaSelecionada) {
       toast({
