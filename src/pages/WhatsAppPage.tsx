@@ -59,6 +59,8 @@ const WhatsAppPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const activeChatRef = useRef<Chat | null>(null);
+  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
   // Carregar chats
   const loadChats = async () => {
