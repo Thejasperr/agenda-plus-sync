@@ -48,6 +48,7 @@ const WhatsAppPage: React.FC = () => {
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'private' | 'group'>('private');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
