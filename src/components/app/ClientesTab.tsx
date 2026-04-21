@@ -61,6 +61,12 @@ const ClientesTab = () => {
     fetchAgendamentos();
   }, []);
 
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchClientes();
+    fetchAgendamentos();
+  });
+
   const fetchClientes = async () => {
     try {
       const { data, error } = await supabase.from('clientes').select('*').order('created_at', { ascending: false });
