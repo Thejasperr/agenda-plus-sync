@@ -94,6 +94,11 @@ const AgendamentosTab = () => {
     fetchClientes();
   }, []);
 
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchAgendamentos();
+  });
+
   const fetchAgendamentos = async () => {
     try {
       const { data, error } = await supabase
