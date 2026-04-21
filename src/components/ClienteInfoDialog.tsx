@@ -284,34 +284,76 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     }
   };
 
+  const handleCancelar = async (a: Agendamento) => {
+    if (!confirm(`Cancelar o agendamento de ${a.procedimentos_nomes || 'procedimento'} em ${format(parseISO(a.data_agendamento), "dd/MM/yyyy", { locale: ptBR })} às ${a.hora_agendamento?.slice(0, 5)}?`)) return;
+    const { error } = await supabase
+      .from('agendamentos')
+      .update({ status: 'Cancelado' })
+      .eq('id', a.id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Agendamento cancelado' });
+    load();
+  };
+
   const renderAgendamento = (a: Agendamento) => (
-    <Card key={a.id} className="p-3">
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground flex-wrap">
-          <Calendar className="h-3.5 w-3.5 text-primary" />
-          {format(parseISO(a.data_agendamento), "dd 'de' MMM yyyy", { locale: ptBR })}
-          <Clock className="h-3.5 w-3.5 text-muted-foreground ml-1" />
-          {a.hora_agendamento?.slice(0, 5)}
+    <Card key={a.id} className="p-3 space-y-2">
+      {/* 1. Procedimento + valor */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-foreground leading-tight">
+            {a.procedimentos_nomes || 'Procedimento'}
+          </p>
         </div>
-        <Badge variant="outline" className={`${getStatusColor(a.status)} text-[10px]`}>{a.status}</Badge>
+        <Badge variant="outline" className={`${getStatusColor(a.status)} text-[10px] shrink-0`}>{a.status}</Badge>
       </div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">
-          R$ {calcValorFinal(a).toFixed(2)}
-          {a.tem_desconto && a.porcentagem_desconto ? ` (${a.porcentagem_desconto}% off)` : ''}
+
+      <p className="text-base font-bold text-primary">
+        R$ {calcValorFinal(a).toFixed(2)}
+        {a.tem_desconto && a.porcentagem_desconto ? (
+          <span className="text-[10px] font-normal text-muted-foreground ml-1.5">({a.porcentagem_desconto}% off)</span>
+        ) : null}
+      </p>
+
+      {/* 2. Data e horário */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+        <span className="inline-flex items-center gap-1">
+          <Calendar className="h-3.5 w-3.5" />
+          {format(parseISO(a.data_agendamento), "dd 'de' MMM yyyy", { locale: ptBR })}
         </span>
-        {a.forma_pagamento && <span className="text-muted-foreground">{a.forma_pagamento}</span>}
+        <span className="inline-flex items-center gap-1">
+          <Clock className="h-3.5 w-3.5" />
+          {a.hora_agendamento?.slice(0, 5)}
+        </span>
+        {a.forma_pagamento && <span className="ml-auto">{a.forma_pagamento}</span>}
       </div>
-      {a.observacoes && <p className="text-xs text-muted-foreground mt-1.5 italic">{a.observacoes}</p>}
+
+      {a.observacoes && <p className="text-xs text-muted-foreground italic">{a.observacoes}</p>}
+
+      {/* 3. Ações */}
       {podeConfirmar(a) && (
-        <Button
-          size="sm"
-          className="w-full mt-2 h-8 text-xs"
-          onClick={() => setPagamentoAg(a)}
-        >
-          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-          Confirmar pagamento
-        </Button>
+        <div className="flex gap-2 pt-1">
+          <Button
+            size="sm"
+            className="flex-1 h-8 text-xs"
+            onClick={() => setPagamentoAg(a)}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+            Confirmar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => handleCancelar(a)}
+          >
+            <XCircle className="h-3.5 w-3.5 mr-1" />
+            Cancelar
+          </Button>
+        </div>
       )}
     </Card>
   );
