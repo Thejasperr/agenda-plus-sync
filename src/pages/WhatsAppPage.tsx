@@ -114,17 +114,22 @@ const WhatsAppPage: React.FC = () => {
   }, [activeChat?.id]);
 
   const isGroup = (jid: string) => jid?.endsWith('@g.us');
-  // Valida número de telefone real (BR: 55 + DDD + 8/9 dígitos = 12 ou 13)
-  // Aceita também internacionais entre 10 e 15 dígitos.
+  // Rejeita JIDs internos do WhatsApp (@lid, @broadcast) que não são telefones reais
+  const isValidJid = (jid: string) => {
+    if (!jid) return false;
+    if (jid.includes('@lid')) return false;
+    if (jid.includes('@broadcast')) return false;
+    return true;
+  };
+  // Valida telefone: BR usa 12-13 dígitos (55+DDD+8/9). Aceita 10-13 para cobrir internacionais comuns.
   const isValidPhone = (tel: string) => {
     if (!tel) return false;
     const digits = tel.replace(/\D/g, '');
-    if (digits.length < 10 || digits.length > 15) return false;
-    // Rejeita sequências repetidas tipo 1111111111
+    if (digits.length < 10 || digits.length > 13) return false;
     if (/^(\d)\1+$/.test(digits)) return false;
     return true;
   };
-  const validChats = chats.filter(c => isGroup(c.remote_jid) || isValidPhone(c.telefone));
+  const validChats = chats.filter(c => isValidJid(c.remote_jid) && (isGroup(c.remote_jid) || isValidPhone(c.telefone)));
   const privateChats = validChats.filter(c => !isGroup(c.remote_jid));
   const groupChats = validChats.filter(c => isGroup(c.remote_jid));
   const baseList = tab === 'private' ? privateChats : groupChats;
