@@ -171,6 +171,11 @@ const CalendarioPage = () => {
     fetchFormasPagamento();
   }, []);
 
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchAgendamentos();
+  });
+
   // Prefill vindo do WhatsApp: abre dialog com nome/telefone
   useEffect(() => {
     const handler = (e: Event) => {
