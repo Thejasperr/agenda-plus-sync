@@ -54,7 +54,6 @@ const WhatsAppPage: React.FC = () => {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
-  const [agendarOpen, setAgendarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -373,7 +372,13 @@ const WhatsAppPage: React.FC = () => {
                   <UserPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               )}
-              <Button size="sm" variant="default" onClick={() => setAgendarOpen(true)}>
+              <Button size="sm" variant="default" onClick={() => {
+                if (!activeChat) return;
+                window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
+                  detail: { nome: activeChat.nome, telefone: activeChat.telefone },
+                }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { tab: 'calendario' } }));
+              }}>
                 <CalendarPlus className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Agendar</span>
               </Button>
             </div>
@@ -435,13 +440,6 @@ const WhatsAppPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog agendar inline */}
-      <AgendarInlineDialog
-        open={agendarOpen}
-        onOpenChange={setAgendarOpen}
-        chat={activeChat}
-        onCreated={() => { toast({ title: 'Agendamento criado!' }); }}
-      />
     </div>
   );
 };
