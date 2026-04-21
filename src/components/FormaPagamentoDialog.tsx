@@ -463,6 +463,11 @@ const FormaPagamentoDialog: React.FC<FormaPagamentoDialogProps> = ({
                 Crédito de R$ {(parseFloat(valorPago) - valorServico).toFixed(2)} será adicionado ao cliente
               </p>
             )}
+            {!isNaN(parseFloat(valorPago)) && parseFloat(valorPago) < valorServico && parseFloat(valorPago) >= 0 && (
+              <p className="text-sm text-destructive mt-1">
+                Faltam R$ {(valorServico - parseFloat(valorPago)).toFixed(2)} — ficará como pendência do cliente
+              </p>
+            )}
           </div>
 
           <div>
