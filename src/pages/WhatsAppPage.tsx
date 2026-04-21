@@ -274,12 +274,17 @@ const WhatsAppPage: React.FC = () => {
   // Adicionar como cliente
   const handleAddCliente = async () => {
     if (!activeChat || !user) return;
+    const nomeFinal = novoClienteNome.trim() || activeChat.nome;
+    if (!nomeFinal) {
+      toast({ title: 'Nome obrigatório', variant: 'destructive' });
+      return;
+    }
     const { data, error } = await supabase.from('clientes').insert({
-      nome: activeChat.nome, telefone: activeChat.telefone, user_id: user.id,
+      nome: nomeFinal, telefone: activeChat.telefone, user_id: user.id,
     }).select('id').single();
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-    await supabase.from('whatsapp_chats').update({ cliente_id: data.id }).eq('id', activeChat.id);
-    setActiveChat({ ...activeChat, cliente_id: data.id });
+    await supabase.from('whatsapp_chats').update({ cliente_id: data.id, nome: nomeFinal }).eq('id', activeChat.id);
+    setActiveChat({ ...activeChat, cliente_id: data.id, nome: nomeFinal });
     setAddClienteOpen(false);
     toast({ title: 'Cliente adicionado!' });
     loadChats();
