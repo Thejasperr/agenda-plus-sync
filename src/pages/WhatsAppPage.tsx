@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,6 +37,7 @@ interface Message {
   media_mime_type: string | null;
   media_duration: number | null;
   media_filename: string | null;
+  quoted_message_id: string | null;
   timestamp: string;
   status: string;
 }
@@ -50,12 +51,13 @@ const WhatsAppPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'private' | 'group'>('private');
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stickerInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const activeChatRef = useRef<Chat | null>(null);
@@ -195,39 +197,49 @@ const WhatsAppPage: React.FC = () => {
     loadChats();
   };
 
-  // Enviar texto
-  const sendText = async () => {
+  // Enviar texto — não bloqueia o input. Permite enviar várias em sequência.
+  const sendText = () => {
     if (!text.trim() || !activeChat) return;
-    setSending(true);
     const content = text;
+    const quoted = replyTo;
     setText('');
-    const { error } = await supabase.functions.invoke('whatsapp-send', {
-      body: { chat_id: activeChat.id, remote_jid: activeChat.remote_jid, type: 'text', content },
+    setReplyTo(null);
+    supabase.functions.invoke('whatsapp-send', {
+      body: {
+        chat_id: activeChat.id,
+        remote_jid: activeChat.remote_jid,
+        type: 'text',
+        content,
+        quoted: quoted ? { message_id: quoted.message_id, from_me: quoted.from_me, content: quoted.content, caption: quoted.caption } : undefined,
+      },
+    }).then(({ error }) => {
+      if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
     });
-    setSending(false);
-    if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
   };
 
-  // Enviar arquivo
-  const sendFile = async (file: File) => {
+  // Enviar arquivo — não bloqueia. Suporta sticker, gif, image, video, audio, document.
+  const sendFile = (file: File, opts?: { asSticker?: boolean }) => {
     if (!activeChat) return;
-    setSending(true);
+    const quoted = replyTo;
+    setReplyTo(null);
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const base64 = (reader.result as string).split(',')[1];
-      let type: 'image' | 'video' | 'document' | 'audio' = 'document';
-      if (file.type.startsWith('image/')) type = 'image';
+      let type: 'image' | 'video' | 'document' | 'audio' | 'sticker' = 'document';
+      if (opts?.asSticker) type = 'sticker';
+      else if (file.type.startsWith('image/')) type = 'image';
       else if (file.type.startsWith('video/')) type = 'video';
       else if (file.type.startsWith('audio/')) type = 'audio';
 
-      const { error } = await supabase.functions.invoke('whatsapp-send', {
+      supabase.functions.invoke('whatsapp-send', {
         body: {
           chat_id: activeChat.id, remote_jid: activeChat.remote_jid, type,
           media_base64: base64, media_mime: file.type, filename: file.name,
+          quoted: quoted ? { message_id: quoted.message_id, from_me: quoted.from_me, content: quoted.content, caption: quoted.caption } : undefined,
         },
+      }).then(({ error }) => {
+        if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
       });
-      setSending(false);
-      if (error) toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
     };
     reader.readAsDataURL(file);
   };
@@ -386,29 +398,61 @@ const WhatsAppPage: React.FC = () => {
             {/* Mensagens */}
             <ScrollArea className="flex-1 min-h-0 bg-muted/30">
               <div className="p-4 space-y-2">
-                {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+                {messages.map((m) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
+                    onReply={() => setReplyTo(m)}
+                  />
+                ))}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
+
+            {/* Reply preview */}
+            {replyTo && (
+              <div className="px-3 pt-2 border-t border-border bg-card">
+                <div className="flex items-start gap-2 bg-muted/50 rounded-lg p-2 border-l-4 border-primary">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-primary">
+                      {replyTo.from_me ? 'Você' : activeChat.nome}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {replyTo.content || replyTo.caption || `[${replyTo.message_type}]`}
+                    </p>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setReplyTo(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-3 border-t border-border bg-card flex items-end gap-2">
               <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (f) sendFile(f); e.target.value = '';
-              }} accept="image/*,video/*,audio/*,application/pdf,application/zip" />
-              <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+              }} accept="image/*,video/*,audio/*,application/pdf,application/zip,image/gif" />
+              <input ref={stickerInputRef} type="file" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0]; if (f) sendFile(f, { asSticker: true }); e.target.value = '';
+              }} accept="image/webp,image/png,image/jpeg" />
+              <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} title="Enviar arquivo, imagem, vídeo ou GIF">
                 <Paperclip className="h-5 w-5" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
+                <Smile className="h-5 w-5" />
               </Button>
               <Input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
-                placeholder="Digite uma mensagem..."
-                disabled={sending || recording}
+                placeholder={replyTo ? 'Responder...' : 'Digite uma mensagem...'}
+                disabled={recording}
                 className="flex-1"
               />
               {text.trim() ? (
-                <Button size="icon" onClick={sendText} disabled={sending}><Send className="h-5 w-5" /></Button>
+                <Button size="icon" onClick={sendText}><Send className="h-5 w-5" /></Button>
               ) : recording ? (
                 <Button size="icon" variant="destructive" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
               ) : (
@@ -444,12 +488,35 @@ const WhatsAppPage: React.FC = () => {
   );
 };
 
-// Bubble com renderização de mídia
-const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
+// Bubble com renderização de mídia + reply
+const MessageBubble: React.FC<{
+  message: Message;
+  quoted?: Message | null;
+  onReply?: () => void;
+}> = ({ message, quoted, onReply }) => {
   const isMe = message.from_me;
   return (
-    <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+    <div className={`group flex items-end gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+      {isMe && onReply && (
+        <button
+          onClick={onReply}
+          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          title="Responder"
+        >
+          <Reply className="h-3.5 w-3.5" />
+        </button>
+      )}
       <div className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+        {quoted && (
+          <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
+            <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
+              {quoted.from_me ? 'Você' : 'Mensagem'}
+            </p>
+            <p className="truncate opacity-80">
+              {quoted.content || quoted.caption || `[${quoted.message_type}]`}
+            </p>
+          </div>
+        )}
         {message.message_type === 'image' && message.media_url && (
           <img src={message.media_url} alt="" className="rounded-lg max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
         )}
@@ -476,6 +543,15 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
           {format(new Date(message.timestamp), 'HH:mm')}
         </p>
       </div>
+      {!isMe && onReply && (
+        <button
+          onClick={onReply}
+          className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
+          title="Responder"
+        >
+          <Reply className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 };

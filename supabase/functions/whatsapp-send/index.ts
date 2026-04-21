@@ -46,15 +46,24 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
-    const { chat_id, remote_jid, type, content, media_base64, media_mime, filename, caption } = body;
+    const { chat_id, remote_jid, type, content, media_base64, media_mime, filename, caption, quoted } = body;
 
     if (!remote_jid) throw new Error("remote_jid obrigatório");
     const number = remote_jid.split("@")[0];
 
+    // Monta opcionalmente o objeto "quoted" no formato esperado pela Evolution API
+    let quotedPayload: any = undefined;
+    if (quoted?.message_id) {
+      quotedPayload = {
+        key: { id: quoted.message_id, remoteJid: remote_jid, fromMe: !!quoted.from_me },
+        message: { conversation: quoted.content || quoted.caption || "" },
+      };
+    }
+
     let evoResp: any; let mediaUrl: string | null = null;
 
     if (type === "text") {
-      evoResp = await evoFetch("/message/sendText", { number, text: content });
+      evoResp = await evoFetch("/message/sendText", { number, text: content, ...(quotedPayload ? { quoted: quotedPayload } : {}) });
     } else if (type === "image" || type === "video" || type === "document") {
       // Upload para storage primeiro
       if (media_base64) {
@@ -75,6 +84,24 @@ Deno.serve(async (req) => {
         media: mediaUrl || media_base64,
         caption: caption || "",
         fileName: filename || `file.${(media_mime?.split("/")[1]) || "bin"}`,
+        ...(quotedPayload ? { quoted: quotedPayload } : {}),
+      });
+    } else if (type === "sticker") {
+      // Sticker: aceita imagem (webp ideal). Faz upload e envia
+      if (media_base64) {
+        const bin = atob(media_base64.includes(",") ? media_base64.split(",")[1] : media_base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const tempId = crypto.randomUUID();
+        const path = `${userId}/${tempId}.webp`;
+        const { error: upErr } = await admin.storage.from("whatsapp-media").upload(path, bytes, { contentType: media_mime || "image/webp", upsert: true });
+        if (upErr) throw upErr;
+        const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
+        mediaUrl = pub.publicUrl;
+      }
+      evoResp = await evoFetch("/message/sendSticker", {
+        number, sticker: mediaUrl || media_base64,
+        ...(quotedPayload ? { quoted: quotedPayload } : {}),
       });
     } else if (type === "audio") {
       // Para áudio o evolution prefere endpoint próprio
@@ -91,6 +118,7 @@ Deno.serve(async (req) => {
       }
       evoResp = await evoFetch("/message/sendWhatsAppAudio", {
         number, audio: mediaUrl || media_base64,
+        ...(quotedPayload ? { quoted: quotedPayload } : {}),
       });
     } else {
       throw new Error("Tipo inválido");
@@ -104,6 +132,7 @@ Deno.serve(async (req) => {
       message_type: type, content: type === "text" ? content : null,
       caption: caption || null, media_url: mediaUrl, media_mime_type: media_mime || null,
       media_filename: filename || null,
+      quoted_message_id: quoted?.message_id || null,
       timestamp: new Date().toISOString(), status: "sent", raw_data: evoResp,
     });
 
