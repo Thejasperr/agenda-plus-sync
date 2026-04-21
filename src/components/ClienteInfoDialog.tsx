@@ -13,6 +13,7 @@ import { format, parseISO, isToday, isFuture, isPast, startOfDay } from 'date-fn
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import FormaPagamentoDialog from './FormaPagamentoDialog';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 
 interface ClienteInfoDialogProps {
   open: boolean;
