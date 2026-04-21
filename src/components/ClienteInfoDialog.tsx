@@ -376,7 +376,7 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                     <section>
                       <h3 className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1.5">
                         <AlertCircle className="h-3.5 w-3.5" />
-                        Pendências de pagamento ({devendoList.length})
+                        Pendências de meses anteriores ({devendoList.length})
                       </h3>
                       <div className="space-y-2">{devendoList.map(renderAgendamento)}</div>
                     </section>
