@@ -117,10 +117,11 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
   const concluidos = agendamentos.filter(a => a.status === 'Concluído');
   const totalGasto = concluidos.reduce((sum, a) => sum + calcValorFinal(a), 0);
 
-  // Pendências em agendamento (não concluídos no passado)
+  // Pendências em agendamento (não concluídos no passado) — excluindo o mês atual
+  const hojeRef = new Date();
   const devendoList = agendamentos.filter(a => {
     const d = parseISO(a.data_agendamento);
-    return isPast(d) && !isToday(d) && a.status !== 'Concluído' && a.status !== 'Cancelado';
+    return isPast(d) && !isToday(d) && !isSameMonth(d, hojeRef) && a.status !== 'Concluído' && a.status !== 'Cancelado';
   });
 
   // Saldo: positivo = crédito a haver; negativo = está devendo
