@@ -383,22 +383,27 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                     </section>
                   )}
 
-                  <section>
-                    <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                      <History className="h-3.5 w-3.5 text-muted-foreground" />
-                      Histórico ({historico.length})
-                    </h3>
-                    {historico.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">Sem histórico.</p>
-                    ) : (
-                      <div className="space-y-2">{historico.slice(0, 20).map(renderAgendamento)}</div>
-                    )}
-                    {historico.length > 20 && (
-                      <p className="text-[10px] text-muted-foreground text-center mt-2">
-                        Mostrando últimos 20 de {historico.length}
-                      </p>
-                    )}
-                  </section>
+                  <Collapsible>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between text-xs font-semibold text-foreground mb-2 hover:text-primary transition-colors group">
+                      <span className="flex items-center gap-1.5">
+                        <History className="h-3.5 w-3.5 text-muted-foreground" />
+                        Histórico ({historico.length})
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+                      {historico.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">Sem histórico.</p>
+                      ) : (
+                        <div className="space-y-2">{historico.slice(0, 20).map(renderAgendamento)}</div>
+                      )}
+                      {historico.length > 20 && (
+                        <p className="text-[10px] text-muted-foreground text-center mt-2">
+                          Mostrando últimos 20 de {historico.length}
+                        </p>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
                 </>
               )}
             </div>
