@@ -70,9 +70,15 @@ const Index = () => {
       </div>
 
       {/* Content */}
-      <div className={activeTab === 'whatsapp' ? 'flex-1 pb-20 overflow-hidden' : 'mobile-content'}>
-        {renderTabContent()}
-      </div>
+      {activeTab === 'whatsapp' ? (
+        <div className="overflow-hidden" style={{ height: 'calc(100vh - 3.5rem - 4rem)' }}>
+          {renderTabContent()}
+        </div>
+      ) : (
+        <div className="mobile-content">
+          {renderTabContent()}
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="mobile-nav">
