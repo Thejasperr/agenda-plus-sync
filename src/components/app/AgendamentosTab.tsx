@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format, isToday, startOfDay, isSameDay, addDays, subDays } from 'date-fns';
+import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 import { ptBR } from 'date-fns/locale';
 import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, agendamentoSchema } from '@/lib/security';
 
