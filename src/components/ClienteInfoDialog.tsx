@@ -82,6 +82,11 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     if (open && telefone) load();
   }, [open, telefone, load]);
 
+  // Sincronização em tempo real: se algo mudar enquanto o modal está aberto, recarrega
+  useAgendamentosRealtime(() => {
+    if (open && telefone) load();
+  });
+
   const calcValorFinal = (a: Agendamento) => {
     let v = Number(a.preco) || 0;
     if (a.tem_desconto && a.porcentagem_desconto) {
