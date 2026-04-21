@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, Wallet, AlertCircle, History, CalendarCheck, TrendingUp, CheckCircle2, Plus, Pencil, ChevronDown, XCircle, Sparkles } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO, isToday, isFuture, isPast, startOfDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +36,8 @@ interface Agendamento {
   forma_pagamento: string | null;
   pagamento_antecipado: boolean | null;
   porcentagem_pagamento_antecipado: number | null;
+  procedimento_id: string | null;
+  procedimentos_nomes?: string;
 }
 
 interface Cliente {
@@ -78,8 +80,45 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
         .order('hora_agendamento', { ascending: false }),
     ]);
 
+    const agList = (ags || []) as Agendamento[];
+
+    // Buscar nomes dos procedimentos (multi via agendamento_procedimentos + legado via procedimento_id)
+    if (agList.length > 0) {
+      const ids = agList.map(a => a.id);
+      const procIdsLegado = agList.map(a => a.procedimento_id).filter(Boolean) as string[];
+
+      const [{ data: links }, { data: servicosLegado }] = await Promise.all([
+        supabase
+          .from('agendamento_procedimentos')
+          .select('agendamento_id, ordem, servicos:procedimento_id(nome_procedimento)')
+          .in('agendamento_id', ids)
+          .order('ordem', { ascending: true }),
+        procIdsLegado.length
+          ? supabase.from('servicos').select('id, nome_procedimento').in('id', procIdsLegado)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const linksMap: Record<string, string[]> = {};
+      (links || []).forEach((l: any) => {
+        const nm = l.servicos?.nome_procedimento;
+        if (!nm) return;
+        if (!linksMap[l.agendamento_id]) linksMap[l.agendamento_id] = [];
+        linksMap[l.agendamento_id].push(nm);
+      });
+      const servMap: Record<string, string> = {};
+      (servicosLegado || []).forEach((s: any) => { servMap[s.id] = s.nome_procedimento; });
+
+      agList.forEach(a => {
+        if (linksMap[a.id]?.length) {
+          a.procedimentos_nomes = linksMap[a.id].join(' + ');
+        } else if (a.procedimento_id && servMap[a.procedimento_id]) {
+          a.procedimentos_nomes = servMap[a.procedimento_id];
+        }
+      });
+    }
+
     setCliente((clientes?.[0] as Cliente) || null);
-    setAgendamentos((ags || []) as Agendamento[]);
+    setAgendamentos(agList);
     setLoading(false);
   }, [telefone]);
 
@@ -245,34 +284,76 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
     }
   };
 
+  const handleCancelar = async (a: Agendamento) => {
+    if (!confirm(`Cancelar o agendamento de ${a.procedimentos_nomes || 'procedimento'} em ${format(parseISO(a.data_agendamento), "dd/MM/yyyy", { locale: ptBR })} às ${a.hora_agendamento?.slice(0, 5)}?`)) return;
+    const { error } = await supabase
+      .from('agendamentos')
+      .update({ status: 'Cancelado' })
+      .eq('id', a.id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Agendamento cancelado' });
+    load();
+  };
+
   const renderAgendamento = (a: Agendamento) => (
-    <Card key={a.id} className="p-3">
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground flex-wrap">
-          <Calendar className="h-3.5 w-3.5 text-primary" />
-          {format(parseISO(a.data_agendamento), "dd 'de' MMM yyyy", { locale: ptBR })}
-          <Clock className="h-3.5 w-3.5 text-muted-foreground ml-1" />
-          {a.hora_agendamento?.slice(0, 5)}
+    <Card key={a.id} className="p-3 space-y-2">
+      {/* 1. Procedimento + valor */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-foreground leading-tight">
+            {a.procedimentos_nomes || 'Procedimento'}
+          </p>
         </div>
-        <Badge variant="outline" className={`${getStatusColor(a.status)} text-[10px]`}>{a.status}</Badge>
+        <Badge variant="outline" className={`${getStatusColor(a.status)} text-[10px] shrink-0`}>{a.status}</Badge>
       </div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">
-          R$ {calcValorFinal(a).toFixed(2)}
-          {a.tem_desconto && a.porcentagem_desconto ? ` (${a.porcentagem_desconto}% off)` : ''}
+
+      <p className="text-base font-bold text-primary">
+        R$ {calcValorFinal(a).toFixed(2)}
+        {a.tem_desconto && a.porcentagem_desconto ? (
+          <span className="text-[10px] font-normal text-muted-foreground ml-1.5">({a.porcentagem_desconto}% off)</span>
+        ) : null}
+      </p>
+
+      {/* 2. Data e horário */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+        <span className="inline-flex items-center gap-1">
+          <Calendar className="h-3.5 w-3.5" />
+          {format(parseISO(a.data_agendamento), "dd 'de' MMM yyyy", { locale: ptBR })}
         </span>
-        {a.forma_pagamento && <span className="text-muted-foreground">{a.forma_pagamento}</span>}
+        <span className="inline-flex items-center gap-1">
+          <Clock className="h-3.5 w-3.5" />
+          {a.hora_agendamento?.slice(0, 5)}
+        </span>
+        {a.forma_pagamento && <span className="ml-auto">{a.forma_pagamento}</span>}
       </div>
-      {a.observacoes && <p className="text-xs text-muted-foreground mt-1.5 italic">{a.observacoes}</p>}
+
+      {a.observacoes && <p className="text-xs text-muted-foreground italic">{a.observacoes}</p>}
+
+      {/* 3. Ações */}
       {podeConfirmar(a) && (
-        <Button
-          size="sm"
-          className="w-full mt-2 h-8 text-xs"
-          onClick={() => setPagamentoAg(a)}
-        >
-          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-          Confirmar pagamento
-        </Button>
+        <div className="flex gap-2 pt-1">
+          <Button
+            size="sm"
+            className="flex-1 h-8 text-xs"
+            onClick={() => setPagamentoAg(a)}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+            Confirmar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => handleCancelar(a)}
+          >
+            <XCircle className="h-3.5 w-3.5 mr-1" />
+            Cancelar
+          </Button>
+        </div>
       )}
     </Card>
   );
