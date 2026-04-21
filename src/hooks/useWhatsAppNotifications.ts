@@ -1,21 +1,43 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 /**
- * Dispara uma notificação do navegador quando chega uma nova mensagem do WhatsApp
- * (somente quando from_me=false e o app não está focado naquela conversa).
+ * Notificações de novas mensagens do WhatsApp:
+ * - Em background: notificação do navegador (Service Worker / Notification API)
+ * - Em foreground: toast no topo com nome de quem enviou
+ * - Sempre: mantém contagem total de não lidas (badge no menu)
  */
 export function useWhatsAppNotifications() {
   const { user } = useAuth();
   const startedAtRef = useRef<number>(Date.now());
+  const [unreadTotal, setUnreadTotal] = useState(0);
+
+  // Carrega total de não lidas a partir dos chats
+  const refreshUnread = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("whatsapp_chats")
+      .select("unread_count")
+      .eq("user_id", user.id);
+    const total = (data || []).reduce(
+      (acc, c: any) => acc + (c.unread_count || 0),
+      0
+    );
+    setUnreadTotal(total);
+  }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (!user) {
+      setUnreadTotal(0);
+      return;
+    }
+    refreshUnread();
 
-    const channel = supabase
-      .channel("wa-notify-global")
+    // Realtime: novas mensagens
+    const msgChannel = supabase
+      .channel("wa-notify-messages")
       .on(
         "postgres_changes",
         {
@@ -26,21 +48,14 @@ export function useWhatsAppNotifications() {
         },
         async (payload) => {
           const msg = payload.new as any;
-
-          // Ignora mensagens enviadas por nós ou antigas (sync inicial)
           if (msg.from_me) return;
           const ts = new Date(msg.timestamp || msg.created_at).getTime();
           if (ts < startedAtRef.current - 5000) return;
 
-          // Se o app está visível, deixa o toast/UI cuidar — só notifica em background
-          if (document.visibilityState === "visible") return;
-
-          if (Notification.permission !== "granted") return;
-
-          // Busca dados do chat para mostrar nome
+          // Busca dados do chat
           const { data: chat } = await supabase
             .from("whatsapp_chats")
-            .select("nome, profile_pic_url")
+            .select("id, nome, profile_pic_url")
             .eq("id", msg.chat_id)
             .maybeSingle();
 
@@ -58,39 +73,83 @@ export function useWhatsAppNotifications() {
               ? "📄 Documento"
               : "Nova mensagem");
 
-          try {
-            // Prefere ServiceWorker (notif. persistente) — fallback para Notification
-            const reg = await navigator.serviceWorker?.getRegistration();
-            if (reg && "showNotification" in reg) {
-              reg.showNotification(nome, {
-                body,
-                icon: chat?.profile_pic_url || "/icon-192.png",
-                badge: "/icon-192.png",
-                tag: `wa-${msg.chat_id}`,
-                data: { chatId: msg.chat_id, url: "/" },
-              });
-            } else {
-              const n = new Notification(nome, {
-                body,
-                icon: chat?.profile_pic_url || "/icon-192.png",
-                tag: `wa-${msg.chat_id}`,
-              });
-              n.onclick = () => {
-                window.focus();
-                n.close();
-              };
+          const isVisible =
+            typeof document !== "undefined" &&
+            document.visibilityState === "visible";
+
+          if (isVisible) {
+            // Toast no topo dentro do app
+            toast(nome, {
+              description: body,
+              action: {
+                label: "Abrir",
+                onClick: () => {
+                  window.dispatchEvent(
+                    new CustomEvent("app:navigate", {
+                      detail: { tab: "whatsapp", chatId: chat?.id },
+                    })
+                  );
+                },
+              },
+            });
+          } else if (
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            try {
+              const reg = await navigator.serviceWorker?.getRegistration();
+              if (reg && "showNotification" in reg) {
+                reg.showNotification(nome, {
+                  body,
+                  icon: chat?.profile_pic_url || "/icon-192.png",
+                  badge: "/icon-192.png",
+                  tag: `wa-${msg.chat_id}`,
+                  data: { chatId: msg.chat_id, url: "/" },
+                });
+              } else {
+                const n = new Notification(nome, {
+                  body,
+                  icon: chat?.profile_pic_url || "/icon-192.png",
+                  tag: `wa-${msg.chat_id}`,
+                });
+                n.onclick = () => {
+                  window.focus();
+                  n.close();
+                };
+              }
+            } catch (err) {
+              console.warn("Falha ao mostrar notificação:", err);
             }
-          } catch (err) {
-            console.warn("Falha ao mostrar notificação:", err);
           }
         }
       )
       .subscribe();
 
+    // Realtime: alterações em chats (unread_count muda)
+    const chatChannel = supabase
+      .channel("wa-notify-chats")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "whatsapp_chats",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          refreshUnread();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(msgChannel);
+      supabase.removeChannel(chatChannel);
     };
-  }, [user]);
+  }, [user, refreshUnread]);
+
+  return { unreadTotal, refreshUnread };
 }
 
 /** Pede permissão de notificação ao usuário (deve ser chamado em um clique). */
