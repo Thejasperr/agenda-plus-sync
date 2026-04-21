@@ -49,6 +49,11 @@ const DashboardTab = () => {
     fetchDashboardData();
   }, []);
 
+  // Sincronização em tempo real entre telas
+  useAgendamentosRealtime(() => {
+    fetchDashboardData();
+  });
+
   const fetchDashboardData = async () => {
     try {
       const hoje = format(new Date(), 'yyyy-MM-dd');
