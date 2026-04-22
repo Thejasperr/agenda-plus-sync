@@ -345,6 +345,7 @@ const WhatsAppPage: React.FC = () => {
           return;
         }
 
+        cancelRecordingRef.current = false;
         audioChunksRef.current = [];
         mr.ondataavailable = (e) => {
           if (e.data.size) audioChunksRef.current.push(e.data);
@@ -352,8 +353,14 @@ const WhatsAppPage: React.FC = () => {
         mr.onstop = async () => {
           const type = mr.mimeType || 'audio/webm';
           const ext = type.includes('mp4') ? 'm4a' : 'webm';
-          const blob = new Blob(audioChunksRef.current, { type });
+          const chunks = audioChunksRef.current;
           stream.getTracks().forEach((t) => t.stop());
+          audioChunksRef.current = [];
+          if (cancelRecordingRef.current) {
+            cancelRecordingRef.current = false;
+            return; // descartado
+          }
+          const blob = new Blob(chunks, { type });
           const file = new File([blob], `audio-${Date.now()}.${ext}`, { type });
           await sendFile(file);
         };
@@ -385,11 +392,39 @@ const WhatsAppPage: React.FC = () => {
 
   const stopRecording = () => {
     try {
+      cancelRecordingRef.current = false;
       mediaRecorderRef.current?.stop();
     } catch (err) {
       console.error('stopRecording error:', err);
     }
     setRecording(false);
+  };
+
+  const cancelRecording = () => {
+    try {
+      cancelRecordingRef.current = true;
+      mediaRecorderRef.current?.stop();
+    } catch (err) {
+      console.error('cancelRecording error:', err);
+    }
+    setRecording(false);
+    toast({ title: 'Gravação cancelada' });
+  };
+
+  // Excluir mensagem (apenas mensagens enviadas pelo usuário)
+  const deleteMessage = async (msg: Message) => {
+    // Otimista: remove da UI imediatamente
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    const { error } = await supabase.functions.invoke('whatsapp-delete', {
+      body: { message_db_id: msg.id },
+    });
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      // Recarrega para restaurar caso falhe
+      if (activeChat) loadMessages(activeChat.id);
+      return;
+    }
+    toast({ title: 'Mensagem excluída' });
   };
 
   // Procura um cliente existente pelo telefone (compara últimos 8 dígitos)
