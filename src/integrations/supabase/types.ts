@@ -223,6 +223,77 @@ export type Database = {
         }
         Relationships: []
       }
+      disparos_massa: {
+        Row: {
+          created_at: string
+          id: string
+          mensagem_sugestao: string
+          observacoes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mensagem_sugestao: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mensagem_sugestao?: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      disparos_massa_variacoes: {
+        Row: {
+          created_at: string
+          disparo_id: string
+          estilo: string | null
+          id: string
+          mensagem: string
+          ordem: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disparo_id: string
+          estilo?: string | null
+          id?: string
+          mensagem: string
+          ordem?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          disparo_id?: string
+          estilo?: string | null
+          id?: string
+          mensagem?: string
+          ordem?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disparos_massa_variacoes_disparo_id_fkey"
+            columns: ["disparo_id"]
+            isOneToOne: false
+            referencedRelation: "disparos_massa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque: {
         Row: {
           categoria: string | null
