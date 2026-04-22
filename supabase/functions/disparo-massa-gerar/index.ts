@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const WEBHOOK_URL = 'https://n8n-n8n.xwskpb.easypanel.host/webhook-test/disparoemmassaappagenda';
+const DEFAULT_WEBHOOK_URL = 'https://n8n-n8n.xwskpb.easypanel.host/webhook-test/disparoemmassaappagenda';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -66,10 +66,18 @@ Deno.serve(async (req) => {
 
     if (disparoError) throw disparoError;
 
+    // Busca a URL configurada pelo usuário, ou usa o default
+    const { data: config } = await supabase
+      .from('disparos_massa_config')
+      .select('webhook_url')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const webhookUrl = config?.webhook_url?.trim() || DEFAULT_WEBHOOK_URL;
+
     // Chama o webhook do n8n
     let variacoes: Array<{ estilo?: string; mensagem: string }> = [];
     try {
-      const webhookRes = await fetch(WEBHOOK_URL, {
+      const webhookRes = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

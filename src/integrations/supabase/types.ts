@@ -253,6 +253,30 @@ export type Database = {
         }
         Relationships: []
       }
+      disparos_massa_config: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       disparos_massa_variacoes: {
         Row: {
           created_at: string

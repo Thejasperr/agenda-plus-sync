@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +36,44 @@ const DisparosMassaTab = () => {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editTexto, setEditTexto] = useState('');
   const [editEstilo, setEditEstilo] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookSalvo, setWebhookSalvo] = useState('');
+  const [salvandoWebhook, setSalvandoWebhook] = useState(false);
+
+  const fetchConfig = async () => {
+    const { data } = await supabase
+      .from('disparos_massa_config')
+      .select('webhook_url')
+      .maybeSingle();
+    if (data?.webhook_url) {
+      setWebhookUrl(data.webhook_url);
+      setWebhookSalvo(data.webhook_url);
+    }
+  };
+
+  const salvarWebhook = async () => {
+    const url = webhookUrl.trim();
+    if (url && !/^https?:\/\//i.test(url)) {
+      toast({ title: 'URL inválida', description: 'Deve começar com http:// ou https://', variant: 'destructive' });
+      return;
+    }
+    setSalvandoWebhook(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Não autenticado');
+
+      const { error } = await supabase
+        .from('disparos_massa_config')
+        .upsert({ user_id: userData.user.id, webhook_url: url }, { onConflict: 'user_id' });
+      if (error) throw error;
+      setWebhookSalvo(url);
+      toast({ title: 'Webhook salvo' });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setSalvandoWebhook(false);
+    }
+  };
 
   const fetchDisparos = async () => {
     const { data, error } = await supabase
@@ -125,7 +163,8 @@ const DisparosMassaTab = () => {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Excluído' });
-      fetchDisparos();
+    fetchDisparos();
+    fetchConfig();
     }
   };
 
@@ -174,6 +213,40 @@ const DisparosMassaTab = () => {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" />
+            Configuração do Webhook
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">URL do Webhook (n8n)</label>
+            <Input
+              placeholder="https://seu-n8n.com/webhook/..."
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Para onde a mensagem será enviada. Deixe vazio para usar o webhook padrão.
+            </p>
+          </div>
+          <Button
+            onClick={salvarWebhook}
+            disabled={salvandoWebhook || webhookUrl === webhookSalvo}
+            variant="outline"
+            size="sm"
+          >
+            {salvandoWebhook ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
+            ) : (
+              <><Save className="h-4 w-4 mr-2" /> Salvar Webhook</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
