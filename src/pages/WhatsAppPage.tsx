@@ -847,23 +847,37 @@ const WhatsAppPage: React.FC = () => {
   );
 };
 
-// Bubble com renderização de mídia + reply
+// Bubble com renderização de mídia + reply + excluir
 const MessageBubble: React.FC<{
   message: Message;
   quoted?: Message | null;
   onReply?: () => void;
-}> = ({ message, quoted, onReply }) => {
+  onDelete?: () => void;
+}> = ({ message, quoted, onReply, onDelete }) => {
   const isMe = message.from_me;
   return (
     <div className={`group flex items-end gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-      {isMe && onReply && (
-        <button
-          onClick={onReply}
-          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
-          title="Responder"
-        >
-          <Reply className="h-3.5 w-3.5" />
-        </button>
+      {isMe && (
+        <div className="flex flex-col gap-0.5 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition">
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="p-1 rounded-full hover:bg-destructive/10 text-destructive"
+              title="Excluir mensagem"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onReply && (
+            <button
+              onClick={onReply}
+              className="p-1 rounded-full hover:bg-muted text-muted-foreground"
+              title="Responder"
+            >
+              <Reply className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       )}
       <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
         {quoted && (
