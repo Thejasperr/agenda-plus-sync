@@ -216,6 +216,40 @@ const DisparosMassaTab = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" />
+            Configuração do Webhook
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">URL do Webhook (n8n)</label>
+            <Input
+              placeholder="https://seu-n8n.com/webhook/..."
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Para onde a mensagem será enviada. Deixe vazio para usar o webhook padrão.
+            </p>
+          </div>
+          <Button
+            onClick={salvarWebhook}
+            disabled={salvandoWebhook || webhookUrl === webhookSalvo}
+            variant="outline"
+            size="sm"
+          >
+            {salvandoWebhook ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
+            ) : (
+              <><Save className="h-4 w-4 mr-2" /> Salvar Webhook</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
             Nova Sugestão de Mensagem
           </CardTitle>
