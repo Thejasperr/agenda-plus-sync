@@ -700,6 +700,7 @@ const WhatsAppPage: React.FC = () => {
                     message={m}
                     quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
                     onReply={() => setReplyTo(m)}
+                    onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
                   />
                 ))}
                 <div ref={messagesEndRef} />
