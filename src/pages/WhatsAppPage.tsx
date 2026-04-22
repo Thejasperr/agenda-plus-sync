@@ -2,7 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -60,12 +70,14 @@ const WhatsAppPage: React.FC = () => {
   const [novoClienteNome, setNovoClienteNome] = useState('');
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const [chatStatus, setChatStatus] = useState<Record<string, { credito: number; devendo: number; ativos: number }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const cancelRecordingRef = useRef(false);
   const activeChatRef = useRef<Chat | null>(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
@@ -333,6 +345,7 @@ const WhatsAppPage: React.FC = () => {
           return;
         }
 
+        cancelRecordingRef.current = false;
         audioChunksRef.current = [];
         mr.ondataavailable = (e) => {
           if (e.data.size) audioChunksRef.current.push(e.data);
@@ -340,8 +353,14 @@ const WhatsAppPage: React.FC = () => {
         mr.onstop = async () => {
           const type = mr.mimeType || 'audio/webm';
           const ext = type.includes('mp4') ? 'm4a' : 'webm';
-          const blob = new Blob(audioChunksRef.current, { type });
+          const chunks = audioChunksRef.current;
           stream.getTracks().forEach((t) => t.stop());
+          audioChunksRef.current = [];
+          if (cancelRecordingRef.current) {
+            cancelRecordingRef.current = false;
+            return; // descartado
+          }
+          const blob = new Blob(chunks, { type });
           const file = new File([blob], `audio-${Date.now()}.${ext}`, { type });
           await sendFile(file);
         };
@@ -373,11 +392,39 @@ const WhatsAppPage: React.FC = () => {
 
   const stopRecording = () => {
     try {
+      cancelRecordingRef.current = false;
       mediaRecorderRef.current?.stop();
     } catch (err) {
       console.error('stopRecording error:', err);
     }
     setRecording(false);
+  };
+
+  const cancelRecording = () => {
+    try {
+      cancelRecordingRef.current = true;
+      mediaRecorderRef.current?.stop();
+    } catch (err) {
+      console.error('cancelRecording error:', err);
+    }
+    setRecording(false);
+    toast({ title: 'Gravação cancelada' });
+  };
+
+  // Excluir mensagem (apenas mensagens enviadas pelo usuário)
+  const deleteMessage = async (msg: Message) => {
+    // Otimista: remove da UI imediatamente
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    const { error } = await supabase.functions.invoke('whatsapp-delete', {
+      body: { message_db_id: msg.id },
+    });
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      // Recarrega para restaurar caso falhe
+      if (activeChat) loadMessages(activeChat.id);
+      return;
+    }
+    toast({ title: 'Mensagem excluída' });
   };
 
   // Procura um cliente existente pelo telefone (compara últimos 8 dígitos)
@@ -653,6 +700,7 @@ const WhatsAppPage: React.FC = () => {
                     message={m}
                     quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
                     onReply={() => setReplyTo(m)}
+                    onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
                   />
                 ))}
                 <div ref={messagesEndRef} />
@@ -692,20 +740,36 @@ const WhatsAppPage: React.FC = () => {
               <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 hidden sm:inline-flex" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
                 <Smile className="h-5 w-5" />
               </Button>
-              <Input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
-                placeholder={replyTo ? 'Responder...' : 'Mensagem...'}
-                disabled={recording}
-                className="flex-1 h-9 sm:h-10"
-              />
+              {recording ? (
+                <div className="flex-1 h-9 sm:h-10 flex items-center gap-2 px-3 rounded-md bg-destructive/10 border border-destructive/30">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                  </span>
+                  <span className="text-sm text-destructive font-medium">Gravando áudio...</span>
+                </div>
+              ) : (
+                <Input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
+                  placeholder={replyTo ? 'Responder...' : 'Mensagem...'}
+                  className="flex-1 h-9 sm:h-10"
+                />
+              )}
               {text.trim() ? (
                 <Button size="icon" className="h-9 w-9 shrink-0" onClick={sendText}><Send className="h-5 w-5" /></Button>
               ) : recording ? (
-                <Button size="icon" variant="destructive" className="h-9 w-9 shrink-0" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
+                <>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10" onClick={cancelRecording} title="Cancelar gravação">
+                    <X className="h-5 w-5" />
+                  </Button>
+                  <Button size="icon" className="h-9 w-9 shrink-0" onClick={stopRecording} title="Enviar áudio">
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </>
               ) : (
-                <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={startRecording}><Mic className="h-5 w-5" /></Button>
+                <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={startRecording} title="Gravar áudio"><Mic className="h-5 w-5" /></Button>
               )}
             </div>
           </>
@@ -755,27 +819,65 @@ const WhatsAppPage: React.FC = () => {
         />
       )}
 
+      {/* Confirmação de exclusão de mensagem */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir mensagem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A mensagem será apagada para você e para o destinatário no WhatsApp. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteMessage(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };
 
-// Bubble com renderização de mídia + reply
+// Bubble com renderização de mídia + reply + excluir
 const MessageBubble: React.FC<{
   message: Message;
   quoted?: Message | null;
   onReply?: () => void;
-}> = ({ message, quoted, onReply }) => {
+  onDelete?: () => void;
+}> = ({ message, quoted, onReply, onDelete }) => {
   const isMe = message.from_me;
   return (
     <div className={`group flex items-end gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-      {isMe && onReply && (
-        <button
-          onClick={onReply}
-          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
-          title="Responder"
-        >
-          <Reply className="h-3.5 w-3.5" />
-        </button>
+      {isMe && (
+        <div className="flex flex-col gap-0.5 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition">
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="p-1 rounded-full hover:bg-destructive/10 text-destructive"
+              title="Excluir mensagem"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onReply && (
+            <button
+              onClick={onReply}
+              className="p-1 rounded-full hover:bg-muted text-muted-foreground"
+              title="Responder"
+            >
+              <Reply className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       )}
       <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
         {quoted && (
