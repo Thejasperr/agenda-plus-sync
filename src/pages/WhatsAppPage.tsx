@@ -739,20 +739,36 @@ const WhatsAppPage: React.FC = () => {
               <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 hidden sm:inline-flex" onClick={() => stickerInputRef.current?.click()} title="Enviar sticker">
                 <Smile className="h-5 w-5" />
               </Button>
-              <Input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
-                placeholder={replyTo ? 'Responder...' : 'Mensagem...'}
-                disabled={recording}
-                className="flex-1 h-9 sm:h-10"
-              />
+              {recording ? (
+                <div className="flex-1 h-9 sm:h-10 flex items-center gap-2 px-3 rounded-md bg-destructive/10 border border-destructive/30">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                  </span>
+                  <span className="text-sm text-destructive font-medium">Gravando áudio...</span>
+                </div>
+              ) : (
+                <Input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }}
+                  placeholder={replyTo ? 'Responder...' : 'Mensagem...'}
+                  className="flex-1 h-9 sm:h-10"
+                />
+              )}
               {text.trim() ? (
                 <Button size="icon" className="h-9 w-9 shrink-0" onClick={sendText}><Send className="h-5 w-5" /></Button>
               ) : recording ? (
-                <Button size="icon" variant="destructive" className="h-9 w-9 shrink-0" onClick={stopRecording}><Square className="h-5 w-5" /></Button>
+                <>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10" onClick={cancelRecording} title="Cancelar gravação">
+                    <X className="h-5 w-5" />
+                  </Button>
+                  <Button size="icon" className="h-9 w-9 shrink-0" onClick={stopRecording} title="Enviar áudio">
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </>
               ) : (
-                <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={startRecording}><Mic className="h-5 w-5" /></Button>
+                <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={startRecording} title="Gravar áudio"><Mic className="h-5 w-5" /></Button>
               )}
             </div>
           </>
