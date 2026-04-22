@@ -70,12 +70,14 @@ const WhatsAppPage: React.FC = () => {
   const [novoClienteNome, setNovoClienteNome] = useState('');
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const [chatStatus, setChatStatus] = useState<Record<string, { credito: number; devendo: number; ativos: number }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stickerInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const cancelRecordingRef = useRef(false);
   const activeChatRef = useRef<Chat | null>(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
