@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Clock, Wrench, Download, QrCode, Package } from 'lucide-react';
+import { Settings, Clock, Wrench, Download, QrCode, Package, Megaphone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import HorariosTab from './HorariosTab';
 import FormasPagamentoTab from './FormasPagamentoTab';
 import ConfiguracaoPixTab from './ConfiguracaoPixTab';
 import PacotesTab from './PacotesTab';
+import DisparosMassaTab from './DisparosMassaTab';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
@@ -100,7 +101,7 @@ const ConfiguracoesTab = () => {
       <h2 className="text-2xl font-bold">Configurações</h2>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="servicos" className="flex items-center gap-1 text-xs sm:text-sm">
             <Wrench className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Serviços</span>
@@ -120,6 +121,10 @@ const ConfiguracoesTab = () => {
           <TabsTrigger value="pix" className="flex items-center gap-1 text-xs sm:text-sm">
             <QrCode className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">PIX</span>
+          </TabsTrigger>
+          <TabsTrigger value="disparos" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Megaphone className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Disparos</span>
           </TabsTrigger>
         </TabsList>
 
@@ -141,6 +146,10 @@ const ConfiguracoesTab = () => {
 
         <TabsContent value="pix">
           <ConfiguracaoPixTab />
+        </TabsContent>
+
+        <TabsContent value="disparos">
+          <DisparosMassaTab />
         </TabsContent>
       </Tabs>
 

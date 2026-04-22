@@ -164,9 +164,9 @@ const DisparosMassaTab = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, { label: string; cls: string }> = {
       pendente: { label: 'Pendente', cls: 'bg-muted text-muted-foreground' },
-      gerando: { label: 'Gerando...', cls: 'bg-blue-500/15 text-blue-700' },
-      aguardando_webhook: { label: 'Aguardando Webhook', cls: 'bg-amber-500/15 text-amber-700' },
-      concluido: { label: 'Concluído', cls: 'bg-emerald-500/15 text-emerald-700' },
+      gerando: { label: 'Gerando...', cls: 'bg-primary/15 text-primary' },
+      aguardando_webhook: { label: 'Aguardando Webhook', cls: 'bg-accent text-accent-foreground' },
+      concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
     };
     const m = map[status] || { label: status, cls: 'bg-muted' };
     return <Badge className={m.cls}>{m.label}</Badge>;
