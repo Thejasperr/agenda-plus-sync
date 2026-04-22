@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +36,44 @@ const DisparosMassaTab = () => {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editTexto, setEditTexto] = useState('');
   const [editEstilo, setEditEstilo] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookSalvo, setWebhookSalvo] = useState('');
+  const [salvandoWebhook, setSalvandoWebhook] = useState(false);
+
+  const fetchConfig = async () => {
+    const { data } = await supabase
+      .from('disparos_massa_config')
+      .select('webhook_url')
+      .maybeSingle();
+    if (data?.webhook_url) {
+      setWebhookUrl(data.webhook_url);
+      setWebhookSalvo(data.webhook_url);
+    }
+  };
+
+  const salvarWebhook = async () => {
+    const url = webhookUrl.trim();
+    if (url && !/^https?:\/\//i.test(url)) {
+      toast({ title: 'URL inválida', description: 'Deve começar com http:// ou https://', variant: 'destructive' });
+      return;
+    }
+    setSalvandoWebhook(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Não autenticado');
+
+      const { error } = await supabase
+        .from('disparos_massa_config')
+        .upsert({ user_id: userData.user.id, webhook_url: url }, { onConflict: 'user_id' });
+      if (error) throw error;
+      setWebhookSalvo(url);
+      toast({ title: 'Webhook salvo' });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setSalvandoWebhook(false);
+    }
+  };
 
   const fetchDisparos = async () => {
     const { data, error } = await supabase
@@ -125,7 +163,8 @@ const DisparosMassaTab = () => {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Excluído' });
-      fetchDisparos();
+    fetchDisparos();
+    fetchConfig();
     }
   };
 
