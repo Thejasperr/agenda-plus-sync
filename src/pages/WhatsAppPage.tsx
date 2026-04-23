@@ -491,6 +491,74 @@ const WhatsAppPage: React.FC = () => {
     loadChats();
   };
 
+  // Carrega clientes para o seletor de nova conversa
+  const loadClientesForNovaConversa = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('clientes')
+      .select('id, nome, telefone')
+      .eq('user_id', user.id)
+      .order('nome', { ascending: true });
+    setClientesList((data || []) as any);
+  };
+
+  // Inicia (ou reabre) uma conversa para um telefone informado
+  const iniciarNovaConversa = async (telefone: string, nome: string) => {
+    if (!user) return;
+    const digits = telefone.replace(/\D/g, '');
+    if (!isValidPhone(digits)) {
+      toast({ title: 'Telefone inválido', description: 'Informe DDI+DDD+número (ex: 5511999998888).', variant: 'destructive' });
+      return;
+    }
+    setIniciandoConversa(true);
+    try {
+      const remoteJid = `${digits}@s.whatsapp.net`;
+      const { data: existing } = await supabase
+        .from('whatsapp_chats')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('remote_jid', remoteJid)
+        .maybeSingle();
+
+      let chat: Chat | null = existing as any;
+      if (!chat) {
+        const clienteId = await findExistingCliente(digits);
+        const { data: created, error } = await supabase
+          .from('whatsapp_chats')
+          .insert({
+            user_id: user.id,
+            remote_jid: remoteJid,
+            telefone: digits,
+            nome: nome?.trim() || digits,
+            cliente_id: clienteId,
+          })
+          .select('*')
+          .single();
+        if (error) throw error;
+        chat = created as any;
+      }
+
+      setChats((prev) => {
+        const idx = prev.findIndex((c) => c.id === chat!.id);
+        if (idx === -1) return [chat as Chat, ...prev];
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...(chat as Chat) };
+        return next;
+      });
+      setActiveChat(chat);
+      setTab('private');
+      setNovaConversaOpen(false);
+      setNovaConversaSearch('');
+      setNovaConversaTelefone('');
+      setNovaConversaNome('');
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Erro ao iniciar conversa', description: e?.message, variant: 'destructive' });
+    } finally {
+      setIniciandoConversa(false);
+    }
+  };
+
   // Mobile back
   const showList = !activeChat;
 
