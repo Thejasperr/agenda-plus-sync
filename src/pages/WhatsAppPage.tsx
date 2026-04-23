@@ -762,19 +762,33 @@ const WhatsAppPage: React.FC = () => {
                 </div>
                 <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{activeChat.telefone}</p>
               </button>
-              {!activeChat.cliente_id && (
-                <Button size="sm" variant="outline" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
-                  <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Adicionar</span>
+              {isGroup(activeChat.remote_jid) ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-9 px-2 sm:px-3 shrink-0 gap-1"
+                  onClick={() => setGrupoMsgOpen(true)}
+                  title="Gerar mensagem com IA para o grupo"
+                >
+                  <Sparkles className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Gerar mensagem</span>
                 </Button>
+              ) : (
+                <>
+                  {!activeChat.cliente_id && (
+                    <Button size="sm" variant="outline" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
+                      <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Adicionar</span>
+                    </Button>
+                  )}
+                  <Button size="sm" variant="default" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => {
+                    if (!activeChat) return;
+                    window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
+                      detail: { nome: activeChat.nome, telefone: activeChat.telefone },
+                    }));
+                  }}>
+                    <CalendarPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Agendar</span>
+                  </Button>
+                </>
               )}
-              <Button size="sm" variant="default" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => {
-                if (!activeChat) return;
-                window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
-                  detail: { nome: activeChat.nome, telefone: activeChat.telefone },
-                }));
-              }}>
-                <CalendarPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Agendar</span>
-              </Button>
             </div>
 
             {/* Mensagens */}
