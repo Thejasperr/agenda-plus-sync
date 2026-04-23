@@ -18,20 +18,20 @@ export const validateAndFormatPhone = (phone: string): { isValid: boolean; forma
   
   // Remove all non-digits
   let digits = phone.replace(/\D/g, '');
-  
-  // Remove +55 prefix if present
-  if (digits.startsWith('55') && digits.length > 11) {
+
+  // If already has country code 55 (12 or 13 digits), strip it temporarily for validation
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
     digits = digits.slice(2);
   }
-  
-  // Brazilian phone validation (10 or 11 digits)
+
+  // Brazilian phone validation (10 or 11 digits without country code)
   if (digits.length < 10 || digits.length > 11) {
     return { isValid: false, formatted: phone, error: 'Telefone deve ter 10 ou 11 dígitos' };
   }
-  
-  // Store the clean digits for saving
-  const cleanFormatted = digits;
-  
+
+  // Always save WITH the 55 country code prefix
+  const cleanFormatted = `55${digits}`;
+
   return { isValid: true, formatted: cleanFormatted };
 };
 
