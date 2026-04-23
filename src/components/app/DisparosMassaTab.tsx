@@ -49,7 +49,7 @@ const DisparosMassaTab = () => {
   const [webhookEnvioSalvo, setWebhookEnvioSalvo] = useState('');
   const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
-
+  const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
   const fetchConfig = async () => {
     const { data } = await supabase
       .from('disparos_massa_config')
@@ -168,32 +168,8 @@ const DisparosMassaTab = () => {
     }
   };
 
-  const dispararMensagens = async (disparoId: string) => {
-    if (!webhookEnvioSalvo) {
-      toast({
-        title: 'Configure o webhook de envio',
-        description: 'Adicione a URL do webhook de disparo antes de enviar.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (!confirm('Enviar as 10 variações para o webhook de disparo?')) return;
-    setDisparandoId(disparoId);
-    try {
-      const { data, error } = await supabase.functions.invoke('disparo-massa-enviar', {
-        body: { disparo_id: disparoId },
-      });
-      if (error) throw error;
-      toast({
-        title: 'Disparo iniciado',
-        description: `${data?.total_variacoes || 0} variações enviadas para ${data?.total_clientes || 0} clientes.`,
-      });
-      fetchDisparos();
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message || 'Falha ao disparar', variant: 'destructive' });
-    } finally {
-      setDisparandoId(null);
-    }
+  const abrirDispararDialog = (disparoId: string) => {
+    setDialogDisparoId(disparoId);
   };
 
   const toggleExpandir = (id: string) => {
