@@ -156,8 +156,8 @@ const DisparosMassaTab = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'disparos_massa_envios' },
-        () => fetchDisparos(),
+        { event: '*', schema: 'public', table: 'disparos_massa_envios' },
+        () => { fetchDisparos(); fetchEnvios(); },
       )
       .subscribe();
 
