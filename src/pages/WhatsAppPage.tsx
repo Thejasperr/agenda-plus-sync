@@ -74,6 +74,7 @@ const WhatsAppPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   // Reações por message_id (do WhatsApp)
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+  const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'private' | 'group'>('private');
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
