@@ -519,6 +519,117 @@ const DisparosMassaTab = () => {
           );
         })}
       </div>
+        </TabsContent>
+
+        <TabsContent value="historico" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="h-4 w-4" />
+                Histórico de Mensagens Enviadas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, telefone ou mensagem..."
+                    value={buscaEnvios}
+                    onChange={(e) => setBuscaEnvios(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {(['todos', 'sucesso', 'falha', 'pendente'] as const).map((s) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={filtroStatus === s ? 'default' : 'outline'}
+                      onClick={() => setFiltroStatus(s)}
+                      className="capitalize"
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingEnvios && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!loadingEnvios && (() => {
+                const termo = buscaEnvios.trim().toLowerCase();
+                const filtrados = envios.filter((e) => {
+                  if (filtroStatus !== 'todos' && e.status !== filtroStatus) return false;
+                  if (!termo) return true;
+                  return (
+                    (e.cliente_nome || '').toLowerCase().includes(termo) ||
+                    (e.telefone || '').toLowerCase().includes(termo) ||
+                    (e.mensagem_enviada || '').toLowerCase().includes(termo)
+                  );
+                });
+
+                if (filtrados.length === 0) {
+                  return (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Nenhuma mensagem encontrada.
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {filtrados.length} {filtrados.length === 1 ? 'mensagem' : 'mensagens'}
+                    </p>
+                    {filtrados.map((e) => {
+                      const statusIcon =
+                        e.status === 'sucesso' ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : e.status === 'falha' ? (
+                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        ) : (
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        );
+                      return (
+                        <div key={e.id} className="border rounded-lg p-3 space-y-1.5 bg-card">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {statusIcon}
+                              <span className="font-medium text-sm truncate">{e.cliente_nome}</span>
+                              <span className="text-xs text-muted-foreground">·</span>
+                              <span className="text-xs text-muted-foreground">{e.telefone}</span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              {e.enviado_at
+                                ? new Date(e.enviado_at).toLocaleString('pt-BR')
+                                : new Date(e.created_at).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          {e.mensagem_enviada ? (
+                            <p className="text-sm whitespace-pre-wrap text-foreground/90 bg-muted/40 rounded p-2">
+                              {e.mensagem_enviada}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">Mensagem não registrada</p>
+                          )}
+                          {e.erro && (
+                            <p className="text-xs text-destructive">Erro: {e.erro}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <DispararMassaDialog
         disparoId={dialogDisparoId}
