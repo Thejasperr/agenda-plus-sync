@@ -279,6 +279,76 @@ const WhatsAppPage: React.FC = () => {
     return () => { supabase.removeChannel(ch); };
   }, [activeChat?.id]);
 
+  // Carrega reações do chat ativo + realtime
+  useEffect(() => {
+    if (!activeChat || !user) return;
+    const chatId = activeChat.id;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('whatsapp_reactions')
+        .select('id, message_id, reactor_jid, from_me, emoji')
+        .eq('user_id', user.id)
+        .eq('chat_id', chatId);
+      if (cancelled) return;
+      const map: Record<string, Reaction[]> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.emoji) return;
+        if (!map[r.message_id]) map[r.message_id] = [];
+        map[r.message_id].push(r);
+      });
+      setReactions(map);
+    })();
+
+    const ch = supabase.channel(`wa-reactions-${chatId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_reactions', filter: `chat_id=eq.${chatId}` }, (payload) => {
+        setReactions((prev) => {
+          const next = { ...prev };
+          if (payload.eventType === 'DELETE') {
+            const old = payload.old as any;
+            const arr = (next[old.message_id] || []).filter(r => r.id !== old.id);
+            if (arr.length) next[old.message_id] = arr; else delete next[old.message_id];
+            return next;
+          }
+          const r = payload.new as Reaction;
+          const arr = (next[r.message_id] || []).filter(x => x.reactor_jid !== r.reactor_jid);
+          if (r.emoji) arr.push(r);
+          if (arr.length) next[r.message_id] = arr; else delete next[r.message_id];
+          return next;
+        });
+      })
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [activeChat?.id, user]);
+
+  // Envia/remove reação a uma mensagem (otimista)
+  const sendReaction = (msg: Message, emoji: string) => {
+    if (!activeChat || !msg.message_id || !user) return;
+    const reactorJid = `me@${user.id}`;
+    // Otimista
+    setReactions((prev) => {
+      const next = { ...prev };
+      const arr = (next[msg.message_id!] || []).filter(r => r.reactor_jid !== reactorJid);
+      if (emoji) {
+        arr.push({ id: 'tmp-' + Date.now(), message_id: msg.message_id!, reactor_jid: reactorJid, from_me: true, emoji });
+      }
+      if (arr.length) next[msg.message_id!] = arr; else delete next[msg.message_id!];
+      return next;
+    });
+    supabase.functions.invoke('whatsapp-react', {
+      body: {
+        chat_id: activeChat.id,
+        remote_jid: activeChat.remote_jid,
+        message_id: msg.message_id,
+        from_me: msg.from_me,
+        emoji,
+      },
+    }).then(({ error }) => {
+      if (error) toast({ title: 'Erro ao reagir', description: error.message, variant: 'destructive' });
+    });
+  };
+
+
   const isGroup = (jid: string) => jid?.endsWith('@g.us');
   // Rejeita JIDs internos do WhatsApp (@lid, @broadcast) que não são telefones reais
   const isValidJid = (jid: string) => {
