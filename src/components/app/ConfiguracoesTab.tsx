@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Clock, Wrench, Download, QrCode, Package, Megaphone } from 'lucide-react';
+import { Settings, Clock, Wrench, Download, QrCode, Package, Megaphone, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import FormasPagamentoTab from './FormasPagamentoTab';
 import ConfiguracaoPixTab from './ConfiguracaoPixTab';
 import PacotesTab from './PacotesTab';
 import DisparosMassaTab from './DisparosMassaTab';
+import GruposConfigTab from './GruposConfigTab';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
