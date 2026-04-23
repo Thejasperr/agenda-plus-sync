@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DispararMassaDialog } from '@/components/DispararMassaDialog';
@@ -51,6 +52,23 @@ const DisparosMassaTab = () => {
   const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
   const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
+  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico'>('criar');
+  const [envios, setEnvios] = useState<any[]>([]);
+  const [loadingEnvios, setLoadingEnvios] = useState(false);
+  const [buscaEnvios, setBuscaEnvios] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'sucesso' | 'falha' | 'pendente'>('todos');
+
+  const fetchEnvios = async () => {
+    setLoadingEnvios(true);
+    const { data, error } = await supabase
+      .from('disparos_massa_envios')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (!error && data) setEnvios(data);
+    setLoadingEnvios(false);
+  };
+
   const fetchConfig = async () => {
     const { data } = await supabase
       .from('disparos_massa_config')
@@ -138,8 +156,8 @@ const DisparosMassaTab = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'disparos_massa_envios' },
-        () => fetchDisparos(),
+        { event: '*', schema: 'public', table: 'disparos_massa_envios' },
+        () => { fetchDisparos(); fetchEnvios(); },
       )
       .subscribe();
 
@@ -152,9 +170,14 @@ const DisparosMassaTab = () => {
     if (!temEnviando) return;
     const interval = setInterval(() => {
       fetchDisparos();
+      if (tabAtiva === 'historico') fetchEnvios();
     }, 2000);
     return () => clearInterval(interval);
-  }, [disparos]);
+  }, [disparos, tabAtiva]);
+
+  useEffect(() => {
+    if (tabAtiva === 'historico') fetchEnvios();
+  }, [tabAtiva]);
 
   const handleEnviar = async () => {
     if (mensagem.trim().length < 3) {
@@ -313,7 +336,19 @@ const DisparosMassaTab = () => {
         </Card>
       </Collapsible>
 
+      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="criar" className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Criar</span>
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="flex items-center gap-1.5">
+            <History className="h-3.5 w-3.5" />
+            <span>Histórico</span>
+          </TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="criar" className="space-y-4 mt-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -484,6 +519,117 @@ const DisparosMassaTab = () => {
           );
         })}
       </div>
+        </TabsContent>
+
+        <TabsContent value="historico" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="h-4 w-4" />
+                Histórico de Mensagens Enviadas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, telefone ou mensagem..."
+                    value={buscaEnvios}
+                    onChange={(e) => setBuscaEnvios(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {(['todos', 'sucesso', 'falha', 'pendente'] as const).map((s) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={filtroStatus === s ? 'default' : 'outline'}
+                      onClick={() => setFiltroStatus(s)}
+                      className="capitalize"
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingEnvios && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!loadingEnvios && (() => {
+                const termo = buscaEnvios.trim().toLowerCase();
+                const filtrados = envios.filter((e) => {
+                  if (filtroStatus !== 'todos' && e.status !== filtroStatus) return false;
+                  if (!termo) return true;
+                  return (
+                    (e.cliente_nome || '').toLowerCase().includes(termo) ||
+                    (e.telefone || '').toLowerCase().includes(termo) ||
+                    (e.mensagem_enviada || '').toLowerCase().includes(termo)
+                  );
+                });
+
+                if (filtrados.length === 0) {
+                  return (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Nenhuma mensagem encontrada.
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {filtrados.length} {filtrados.length === 1 ? 'mensagem' : 'mensagens'}
+                    </p>
+                    {filtrados.map((e) => {
+                      const statusIcon =
+                        e.status === 'sucesso' ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : e.status === 'falha' ? (
+                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        ) : (
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        );
+                      return (
+                        <div key={e.id} className="border rounded-lg p-3 space-y-1.5 bg-card">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {statusIcon}
+                              <span className="font-medium text-sm truncate">{e.cliente_nome}</span>
+                              <span className="text-xs text-muted-foreground">·</span>
+                              <span className="text-xs text-muted-foreground">{e.telefone}</span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              {e.enviado_at
+                                ? new Date(e.enviado_at).toLocaleString('pt-BR')
+                                : new Date(e.created_at).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          {e.mensagem_enviada ? (
+                            <p className="text-sm whitespace-pre-wrap text-foreground/90 bg-muted/40 rounded p-2">
+                              {e.mensagem_enviada}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">Mensagem não registrada</p>
+                          )}
+                          {e.erro && (
+                            <p className="text-xs text-destructive">Erro: {e.erro}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <DispararMassaDialog
         disparoId={dialogDisparoId}
