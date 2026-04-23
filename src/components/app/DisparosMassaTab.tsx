@@ -617,7 +617,8 @@ const DisparosMassaTab = () => {
                 return (
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">
-                      {filtrados.length} {filtrados.length === 1 ? 'mensagem' : 'mensagens'}
+                      {filtrados.length} de {envios.length} carregadas
+                      {temMais && ' (role para ver mais)'}
                     </p>
                     {filtrados.map((e) => {
                       const statusIcon =
@@ -656,6 +657,24 @@ const DisparosMassaTab = () => {
                         </div>
                       );
                     })}
+
+                    {/* Sentinel para auto-load + botão fallback */}
+                    {temMais && (
+                      <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                        {loadingMais ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={carregarMais}>
+                            Carregar mais
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    {!temMais && envios.length > PAGE_SIZE && (
+                      <p className="text-center text-xs text-muted-foreground py-3">
+                        Fim do histórico
+                      </p>
+                    )}
                   </div>
                 );
               })()}
