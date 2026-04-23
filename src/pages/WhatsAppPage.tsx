@@ -893,6 +893,96 @@ const WhatsAppPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog Nova Conversa */}
+      <Dialog open={novaConversaOpen} onOpenChange={setNovaConversaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Nova conversa</DialogTitle></DialogHeader>
+          <Tabs value={novaConversaTab} onValueChange={(v) => setNovaConversaTab(v as 'cliente' | 'numero')}>
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="cliente" className="gap-1.5">
+                <UserIcon className="h-3.5 w-3.5" /> Cliente
+              </TabsTrigger>
+              <TabsTrigger value="numero" className="gap-1.5">
+                <PenSquare className="h-3.5 w-3.5" /> Novo número
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {novaConversaTab === 'cliente' ? (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={novaConversaSearch}
+                  onChange={(e) => setNovaConversaSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <ScrollArea className="h-72 border border-border rounded-md">
+                {clientesList.length === 0 && (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Nenhum cliente cadastrado.</div>
+                )}
+                {clientesList
+                  .filter((c) => {
+                    const q = novaConversaSearch.toLowerCase().trim();
+                    if (!q) return true;
+                    return c.nome.toLowerCase().includes(q) || (c.telefone || '').includes(q);
+                  })
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      disabled={iniciandoConversa}
+                      onClick={() => iniciarNovaConversa(c.telefone, c.nome)}
+                      className="w-full flex items-center gap-3 p-2.5 hover:bg-muted/50 transition border-b border-border/50 text-left disabled:opacity-50"
+                    >
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {c.nome?.[0]?.toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-foreground truncate">{c.nome}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.telefone}</p>
+                      </div>
+                    </button>
+                  ))}
+              </ScrollArea>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label>Telefone (com DDI + DDD)</Label>
+                <Input
+                  placeholder="5511999998888"
+                  value={novaConversaTelefone}
+                  onChange={(e) => setNovaConversaTelefone(e.target.value.replace(/\D/g, ''))}
+                  inputMode="numeric"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Ex: 55 + DDD + número (sem espaços).</p>
+              </div>
+              <div>
+                <Label>Nome (opcional)</Label>
+                <Input
+                  placeholder="Nome do contato"
+                  value={novaConversaNome}
+                  onChange={(e) => setNovaConversaNome(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNovaConversaOpen(false)}>Cancelar</Button>
+                <Button
+                  disabled={iniciandoConversa || !novaConversaTelefone}
+                  onClick={() => iniciarNovaConversa(novaConversaTelefone, novaConversaNome)}
+                >
+                  {iniciandoConversa ? 'Abrindo...' : 'Iniciar conversa'}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog info do cliente */}
       {activeChat && (
         <ClienteInfoDialog
