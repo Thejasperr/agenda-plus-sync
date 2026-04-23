@@ -257,50 +257,62 @@ const DisparosMassaTab = () => {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link2 className="h-5 w-5" />
-            Configuração dos Webhooks
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Webhook de Geração (n8n)</label>
-            <Input
-              placeholder="https://seu-n8n.com/webhook/gerar-variacoes"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Recebe a sugestão e retorna 10 variações de mensagem.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Webhook de Envio (n8n)</label>
-            <Input
-              placeholder="https://seu-n8n.com/webhook/enviar-disparo"
-              value={webhookEnvio}
-              onChange={(e) => setWebhookEnvio(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Recebe as 10 mensagens prontas + lista de clientes para realizar o disparo real.
-            </p>
-          </div>
-          <Button
-            onClick={salvarWebhook}
-            disabled={salvandoWebhook || !dirty}
-            variant="outline"
-            size="sm"
-          >
-            {salvandoWebhook ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
-            ) : (
-              <><Save className="h-4 w-4 mr-2" /> Salvar Configurações</>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+      <Collapsible>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <button className="w-full text-left">
+              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+                <CardTitle className="flex items-center justify-between gap-2 text-base">
+                  <span className="flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    Configuração dos Webhooks
+                  </span>
+                  <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
+                </CardTitle>
+              </CardHeader>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Webhook de Geração (n8n)</label>
+                <Input
+                  placeholder="https://seu-n8n.com/webhook/gerar-variacoes"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Recebe a sugestão e retorna 10 variações de mensagem.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Webhook de Envio (n8n)</label>
+                <Input
+                  placeholder="https://seu-n8n.com/webhook/enviar-disparo"
+                  value={webhookEnvio}
+                  onChange={(e) => setWebhookEnvio(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Recebe as 10 mensagens prontas + lista de clientes para realizar o disparo real.
+                </p>
+              </div>
+              <Button
+                onClick={salvarWebhook}
+                disabled={salvandoWebhook || !dirty}
+                variant="outline"
+                size="sm"
+              >
+                {salvandoWebhook ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
+                ) : (
+                  <><Save className="h-4 w-4 mr-2" /> Salvar Configurações</>
+                )}
+              </Button>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
 
       <Card>
         <CardHeader>
