@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,19 +55,37 @@ const DisparosMassaTab = () => {
   const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico'>('criar');
   const [envios, setEnvios] = useState<any[]>([]);
   const [loadingEnvios, setLoadingEnvios] = useState(false);
+  const [loadingMais, setLoadingMais] = useState(false);
+  const [temMais, setTemMais] = useState(true);
   const [buscaEnvios, setBuscaEnvios] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'sucesso' | 'falha' | 'pendente'>('todos');
+  const PAGE_SIZE = 50;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchEnvios = async () => {
-    setLoadingEnvios(true);
+  const fetchEnvios = async (reset = true) => {
+    if (reset) {
+      setLoadingEnvios(true);
+    } else {
+      setLoadingMais(true);
+    }
+    const offset = reset ? 0 : envios.length;
     const { data, error } = await supabase
       .from('disparos_massa_envios')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(500);
-    if (!error && data) setEnvios(data);
-    setLoadingEnvios(false);
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (!error && data) {
+      setEnvios((prev) => (reset ? data : [...prev, ...data]));
+      setTemMais(data.length === PAGE_SIZE);
+    }
+    if (reset) setLoadingEnvios(false);
+    else setLoadingMais(false);
   };
+
+  const carregarMais = useCallback(() => {
+    if (loadingEnvios || loadingMais || !temMais) return;
+    fetchEnvios(false);
+  }, [loadingEnvios, loadingMais, temMais, envios.length]);
 
   const fetchConfig = async () => {
     const { data } = await supabase
