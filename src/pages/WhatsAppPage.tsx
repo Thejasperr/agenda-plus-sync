@@ -211,28 +211,56 @@ const WhatsAppPage: React.FC = () => {
     return () => { supabase.removeChannel(ch); };
   }, [user]);
 
-  // Carregar mensagens
-  const loadMessages = async (chatId: string) => {
+  // Carregar mensagens (com cache por chat e descarte de respostas obsoletas)
+  const loadMessages = async (chatId: string, token: number) => {
+    // Busca as últimas 80 (mais recentes) — depois invertemos pra exibir em ordem cronológica
     const { data } = await supabase
       .from('whatsapp_messages')
       .select('*')
       .eq('chat_id', chatId)
-      .order('timestamp', { ascending: true })
-      .limit(500);
-    setMessages(data || []);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      .order('timestamp', { ascending: false })
+      .limit(80);
+    // Se o usuário já trocou de chat, descarta
+    if (token !== loadTokenRef.current) return;
+    const ordered = (data || []).slice().reverse();
+    messagesCacheRef.current[chatId] = ordered;
+    setMessages(ordered);
+    setLoadingMessages(false);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 30);
   };
 
   // Realtime messages do chat ativo
   useEffect(() => {
     if (!activeChat) return;
-    loadMessages(activeChat.id);
-    // zerar unread
-    supabase.from('whatsapp_chats').update({ unread_count: 0 }).eq('id', activeChat.id).then();
+    const chatId = activeChat.id;
+    const token = ++loadTokenRef.current;
 
-    const ch = supabase.channel(`wa-msgs-${activeChat.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `chat_id=eq.${activeChat.id}` }, (payload) => {
-        setMessages((prev) => [...prev, payload.new as Message]);
+    // Mostra cache imediatamente (se houver) e busca em background
+    const cached = messagesCacheRef.current[chatId];
+    if (cached) {
+      setMessages(cached);
+      setLoadingMessages(false);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 30);
+    } else {
+      setMessages([]);
+      setLoadingMessages(true);
+    }
+    loadMessages(chatId, token);
+
+    // zerar unread
+    supabase.from('whatsapp_chats').update({ unread_count: 0 }).eq('id', chatId).then();
+
+    const ch = supabase.channel(`wa-msgs-${chatId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `chat_id=eq.${chatId}` }, (payload) => {
+        // Ignora se o usuário já trocou de chat
+        if (token !== loadTokenRef.current) return;
+        const newMsg = payload.new as Message;
+        setMessages((prev) => {
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          const next = [...prev, newMsg];
+          messagesCacheRef.current[chatId] = next;
+          return next;
+        });
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
       })
       .subscribe();
