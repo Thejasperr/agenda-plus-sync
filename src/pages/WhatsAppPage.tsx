@@ -1033,6 +1033,16 @@ const WhatsAppPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Dialog Gerar Mensagem para Grupo (IA) */}
+      {activeChat && isGroup(activeChat.remote_jid) && (
+        <GerarMensagemGrupoDialog
+          open={grupoMsgOpen}
+          onClose={() => setGrupoMsgOpen(false)}
+          grupoNome={activeChat.nome}
+          grupoRemoteJid={activeChat.remote_jid}
+        />
+      )}
+
     </div>
   );
 };
