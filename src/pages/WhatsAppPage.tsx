@@ -69,6 +69,7 @@ const WhatsAppPage: React.FC = () => {
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
   const [novoClienteNome, setNovoClienteNome] = useState('');
+  const [grupoMsgOpen, setGrupoMsgOpen] = useState(false);
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
