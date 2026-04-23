@@ -461,6 +461,13 @@ const DisparosMassaTab = () => {
           );
         })}
       </div>
+
+      <DispararMassaDialog
+        disparoId={dialogDisparoId}
+        open={!!dialogDisparoId}
+        onClose={() => setDialogDisparoId(null)}
+        onDisparoIniciado={fetchDisparos}
+      />
     </div>
   );
 };
