@@ -194,8 +194,23 @@ const DisparosMassaTab = () => {
   }, [disparos, tabAtiva]);
 
   useEffect(() => {
-    if (tabAtiva === 'historico') fetchEnvios();
+    if (tabAtiva === 'historico') fetchEnvios(true);
   }, [tabAtiva]);
+
+  // Lazy loading: observa o sentinel e carrega mais ao chegar perto do fim
+  useEffect(() => {
+    if (tabAtiva !== 'historico') return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) carregarMais();
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [tabAtiva, carregarMais]);
 
   const handleEnviar = async () => {
     if (mensagem.trim().length < 3) {
