@@ -336,7 +336,19 @@ const DisparosMassaTab = () => {
         </Card>
       </Collapsible>
 
+      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="criar" className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Criar</span>
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="flex items-center gap-1.5">
+            <History className="h-3.5 w-3.5" />
+            <span>Histórico</span>
+          </TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="criar" className="space-y-4 mt-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
