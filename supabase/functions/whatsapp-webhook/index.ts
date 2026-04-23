@@ -205,6 +205,12 @@ async function processMessageUpsert(payload: any) {
     const chatId = await ensureChat(userId, remoteJid, pushName);
     if (!chatId) continue;
 
+    // Reações: trata e segue (não cria whatsapp_messages)
+    if (m.message?.reactionMessage) {
+      await processReaction(userId, m, chatId);
+      continue;
+    }
+
     // Dedupe
     if (messageId) {
       const { data: existing } = await admin
