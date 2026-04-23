@@ -89,6 +89,11 @@ const WhatsAppPage: React.FC = () => {
   const cancelRecordingRef = useRef(false);
   const activeChatRef = useRef<Chat | null>(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
+  // Cache de mensagens por chat para troca instantânea
+  const messagesCacheRef = useRef<Record<string, Message[]>>({});
+  // Token de carregamento para descartar respostas obsoletas ao trocar de chat rapidamente
+  const loadTokenRef = useRef(0);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   // Normaliza telefone para chave de comparação (últimos 8 dígitos)
   const phoneKey = (tel: string | null | undefined) => {
