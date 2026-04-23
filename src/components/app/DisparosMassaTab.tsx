@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { DispararMassaDialog } from '@/components/DispararMassaDialog';
 
 interface Disparo {
   id: string;
@@ -14,6 +16,11 @@ interface Disparo {
   status: string;
   observacoes: string | null;
   created_at: string;
+  media_url?: string | null;
+  media_type?: string | null;
+  total_destinatarios?: number;
+  total_enviados?: number;
+  total_falhas?: number;
 }
 
 interface Variacao {
@@ -42,7 +49,7 @@ const DisparosMassaTab = () => {
   const [webhookEnvioSalvo, setWebhookEnvioSalvo] = useState('');
   const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
-
+  const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
   const fetchConfig = async () => {
     const { data } = await supabase
       .from('disparos_massa_config')
@@ -128,6 +135,11 @@ const DisparosMassaTab = () => {
         { event: '*', schema: 'public', table: 'disparos_massa' },
         () => fetchDisparos(),
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'disparos_massa_envios' },
+        () => fetchDisparos(),
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -161,32 +173,8 @@ const DisparosMassaTab = () => {
     }
   };
 
-  const dispararMensagens = async (disparoId: string) => {
-    if (!webhookEnvioSalvo) {
-      toast({
-        title: 'Configure o webhook de envio',
-        description: 'Adicione a URL do webhook de disparo antes de enviar.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (!confirm('Enviar as 10 variações para o webhook de disparo?')) return;
-    setDisparandoId(disparoId);
-    try {
-      const { data, error } = await supabase.functions.invoke('disparo-massa-enviar', {
-        body: { disparo_id: disparoId },
-      });
-      if (error) throw error;
-      toast({
-        title: 'Disparo iniciado',
-        description: `${data?.total_variacoes || 0} variações enviadas para ${data?.total_clientes || 0} clientes.`,
-      });
-      fetchDisparos();
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message || 'Falha ao disparar', variant: 'destructive' });
-    } finally {
-      setDisparandoId(null);
-    }
+  const abrirDispararDialog = (disparoId: string) => {
+    setDialogDisparoId(disparoId);
   };
 
   const toggleExpandir = (id: string) => {
@@ -247,6 +235,7 @@ const DisparosMassaTab = () => {
       gerando: { label: 'Gerando...', cls: 'bg-primary/15 text-primary' },
       aguardando_webhook: { label: 'Aguardando Webhook', cls: 'bg-accent text-accent-foreground' },
       concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
+      enviando: { label: 'Enviando...', cls: 'bg-primary/15 text-primary' },
       enviado: { label: 'Enviado', cls: 'bg-emerald-100 text-emerald-700' },
     };
     const m = map[status] || { label: status, cls: 'bg-muted' };
@@ -375,17 +364,41 @@ const DisparosMassaTab = () => {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => dispararMensagens(d.id)}
-                    disabled={disparandoId === d.id || (expandido === d.id ? !podeDisparar : false)}
+                    onClick={() => abrirDispararDialog(d.id)}
+                    disabled={d.status === 'enviando'}
                     className="flex-1"
                   >
-                    {disparandoId === d.id ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Disparando...</>
+                    {d.status === 'enviando' ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Enviando...</>
                     ) : (
                       <><Rocket className="h-3.5 w-3.5 mr-1" /> Disparar</>
                     )}
                   </Button>
                 </div>
+
+                {/* Progresso de envio */}
+                {(d.status === 'enviando' || d.status === 'concluido') && (d.total_destinatarios || 0) > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        {d.total_enviados || 0} de {d.total_destinatarios} enviadas
+                        {(d.total_falhas || 0) > 0 && ` · ${d.total_falhas} falhas`}
+                      </span>
+                      <span className="font-medium">
+                        {Math.round(((d.total_enviados || 0) / (d.total_destinatarios || 1)) * 100)}%
+                      </span>
+                    </div>
+                    <Progress value={((d.total_enviados || 0) / (d.total_destinatarios || 1)) * 100} className="h-2" />
+                  </div>
+                )}
+
+                {/* Mídia anexada */}
+                {d.media_url && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg p-2">
+                    {d.media_type === 'video' ? <Video className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                    <span>Mídia anexada</span>
+                  </div>
+                )}
 
                 {expandido === d.id && (
                   <div className="space-y-2 pt-2">
@@ -448,6 +461,13 @@ const DisparosMassaTab = () => {
           );
         })}
       </div>
+
+      <DispararMassaDialog
+        disparoId={dialogDisparoId}
+        open={!!dialogDisparoId}
+        onClose={() => setDialogDisparoId(null)}
+        onDisparoIniciado={fetchDisparos}
+      />
     </div>
   );
 };
