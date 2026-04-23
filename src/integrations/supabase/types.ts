@@ -1073,6 +1073,45 @@ export type Database = {
           },
         ]
       }
+      whatsapp_reactions: {
+        Row: {
+          chat_id: string
+          created_at: string
+          emoji: string | null
+          from_me: boolean
+          id: string
+          message_id: string
+          reactor_jid: string
+          timestamp: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          emoji?: string | null
+          from_me?: boolean
+          id?: string
+          message_id: string
+          reactor_jid: string
+          timestamp?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          emoji?: string | null
+          from_me?: boolean
+          id?: string
+          message_id?: string
+          reactor_jid?: string
+          timestamp?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
