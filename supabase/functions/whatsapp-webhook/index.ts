@@ -31,7 +31,44 @@ function pickContent(msg: any): { type: string; content: string | null; caption?
   if (msg.audioMessage) return { type: "audio", content: null };
   if (msg.documentMessage) return { type: "document", content: null, caption: msg.documentMessage.fileName };
   if (msg.stickerMessage) return { type: "sticker", content: null };
+  if (msg.reactionMessage) return { type: "reaction", content: msg.reactionMessage.text || "" };
   return { type: "text", content: null };
+}
+
+// Processa um evento de reação recebido (alguém reagiu a uma mensagem nossa, ou a uma do grupo)
+async function processReaction(userId: string, m: any, chatId: string) {
+  const r = m?.message?.reactionMessage;
+  if (!r?.key?.id) return;
+  const targetMessageId: string = r.key.id; // ID da mensagem reagida
+  const emoji: string = (r.text || "").toString();
+  const reactorJid: string = m.key?.participant || m.key?.remoteJid || "unknown";
+  const fromMe: boolean = !!m.key?.fromMe;
+
+  if (!emoji) {
+    // Remoção
+    await admin
+      .from("whatsapp_reactions")
+      .delete()
+      .eq("user_id", userId)
+      .eq("message_id", targetMessageId)
+      .eq("reactor_jid", reactorJid);
+    return;
+  }
+
+  await admin
+    .from("whatsapp_reactions")
+    .upsert(
+      {
+        user_id: userId,
+        chat_id: chatId,
+        message_id: targetMessageId,
+        reactor_jid: reactorJid,
+        from_me: fromMe,
+        emoji,
+        timestamp: new Date().toISOString(),
+      },
+      { onConflict: "user_id,message_id,reactor_jid" },
+    );
 }
 
 async function downloadMediaFromEvolution(messageId: string): Promise<{ base64: string; mimetype: string } | null> {
