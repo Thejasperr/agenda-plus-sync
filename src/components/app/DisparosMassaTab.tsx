@@ -135,6 +135,11 @@ const DisparosMassaTab = () => {
         { event: '*', schema: 'public', table: 'disparos_massa' },
         () => fetchDisparos(),
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'disparos_massa_envios' },
+        () => fetchDisparos(),
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -230,6 +235,7 @@ const DisparosMassaTab = () => {
       gerando: { label: 'Gerando...', cls: 'bg-primary/15 text-primary' },
       aguardando_webhook: { label: 'Aguardando Webhook', cls: 'bg-accent text-accent-foreground' },
       concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
+      enviando: { label: 'Enviando...', cls: 'bg-primary/15 text-primary' },
       enviado: { label: 'Enviado', cls: 'bg-emerald-100 text-emerald-700' },
     };
     const m = map[status] || { label: status, cls: 'bg-muted' };
@@ -358,17 +364,41 @@ const DisparosMassaTab = () => {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => dispararMensagens(d.id)}
-                    disabled={disparandoId === d.id || (expandido === d.id ? !podeDisparar : false)}
+                    onClick={() => abrirDispararDialog(d.id)}
+                    disabled={d.status === 'enviando'}
                     className="flex-1"
                   >
-                    {disparandoId === d.id ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Disparando...</>
+                    {d.status === 'enviando' ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Enviando...</>
                     ) : (
                       <><Rocket className="h-3.5 w-3.5 mr-1" /> Disparar</>
                     )}
                   </Button>
                 </div>
+
+                {/* Progresso de envio */}
+                {(d.status === 'enviando' || d.status === 'concluido') && (d.total_destinatarios || 0) > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        {d.total_enviados || 0} de {d.total_destinatarios} enviadas
+                        {(d.total_falhas || 0) > 0 && ` · ${d.total_falhas} falhas`}
+                      </span>
+                      <span className="font-medium">
+                        {Math.round(((d.total_enviados || 0) / (d.total_destinatarios || 1)) * 100)}%
+                      </span>
+                    </div>
+                    <Progress value={((d.total_enviados || 0) / (d.total_destinatarios || 1)) * 100} className="h-2" />
+                  </div>
+                )}
+
+                {/* Mídia anexada */}
+                {d.media_url && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg p-2">
+                    {d.media_type === 'video' ? <Video className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                    <span>Mídia anexada</span>
+                  </div>
+                )}
 
                 {expandido === d.id && (
                   <div className="space-y-2 pt-2">
