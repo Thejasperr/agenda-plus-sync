@@ -569,7 +569,16 @@ const WhatsAppPage: React.FC = () => {
         <div className="p-2.5 sm:p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-foreground flex-1">Conversas</h2>
-            <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading} className="h-8 w-8 p-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { loadClientesForNovaConversa(); setNovaConversaOpen(true); }}
+              className="h-8 w-8 p-0"
+              title="Nova conversa"
+            >
+              <PenSquare className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading} className="h-8 w-8 p-0" title="Sincronizar">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
