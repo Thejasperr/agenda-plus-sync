@@ -227,27 +227,48 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          media_filename: string | null
+          media_mime: string | null
+          media_type: string | null
+          media_url: string | null
           mensagem_sugestao: string
           observacoes: string | null
           status: string
+          total_destinatarios: number
+          total_enviados: number
+          total_falhas: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          media_filename?: string | null
+          media_mime?: string | null
+          media_type?: string | null
+          media_url?: string | null
           mensagem_sugestao: string
           observacoes?: string | null
           status?: string
+          total_destinatarios?: number
+          total_enviados?: number
+          total_falhas?: number
           updated_at?: string
           user_id?: string
         }
         Update: {
           created_at?: string
           id?: string
+          media_filename?: string | null
+          media_mime?: string | null
+          media_type?: string | null
+          media_url?: string | null
           mensagem_sugestao?: string
           observacoes?: string | null
           status?: string
+          total_destinatarios?: number
+          total_enviados?: number
+          total_falhas?: number
           updated_at?: string
           user_id?: string
         }
@@ -279,6 +300,62 @@ export type Database = {
           webhook_url?: string
         }
         Relationships: []
+      }
+      disparos_massa_envios: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string
+          created_at: string
+          disparo_id: string
+          enviado_at: string | null
+          erro: string | null
+          id: string
+          mensagem_enviada: string | null
+          status: string
+          telefone: string
+          updated_at: string
+          user_id: string
+          variacao_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome: string
+          created_at?: string
+          disparo_id: string
+          enviado_at?: string | null
+          erro?: string | null
+          id?: string
+          mensagem_enviada?: string | null
+          status?: string
+          telefone: string
+          updated_at?: string
+          user_id?: string
+          variacao_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string
+          created_at?: string
+          disparo_id?: string
+          enviado_at?: string | null
+          erro?: string | null
+          id?: string
+          mensagem_enviada?: string | null
+          status?: string
+          telefone?: string
+          updated_at?: string
+          user_id?: string
+          variacao_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disparos_massa_envios_disparo_id_fkey"
+            columns: ["disparo_id"]
+            isOneToOne: false
+            referencedRelation: "disparos_massa"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       disparos_massa_variacoes: {
         Row: {
