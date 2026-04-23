@@ -830,15 +830,21 @@ const WhatsAppPage: React.FC = () => {
             {/* Mensagens */}
             <ScrollArea className="flex-1 min-h-0 bg-muted/30">
               <div className="p-2 sm:p-4 space-y-2">
-                {messages.map((m) => (
-                  <MessageBubble
-                    key={m.id}
-                    message={m}
-                    quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
-                    onReply={() => setReplyTo(m)}
-                    onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
-                  />
-                ))}
+                {loadingMessages && messages.length === 0 ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+                    Carregando mensagens...
+                  </div>
+                ) : (
+                  messages.map((m) => (
+                    <MessageBubble
+                      key={m.id}
+                      message={m}
+                      quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
+                      onReply={() => setReplyTo(m)}
+                      onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
+                    />
+                  ))
+                )}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
