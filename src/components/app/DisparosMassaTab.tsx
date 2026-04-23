@@ -145,6 +145,16 @@ const DisparosMassaTab = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Polling de segurança: enquanto houver disparo "enviando", refaz fetch a cada 2s
+  useEffect(() => {
+    const temEnviando = disparos.some((d) => d.status === 'enviando');
+    if (!temEnviando) return;
+    const interval = setInterval(() => {
+      fetchDisparos();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [disparos]);
+
   const handleEnviar = async () => {
     if (mensagem.trim().length < 3) {
       toast({ title: 'Atenção', description: 'Escreva uma sugestão de mensagem.', variant: 'destructive' });
