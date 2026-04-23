@@ -37,10 +37,17 @@ function normalizarTelefone(tel: string): string {
 }
 
 function personalizar(msg: string, nome: string): string {
-  const primeiro = (nome || "").split(" ")[0];
+  const nomeCompleto = (nome || "").trim();
+  const primeiro = nomeCompleto.split(" ")[0] || "";
   return String(msg || "")
-    .replace(/\{nome\}/gi, nome || "")
-    .replace(/\{primeiro_nome\}/gi, primeiro);
+    // [NOME], [Nome], [nome] etc — com colchetes
+    .replace(/\[\s*nome\s*\]/gi, nomeCompleto)
+    .replace(/\[\s*primeiro[_\s-]?nome\s*\]/gi, primeiro)
+    .replace(/\[\s*cliente\s*\]/gi, nomeCompleto)
+    // {nome}, {Nome} etc — com chaves
+    .replace(/\{\s*nome\s*\}/gi, nomeCompleto)
+    .replace(/\{\s*primeiro[_\s-]?nome\s*\}/gi, primeiro)
+    .replace(/\{\s*cliente\s*\}/gi, nomeCompleto);
 }
 
 function delay(ms: number) {
