@@ -41,11 +41,10 @@ Deno.serve(async (req) => {
 
     const reactionEmoji = typeof emoji === "string" ? emoji : "";
     const url = `${EVOLUTION_API_URL.replace(/\/$/, "")}/message/sendReaction/${EVOLUTION_INSTANCE}`;
+    // Evolution API v2 espera payload plano { key, reaction }
     const evoBody = {
-      reactionMessage: {
-        key: { id: message_id, remoteJid: remote_jid, fromMe: !!from_me },
-        reaction: reactionEmoji,
-      },
+      key: { id: message_id, remoteJid: remote_jid, fromMe: !!from_me },
+      reaction: reactionEmoji,
     };
 
     const r = await fetch(url, {

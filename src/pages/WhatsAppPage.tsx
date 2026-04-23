@@ -225,20 +225,30 @@ const WhatsAppPage: React.FC = () => {
 
   // Carregar mensagens (com cache por chat e descarte de respostas obsoletas)
   const loadMessages = async (chatId: string, token: number) => {
-    // Busca as últimas 80 (mais recentes) — depois invertemos pra exibir em ordem cronológica
-    const { data } = await supabase
-      .from('whatsapp_messages')
-      .select('*')
-      .eq('chat_id', chatId)
-      .order('timestamp', { ascending: false })
-      .limit(80);
-    // Se o usuário já trocou de chat, descarta
-    if (token !== loadTokenRef.current) return;
-    const ordered = (data || []).slice().reverse();
-    messagesCacheRef.current[chatId] = ordered;
-    setMessages(ordered);
-    setLoadingMessages(false);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 30);
+    try {
+      // Busca as últimas 80 (mais recentes) — depois invertemos pra exibir em ordem cronológica
+      const { data, error } = await supabase
+        .from('whatsapp_messages')
+        .select('*')
+        .eq('chat_id', chatId)
+        .order('timestamp', { ascending: false })
+        .limit(80);
+      // Se o usuário já trocou de chat, descarta
+      if (token !== loadTokenRef.current) return;
+      if (error) {
+        console.error('Erro ao carregar mensagens:', error);
+        setLoadingMessages(false);
+        return;
+      }
+      const ordered = (data || []).slice().reverse();
+      messagesCacheRef.current[chatId] = ordered;
+      setMessages(ordered);
+      setLoadingMessages(false);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 30);
+    } catch (e) {
+      console.error('Falha em loadMessages:', e);
+      if (token === loadTokenRef.current) setLoadingMessages(false);
+    }
   };
 
   // Realtime messages do chat ativo
