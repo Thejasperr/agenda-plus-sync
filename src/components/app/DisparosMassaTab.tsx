@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { DispararMassaDialog } from '@/components/DispararMassaDialog';
 
 interface Disparo {
   id: string;
@@ -14,6 +16,11 @@ interface Disparo {
   status: string;
   observacoes: string | null;
   created_at: string;
+  media_url?: string | null;
+  media_type?: string | null;
+  total_destinatarios?: number;
+  total_enviados?: number;
+  total_falhas?: number;
 }
 
 interface Variacao {
