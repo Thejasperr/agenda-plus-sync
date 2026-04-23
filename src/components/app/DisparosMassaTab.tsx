@@ -170,9 +170,14 @@ const DisparosMassaTab = () => {
     if (!temEnviando) return;
     const interval = setInterval(() => {
       fetchDisparos();
+      if (tabAtiva === 'historico') fetchEnvios();
     }, 2000);
     return () => clearInterval(interval);
-  }, [disparos]);
+  }, [disparos, tabAtiva]);
+
+  useEffect(() => {
+    if (tabAtiva === 'historico') fetchEnvios();
+  }, [tabAtiva]);
 
   const handleEnviar = async () => {
     if (mensagem.trim().length < 3) {
