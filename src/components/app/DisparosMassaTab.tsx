@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
