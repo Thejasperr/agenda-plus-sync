@@ -58,6 +58,14 @@ interface Message {
   status: string;
 }
 
+interface Reaction {
+  id: string;
+  message_id: string;
+  reactor_jid: string;
+  from_me: boolean;
+  emoji: string | null;
+}
+
 const WhatsAppPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
