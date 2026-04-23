@@ -464,6 +464,116 @@ export type Database = {
         }
         Relationships: []
       }
+      grupos_mensagens: {
+        Row: {
+          created_at: string
+          enviado_at: string | null
+          erro: string | null
+          grupo_nome: string | null
+          grupo_remote_jid: string | null
+          id: string
+          mensagem_original: string
+          mensagem_reestruturada: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enviado_at?: string | null
+          erro?: string | null
+          grupo_nome?: string | null
+          grupo_remote_jid?: string | null
+          id?: string
+          mensagem_original: string
+          mensagem_reestruturada?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          enviado_at?: string | null
+          erro?: string | null
+          grupo_nome?: string | null
+          grupo_remote_jid?: string | null
+          id?: string
+          mensagem_original?: string
+          mensagem_reestruturada?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      grupos_mensagens_config: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
+      grupos_mensagens_midias: {
+        Row: {
+          created_at: string
+          id: string
+          media_filename: string | null
+          media_mime: string | null
+          media_type: string
+          media_url: string
+          mensagem_id: string
+          ordem: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_filename?: string | null
+          media_mime?: string | null
+          media_type: string
+          media_url: string
+          mensagem_id: string
+          ordem?: number
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_filename?: string | null
+          media_mime?: string | null
+          media_type?: string
+          media_url?: string
+          mensagem_id?: string
+          ordem?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_mensagens_midias_mensagem_id_fkey"
+            columns: ["mensagem_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_mensagens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pacote_servicos: {
         Row: {
           created_at: string

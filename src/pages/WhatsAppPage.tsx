@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2, PenSquare } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2, PenSquare, Sparkles } from 'lucide-react';
+import GerarMensagemGrupoDialog from '@/components/GerarMensagemGrupoDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +69,7 @@ const WhatsAppPage: React.FC = () => {
   const [recording, setRecording] = useState(false);
   const [addClienteOpen, setAddClienteOpen] = useState(false);
   const [novoClienteNome, setNovoClienteNome] = useState('');
+  const [grupoMsgOpen, setGrupoMsgOpen] = useState(false);
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -760,19 +762,33 @@ const WhatsAppPage: React.FC = () => {
                 </div>
                 <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{activeChat.telefone}</p>
               </button>
-              {!activeChat.cliente_id && (
-                <Button size="sm" variant="outline" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
-                  <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Adicionar</span>
+              {isGroup(activeChat.remote_jid) ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-9 px-2 sm:px-3 shrink-0 gap-1"
+                  onClick={() => setGrupoMsgOpen(true)}
+                  title="Gerar mensagem com IA para o grupo"
+                >
+                  <Sparkles className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Gerar mensagem</span>
                 </Button>
+              ) : (
+                <>
+                  {!activeChat.cliente_id && (
+                    <Button size="sm" variant="outline" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => { setNovoClienteNome(activeChat.nome); setAddClienteOpen(true); }}>
+                      <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Adicionar</span>
+                    </Button>
+                  )}
+                  <Button size="sm" variant="default" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => {
+                    if (!activeChat) return;
+                    window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
+                      detail: { nome: activeChat.nome, telefone: activeChat.telefone },
+                    }));
+                  }}>
+                    <CalendarPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Agendar</span>
+                  </Button>
+                </>
               )}
-              <Button size="sm" variant="default" className="h-9 px-2 sm:px-3 shrink-0" onClick={() => {
-                if (!activeChat) return;
-                window.dispatchEvent(new CustomEvent('whatsapp:agendar', {
-                  detail: { nome: activeChat.nome, telefone: activeChat.telefone },
-                }));
-              }}>
-                <CalendarPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Agendar</span>
-              </Button>
             </div>
 
             {/* Mensagens */}
@@ -1016,6 +1032,16 @@ const WhatsAppPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog Gerar Mensagem para Grupo (IA) */}
+      {activeChat && isGroup(activeChat.remote_jid) && (
+        <GerarMensagemGrupoDialog
+          open={grupoMsgOpen}
+          onClose={() => setGrupoMsgOpen(false)}
+          grupoNome={activeChat.nome}
+          grupoRemoteJid={activeChat.remote_jid}
+        />
+      )}
 
     </div>
   );
