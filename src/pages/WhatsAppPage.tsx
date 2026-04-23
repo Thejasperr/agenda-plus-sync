@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2 } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2, PenSquare } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +71,13 @@ const WhatsAppPage: React.FC = () => {
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+  const [novaConversaOpen, setNovaConversaOpen] = useState(false);
+  const [novaConversaTab, setNovaConversaTab] = useState<'cliente' | 'numero'>('cliente');
+  const [novaConversaSearch, setNovaConversaSearch] = useState('');
+  const [novaConversaTelefone, setNovaConversaTelefone] = useState('');
+  const [novaConversaNome, setNovaConversaNome] = useState('');
+  const [clientesList, setClientesList] = useState<Array<{ id: string; nome: string; telefone: string }>>([]);
+  const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const [chatStatus, setChatStatus] = useState<Record<string, { credito: number; devendo: number; ativos: number }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -484,6 +491,74 @@ const WhatsAppPage: React.FC = () => {
     loadChats();
   };
 
+  // Carrega clientes para o seletor de nova conversa
+  const loadClientesForNovaConversa = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('clientes')
+      .select('id, nome, telefone')
+      .eq('user_id', user.id)
+      .order('nome', { ascending: true });
+    setClientesList((data || []) as any);
+  };
+
+  // Inicia (ou reabre) uma conversa para um telefone informado
+  const iniciarNovaConversa = async (telefone: string, nome: string) => {
+    if (!user) return;
+    const digits = telefone.replace(/\D/g, '');
+    if (!isValidPhone(digits)) {
+      toast({ title: 'Telefone inválido', description: 'Informe DDI+DDD+número (ex: 5511999998888).', variant: 'destructive' });
+      return;
+    }
+    setIniciandoConversa(true);
+    try {
+      const remoteJid = `${digits}@s.whatsapp.net`;
+      const { data: existing } = await supabase
+        .from('whatsapp_chats')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('remote_jid', remoteJid)
+        .maybeSingle();
+
+      let chat: Chat | null = existing as any;
+      if (!chat) {
+        const clienteId = await findExistingCliente(digits);
+        const { data: created, error } = await supabase
+          .from('whatsapp_chats')
+          .insert({
+            user_id: user.id,
+            remote_jid: remoteJid,
+            telefone: digits,
+            nome: nome?.trim() || digits,
+            cliente_id: clienteId,
+          })
+          .select('*')
+          .single();
+        if (error) throw error;
+        chat = created as any;
+      }
+
+      setChats((prev) => {
+        const idx = prev.findIndex((c) => c.id === chat!.id);
+        if (idx === -1) return [chat as Chat, ...prev];
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...(chat as Chat) };
+        return next;
+      });
+      setActiveChat(chat);
+      setTab('private');
+      setNovaConversaOpen(false);
+      setNovaConversaSearch('');
+      setNovaConversaTelefone('');
+      setNovaConversaNome('');
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Erro ao iniciar conversa', description: e?.message, variant: 'destructive' });
+    } finally {
+      setIniciandoConversa(false);
+    }
+  };
+
   // Mobile back
   const showList = !activeChat;
 
@@ -494,7 +569,16 @@ const WhatsAppPage: React.FC = () => {
         <div className="p-2.5 sm:p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-foreground flex-1">Conversas</h2>
-            <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading} className="h-8 w-8 p-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { loadClientesForNovaConversa(); setNovaConversaOpen(true); }}
+              className="h-8 w-8 p-0"
+              title="Nova conversa"
+            >
+              <PenSquare className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleSync} disabled={loading} className="h-8 w-8 p-0" title="Sincronizar">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
@@ -806,6 +890,96 @@ const WhatsAppPage: React.FC = () => {
             <Button variant="outline" onClick={() => setAddClienteOpen(false)}>Cancelar</Button>
             <Button onClick={handleAddCliente}>Adicionar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Nova Conversa */}
+      <Dialog open={novaConversaOpen} onOpenChange={setNovaConversaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Nova conversa</DialogTitle></DialogHeader>
+          <Tabs value={novaConversaTab} onValueChange={(v) => setNovaConversaTab(v as 'cliente' | 'numero')}>
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="cliente" className="gap-1.5">
+                <UserIcon className="h-3.5 w-3.5" /> Cliente
+              </TabsTrigger>
+              <TabsTrigger value="numero" className="gap-1.5">
+                <PenSquare className="h-3.5 w-3.5" /> Novo número
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {novaConversaTab === 'cliente' ? (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={novaConversaSearch}
+                  onChange={(e) => setNovaConversaSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <ScrollArea className="h-72 border border-border rounded-md">
+                {clientesList.length === 0 && (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Nenhum cliente cadastrado.</div>
+                )}
+                {clientesList
+                  .filter((c) => {
+                    const q = novaConversaSearch.toLowerCase().trim();
+                    if (!q) return true;
+                    return c.nome.toLowerCase().includes(q) || (c.telefone || '').includes(q);
+                  })
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      disabled={iniciandoConversa}
+                      onClick={() => iniciarNovaConversa(c.telefone, c.nome)}
+                      className="w-full flex items-center gap-3 p-2.5 hover:bg-muted/50 transition border-b border-border/50 text-left disabled:opacity-50"
+                    >
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {c.nome?.[0]?.toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-foreground truncate">{c.nome}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.telefone}</p>
+                      </div>
+                    </button>
+                  ))}
+              </ScrollArea>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label>Telefone (com DDI + DDD)</Label>
+                <Input
+                  placeholder="5511999998888"
+                  value={novaConversaTelefone}
+                  onChange={(e) => setNovaConversaTelefone(e.target.value.replace(/\D/g, ''))}
+                  inputMode="numeric"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Ex: 55 + DDD + número (sem espaços).</p>
+              </div>
+              <div>
+                <Label>Nome (opcional)</Label>
+                <Input
+                  placeholder="Nome do contato"
+                  value={novaConversaNome}
+                  onChange={(e) => setNovaConversaNome(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNovaConversaOpen(false)}>Cancelar</Button>
+                <Button
+                  disabled={iniciandoConversa || !novaConversaTelefone}
+                  onClick={() => iniciarNovaConversa(novaConversaTelefone, novaConversaNome)}
+                >
+                  {iniciandoConversa ? 'Abrindo...' : 'Iniciar conversa'}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
