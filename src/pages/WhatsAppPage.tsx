@@ -71,6 +71,13 @@ const WhatsAppPage: React.FC = () => {
   const [clienteInfoOpen, setClienteInfoOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+  const [novaConversaOpen, setNovaConversaOpen] = useState(false);
+  const [novaConversaTab, setNovaConversaTab] = useState<'cliente' | 'numero'>('cliente');
+  const [novaConversaSearch, setNovaConversaSearch] = useState('');
+  const [novaConversaTelefone, setNovaConversaTelefone] = useState('');
+  const [novaConversaNome, setNovaConversaNome] = useState('');
+  const [clientesList, setClientesList] = useState<Array<{ id: string; nome: string; telefone: string }>>([]);
+  const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const [chatStatus, setChatStatus] = useState<Record<string, { credito: number; devendo: number; ativos: number }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
