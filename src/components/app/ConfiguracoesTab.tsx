@@ -102,7 +102,7 @@ const ConfiguracoesTab = () => {
       <h2 className="text-2xl font-bold">Configurações</h2>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="servicos" className="flex items-center gap-1 text-xs sm:text-sm">
             <Wrench className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Serviços</span>
@@ -126,6 +126,10 @@ const ConfiguracoesTab = () => {
           <TabsTrigger value="disparos" className="flex items-center gap-1 text-xs sm:text-sm">
             <Megaphone className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Disparos</span>
+          </TabsTrigger>
+          <TabsTrigger value="grupos" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Grupos</span>
           </TabsTrigger>
         </TabsList>
 
@@ -151,6 +155,10 @@ const ConfiguracoesTab = () => {
 
         <TabsContent value="disparos">
           <DisparosMassaTab />
+        </TabsContent>
+
+        <TabsContent value="grupos">
+          <GruposConfigTab />
         </TabsContent>
       </Tabs>
 
