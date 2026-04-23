@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.whatsapp-sync]
 verify_jwt = true
+
+[functions.whatsapp-react]
+verify_jwt = true

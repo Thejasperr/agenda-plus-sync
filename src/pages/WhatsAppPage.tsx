@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2, PenSquare, Sparkles } from 'lucide-react';
 import GerarMensagemGrupoDialog from '@/components/GerarMensagemGrupoDialog';
+import EmojiPicker, { EmojiStyle, Theme } from 'emoji-picker-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,12 +58,22 @@ interface Message {
   status: string;
 }
 
+interface Reaction {
+  id: string;
+  message_id: string;
+  reactor_jid: string;
+  from_me: boolean;
+  emoji: string | null;
+}
+
 const WhatsAppPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Reações por message_id (do WhatsApp)
+  const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'private' | 'group'>('private');
   const [loading, setLoading] = useState(true);
@@ -266,6 +278,76 @@ const WhatsAppPage: React.FC = () => {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [activeChat?.id]);
+
+  // Carrega reações do chat ativo + realtime
+  useEffect(() => {
+    if (!activeChat || !user) return;
+    const chatId = activeChat.id;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('whatsapp_reactions')
+        .select('id, message_id, reactor_jid, from_me, emoji')
+        .eq('user_id', user.id)
+        .eq('chat_id', chatId);
+      if (cancelled) return;
+      const map: Record<string, Reaction[]> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.emoji) return;
+        if (!map[r.message_id]) map[r.message_id] = [];
+        map[r.message_id].push(r);
+      });
+      setReactions(map);
+    })();
+
+    const ch = supabase.channel(`wa-reactions-${chatId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_reactions', filter: `chat_id=eq.${chatId}` }, (payload) => {
+        setReactions((prev) => {
+          const next = { ...prev };
+          if (payload.eventType === 'DELETE') {
+            const old = payload.old as any;
+            const arr = (next[old.message_id] || []).filter(r => r.id !== old.id);
+            if (arr.length) next[old.message_id] = arr; else delete next[old.message_id];
+            return next;
+          }
+          const r = payload.new as Reaction;
+          const arr = (next[r.message_id] || []).filter(x => x.reactor_jid !== r.reactor_jid);
+          if (r.emoji) arr.push(r);
+          if (arr.length) next[r.message_id] = arr; else delete next[r.message_id];
+          return next;
+        });
+      })
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [activeChat?.id, user]);
+
+  // Envia/remove reação a uma mensagem (otimista)
+  const sendReaction = (msg: Message, emoji: string) => {
+    if (!activeChat || !msg.message_id || !user) return;
+    const reactorJid = `me@${user.id}`;
+    // Otimista
+    setReactions((prev) => {
+      const next = { ...prev };
+      const arr = (next[msg.message_id!] || []).filter(r => r.reactor_jid !== reactorJid);
+      if (emoji) {
+        arr.push({ id: 'tmp-' + Date.now(), message_id: msg.message_id!, reactor_jid: reactorJid, from_me: true, emoji });
+      }
+      if (arr.length) next[msg.message_id!] = arr; else delete next[msg.message_id!];
+      return next;
+    });
+    supabase.functions.invoke('whatsapp-react', {
+      body: {
+        chat_id: activeChat.id,
+        remote_jid: activeChat.remote_jid,
+        message_id: msg.message_id,
+        from_me: msg.from_me,
+        emoji,
+      },
+    }).then(({ error }) => {
+      if (error) toast({ title: 'Erro ao reagir', description: error.message, variant: 'destructive' });
+    });
+  };
+
 
   const isGroup = (jid: string) => jid?.endsWith('@g.us');
   // Rejeita JIDs internos do WhatsApp (@lid, @broadcast) que não são telefones reais
@@ -840,6 +922,8 @@ const WhatsAppPage: React.FC = () => {
                       key={m.id}
                       message={m}
                       quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
+                      reactionsList={m.message_id ? reactions[m.message_id] || [] : []}
+                      onReact={(emoji) => sendReaction(m, emoji)}
                       onReply={() => setReplyTo(m)}
                       onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
                     />
@@ -1089,14 +1173,77 @@ const WhatsAppPage: React.FC = () => {
   );
 };
 
-// Bubble com renderização de mídia + reply + excluir
+// Quick reaction emojis (estilo WhatsApp)
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+// Bubble com renderização de mídia + reply + excluir + reações
 const MessageBubble: React.FC<{
   message: Message;
   quoted?: Message | null;
+  reactionsList?: Reaction[];
+  onReact?: (emoji: string) => void;
   onReply?: () => void;
   onDelete?: () => void;
-}> = ({ message, quoted, onReply, onDelete }) => {
+}> = ({ message, quoted, reactionsList = [], onReact, onReply, onDelete }) => {
   const isMe = message.from_me;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [fullPickerOpen, setFullPickerOpen] = useState(false);
+
+  // Agrupa por emoji para exibição (estilo WhatsApp: emoji + contagem)
+  const grouped = reactionsList.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
+    if (!r.emoji) return acc;
+    if (!acc[r.emoji]) acc[r.emoji] = { count: 0, mine: false };
+    acc[r.emoji].count += 1;
+    if (r.reactor_jid?.startsWith('me@')) acc[r.emoji].mine = true;
+    return acc;
+  }, {});
+  const myReaction = reactionsList.find((r) => r.reactor_jid?.startsWith('me@'))?.emoji || null;
+
+  const handleQuickReact = (emoji: string) => {
+    setPickerOpen(false);
+    setFullPickerOpen(false);
+    if (!onReact) return;
+    // Toggle: se já reagiu com o mesmo emoji, remove
+    onReact(myReaction === emoji ? '' : emoji);
+  };
+
+  const ReactionTrigger = (
+    <button
+      className="p-1 rounded-full hover:bg-muted text-muted-foreground"
+      title="Reagir"
+    >
+      <Smile className="h-3.5 w-3.5" />
+    </button>
+  );
+
+  const ReactionPanel = (
+    <PopoverContent
+      side="top"
+      align={isMe ? 'end' : 'start'}
+      className="w-auto p-2 rounded-full shadow-lg"
+    >
+      <div className="flex items-center gap-1">
+        {QUICK_REACTIONS.map((e) => (
+          <button
+            key={e}
+            onClick={() => handleQuickReact(e)}
+            className={`text-2xl leading-none w-9 h-9 rounded-full hover:bg-muted transition ${myReaction === e ? 'bg-primary/15 ring-2 ring-primary/40' : ''}`}
+            aria-label={`Reagir com ${e}`}
+          >
+            {e}
+          </button>
+        ))}
+        <button
+          onClick={(ev) => { ev.stopPropagation(); setFullPickerOpen(true); setPickerOpen(false); }}
+          className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground"
+          aria-label="Mais emojis"
+        >
+          <Smile className="h-5 w-5" />
+        </button>
+      </div>
+    </PopoverContent>
+  );
+
   return (
     <div className={`group flex items-end gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
       {isMe && (
@@ -1110,6 +1257,12 @@ const MessageBubble: React.FC<{
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
+          {onReact && message.message_id && (
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>{ReactionTrigger}</PopoverTrigger>
+              {ReactionPanel}
+            </Popover>
+          )}
           {onReply && (
             <button
               onClick={onReply}
@@ -1121,52 +1274,96 @@ const MessageBubble: React.FC<{
           )}
         </div>
       )}
-      <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
-        {quoted && (
-          <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
-            <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
-              {quoted.from_me ? 'Você' : 'Mensagem'}
-            </p>
-            <p className="truncate opacity-80">
-              {quoted.content || quoted.caption || `[${quoted.message_type}]`}
-            </p>
+      <div className="relative">
+        <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+          {quoted && (
+            <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
+              <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
+                {quoted.from_me ? 'Você' : 'Mensagem'}
+              </p>
+              <p className="truncate opacity-80">
+                {quoted.content || quoted.caption || `[${quoted.message_type}]`}
+              </p>
+            </div>
+          )}
+          {message.message_type === 'image' && message.media_url && (
+            <img src={message.media_url} alt="" className="rounded-lg max-w-full sm:max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
+          )}
+          {message.message_type === 'video' && message.media_url && (
+            <video src={message.media_url} controls className="rounded-lg max-w-full sm:max-w-xs mb-1" />
+          )}
+          {message.message_type === 'audio' && message.media_url && (
+            <audio src={message.media_url} controls className="max-w-full" />
+          )}
+          {message.message_type === 'document' && message.media_url && (
+            <a href={message.media_url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 rounded ${isMe ? 'bg-primary-foreground/10' : 'bg-muted'}`}>
+              <FileText className="h-5 w-5 shrink-0" />
+              <span className="text-sm truncate">{message.media_filename || 'Arquivo'}</span>
+              <Download className="h-4 w-4 ml-auto shrink-0" />
+            </a>
+          )}
+          {message.message_type === 'sticker' && message.media_url && (
+            <img src={message.media_url} alt="sticker" className="w-28 h-28 sm:w-32 sm:h-32 object-contain" />
+          )}
+          {(message.content || message.caption) && (
+            <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.caption}</p>
+          )}
+          <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+            {format(new Date(message.timestamp), 'HH:mm')}
+          </p>
+        </div>
+        {/* Bolha de reações sobreposta — estilo WhatsApp */}
+        {Object.keys(grouped).length > 0 && (
+          <div className={`absolute -bottom-3 ${isMe ? 'right-2' : 'left-2'} flex items-center gap-0.5`}>
+            <button
+              onClick={() => onReact && setPickerOpen(true)}
+              className="flex items-center gap-0.5 bg-card border border-border rounded-full px-1.5 py-0.5 shadow-sm hover:bg-muted transition"
+            >
+              {Object.entries(grouped).map(([emoji, info]) => (
+                <span key={emoji} className="text-sm leading-none">{emoji}</span>
+              ))}
+              {reactionsList.length > 1 && (
+                <span className="text-[10px] text-muted-foreground ml-0.5">{reactionsList.length}</span>
+              )}
+            </button>
           </div>
         )}
-        {message.message_type === 'image' && message.media_url && (
-          <img src={message.media_url} alt="" className="rounded-lg max-w-full sm:max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
-        )}
-        {message.message_type === 'video' && message.media_url && (
-          <video src={message.media_url} controls className="rounded-lg max-w-full sm:max-w-xs mb-1" />
-        )}
-        {message.message_type === 'audio' && message.media_url && (
-          <audio src={message.media_url} controls className="max-w-full" />
-        )}
-        {message.message_type === 'document' && message.media_url && (
-          <a href={message.media_url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 rounded ${isMe ? 'bg-primary-foreground/10' : 'bg-muted'}`}>
-            <FileText className="h-5 w-5 shrink-0" />
-            <span className="text-sm truncate">{message.media_filename || 'Arquivo'}</span>
-            <Download className="h-4 w-4 ml-auto shrink-0" />
-          </a>
-        )}
-        {message.message_type === 'sticker' && message.media_url && (
-          <img src={message.media_url} alt="sticker" className="w-28 h-28 sm:w-32 sm:h-32 object-contain" />
-        )}
-        {(message.content || message.caption) && (
-          <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.caption}</p>
-        )}
-        <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-          {format(new Date(message.timestamp), 'HH:mm')}
-        </p>
       </div>
-      {!isMe && onReply && (
-        <button
-          onClick={onReply}
-          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition p-1 rounded-full hover:bg-muted text-muted-foreground"
-          title="Responder"
-        >
-          <Reply className="h-3.5 w-3.5" />
-        </button>
+      {!isMe && (
+        <div className="flex flex-col gap-0.5 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition">
+          {onReact && message.message_id && (
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>{ReactionTrigger}</PopoverTrigger>
+              {ReactionPanel}
+            </Popover>
+          )}
+          {onReply && (
+            <button
+              onClick={onReply}
+              className="p-1 rounded-full hover:bg-muted text-muted-foreground"
+              title="Responder"
+            >
+              <Reply className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       )}
+
+      {/* Picker completo de emojis */}
+      <Dialog open={fullPickerOpen} onOpenChange={setFullPickerOpen}>
+        <DialogContent className="p-0 max-w-sm w-[min(92vw,360px)] overflow-hidden">
+          <EmojiPicker
+            onEmojiClick={(e) => handleQuickReact(e.emoji)}
+            emojiStyle={EmojiStyle.NATIVE}
+            theme={Theme.AUTO}
+            width="100%"
+            height={420}
+            previewConfig={{ showPreview: false }}
+            searchPlaceHolder="Buscar emoji..."
+            lazyLoadEmojis
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
