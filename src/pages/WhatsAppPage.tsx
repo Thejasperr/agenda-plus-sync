@@ -463,7 +463,10 @@ const WhatsAppPage: React.FC = () => {
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
       // Recarrega para restaurar caso falhe
-      if (activeChat) loadMessages(activeChat.id);
+      if (activeChat) {
+        delete messagesCacheRef.current[activeChat.id];
+        loadMessages(activeChat.id, ++loadTokenRef.current);
+      }
       return;
     }
     toast({ title: 'Mensagem excluída' });
