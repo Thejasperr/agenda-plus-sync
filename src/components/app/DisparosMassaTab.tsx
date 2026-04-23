@@ -52,6 +52,23 @@ const DisparosMassaTab = () => {
   const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
   const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
+  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico'>('criar');
+  const [envios, setEnvios] = useState<any[]>([]);
+  const [loadingEnvios, setLoadingEnvios] = useState(false);
+  const [buscaEnvios, setBuscaEnvios] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'sucesso' | 'falha' | 'pendente'>('todos');
+
+  const fetchEnvios = async () => {
+    setLoadingEnvios(true);
+    const { data, error } = await supabase
+      .from('disparos_massa_envios')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (!error && data) setEnvios(data);
+    setLoadingEnvios(false);
+  };
+
   const fetchConfig = async () => {
     const { data } = await supabase
       .from('disparos_massa_config')
