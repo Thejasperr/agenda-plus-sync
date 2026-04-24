@@ -271,7 +271,8 @@ const WhatsAppPage: React.FC = () => {
     }
     loadMessages(chatId, token);
 
-    // zerar unread
+    // zerar unread (local imediato + banco)
+    setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, unread_count: 0 } : c)));
     supabase.from('whatsapp_chats').update({ unread_count: 0 }).eq('id', chatId).then();
 
     const ch = supabase.channel(`wa-msgs-${chatId}`)

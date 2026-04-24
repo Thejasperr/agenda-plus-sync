@@ -491,12 +491,9 @@ const ClienteInfoDialog: React.FC<ClienteInfoDialogProps> = ({ open, onOpenChang
                       {historico.length === 0 ? (
                         <p className="text-xs text-muted-foreground italic">Sem histórico.</p>
                       ) : (
-                        <div className="space-y-2">{historico.slice(0, 20).map(renderAgendamento)}</div>
-                      )}
-                      {historico.length > 20 && (
-                        <p className="text-[10px] text-muted-foreground text-center mt-2">
-                          Mostrando últimos 20 de {historico.length}
-                        </p>
+                        <ScrollArea className="h-[280px] pr-2 rounded-md border border-border/50 bg-muted/20 p-2">
+                          <div className="space-y-2">{historico.map(renderAgendamento)}</div>
+                        </ScrollArea>
                       )}
                     </CollapsibleContent>
                   </Collapsible>
