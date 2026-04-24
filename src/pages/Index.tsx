@@ -85,7 +85,7 @@ const Index = () => {
 
       {/* Content — todas as abas montadas para que dialogs (ex.: agendar do WhatsApp) funcionem em qualquer aba */}
       <div
-        className={activeTab === 'whatsapp' ? 'overflow-hidden' : 'mobile-content'}
+        className={activeTab === 'whatsapp' ? 'w-full overflow-hidden' : 'mobile-content'}
         style={activeTab === 'whatsapp' ? { height: 'calc(100vh - var(--mobile-header-height) - var(--mobile-nav-height))' } : undefined}
       >
         <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}><DashboardTab /></div>

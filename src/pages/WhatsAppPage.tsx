@@ -714,7 +714,7 @@ const WhatsAppPage: React.FC = () => {
   return (
     <div className="h-full min-h-0 flex bg-background overflow-hidden">
       {/* Lista chats */}
-      <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 md:border-r border-border min-h-0`}>
+      <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 md:border-r border-border min-h-0 min-w-0 overflow-hidden`}>
         <div className="p-2.5 sm:p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-foreground flex-1">Conversas</h2>
@@ -838,7 +838,7 @@ const WhatsAppPage: React.FC = () => {
       </div>
 
       {/* Conversa */}
-      <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-1 flex-col min-h-0`}>
+      <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-1 flex-col min-h-0 min-w-0 w-full overflow-hidden`}>
         {activeChat ? (
           <>
             {/* Header da conversa */}
@@ -939,7 +939,7 @@ const WhatsAppPage: React.FC = () => {
             </div>
 
             {/* Mensagens */}
-            <ScrollArea className="flex-1 min-h-0 bg-muted/30">
+            <ScrollArea className="flex-1 min-h-0 w-full bg-muted/30">
               <div className="p-2 sm:p-4 space-y-2">
                 {loadingMessages && messages.length === 0 ? (
                   <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
