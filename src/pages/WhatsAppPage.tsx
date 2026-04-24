@@ -949,11 +949,12 @@ const WhatsAppPage: React.FC = () => {
                     <MessageBubble
                       key={m.id}
                       message={m}
-                      quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
-                      reactionsList={m.message_id ? reactions[m.message_id] || [] : []}
-                      onReact={(emoji) => sendReaction(m, emoji)}
-                      onReply={() => setReplyTo(m)}
-                      onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
+                      quoted={m.quoted_message_id ? messagesByMessageId[m.quoted_message_id] || null : null}
+                      reactionsList={m.message_id ? reactions[m.message_id] || [] : undefined}
+                      onReact={sendReaction}
+                      onReply={handleReplyTo}
+                      onDelete={m.from_me ? handleDeleteTarget : undefined}
+                      onOpenFullPicker={handleOpenFullPicker}
                     />
                   ))
                 )}
