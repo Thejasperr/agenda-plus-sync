@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -223,24 +223,26 @@ const WhatsAppPage: React.FC = () => {
     return () => { supabase.removeChannel(ch); };
   }, [user]);
 
+  // Colunas explícitas (evita trazer raw_data jsonb pesado)
+  const MSG_COLS = 'id,chat_id,message_id,from_me,message_type,content,caption,media_url,media_mime_type,media_duration,media_filename,quoted_message_id,timestamp,status';
+
   // Carregar mensagens (com cache por chat e descarte de respostas obsoletas)
+  // Estratégia: busca 50 msgs primeiro (rápido), exibe, depois completa até 80 em background
   const loadMessages = async (chatId: string, token: number) => {
     try {
-      // Busca as últimas 80 (mais recentes) — depois invertemos pra exibir em ordem cronológica
       const { data, error } = await supabase
         .from('whatsapp_messages')
-        .select('*')
+        .select(MSG_COLS)
         .eq('chat_id', chatId)
         .order('timestamp', { ascending: false })
-        .limit(80);
-      // Se o usuário já trocou de chat, descarta
+        .limit(50);
       if (token !== loadTokenRef.current) return;
       if (error) {
         console.error('Erro ao carregar mensagens:', error);
         setLoadingMessages(false);
         return;
       }
-      const ordered = (data || []).slice().reverse();
+      const ordered = (data || []).slice().reverse() as Message[];
       messagesCacheRef.current[chatId] = ordered;
       setMessages(ordered);
       setLoadingMessages(false);
@@ -332,8 +334,9 @@ const WhatsAppPage: React.FC = () => {
   }, [activeChat?.id, user]);
 
   // Envia/remove reação a uma mensagem (otimista)
-  const sendReaction = (msg: Message, emoji: string) => {
-    if (!activeChat || !msg.message_id || !user) return;
+  const sendReaction = useCallback((msg: Message, emoji: string) => {
+    if (!activeChatRef.current || !msg.message_id || !user) return;
+    const chat = activeChatRef.current;
     const reactorJid = `me@${user.id}`;
     // Otimista
     setReactions((prev) => {
@@ -347,8 +350,8 @@ const WhatsAppPage: React.FC = () => {
     });
     supabase.functions.invoke('whatsapp-react', {
       body: {
-        chat_id: activeChat.id,
-        remote_jid: activeChat.remote_jid,
+        chat_id: chat.id,
+        remote_jid: chat.remote_jid,
         message_id: msg.message_id,
         from_me: msg.from_me,
         emoji,
@@ -356,7 +359,22 @@ const WhatsAppPage: React.FC = () => {
     }).then(({ error }) => {
       if (error) toast({ title: 'Erro ao reagir', description: error.message, variant: 'destructive' });
     });
-  };
+  }, [user, toast]);
+
+  // Estado centralizado do picker de emoji completo (fora dos bubbles para não recriar)
+  const [fullEmojiPickerFor, setFullEmojiPickerFor] = useState<Message | null>(null);
+  const handleOpenFullPicker = useCallback((m: Message) => setFullEmojiPickerFor(m), []);
+  const handleReplyTo = useCallback((m: Message) => setReplyTo(m), []);
+  const handleDeleteTarget = useCallback((m: Message) => setDeleteTarget(m), []);
+
+  // Índice O(1) por message_id (evita messages.find a cada bubble — era O(n²))
+  const messagesByMessageId = useMemo(() => {
+    const map: Record<string, Message> = {};
+    for (const m of messages) {
+      if (m.message_id) map[m.message_id] = m;
+    }
+    return map;
+  }, [messages]);
 
 
   const isGroup = (jid: string) => jid?.endsWith('@g.us');
@@ -931,11 +949,12 @@ const WhatsAppPage: React.FC = () => {
                     <MessageBubble
                       key={m.id}
                       message={m}
-                      quoted={m.quoted_message_id ? messages.find(x => x.message_id === m.quoted_message_id) || null : null}
-                      reactionsList={m.message_id ? reactions[m.message_id] || [] : []}
-                      onReact={(emoji) => sendReaction(m, emoji)}
-                      onReply={() => setReplyTo(m)}
-                      onDelete={m.from_me ? () => setDeleteTarget(m) : undefined}
+                      quoted={m.quoted_message_id ? messagesByMessageId[m.quoted_message_id] || null : null}
+                      reactionsList={m.message_id ? reactions[m.message_id] || [] : undefined}
+                      onReact={sendReaction}
+                      onReply={handleReplyTo}
+                      onDelete={m.from_me ? handleDeleteTarget : undefined}
+                      onOpenFullPicker={handleOpenFullPicker}
                     />
                   ))
                 )}
@@ -1179,6 +1198,25 @@ const WhatsAppPage: React.FC = () => {
         />
       )}
 
+      {/* Picker completo de emojis (centralizado — instanciado apenas 1x para todas as mensagens) */}
+      <Dialog open={!!fullEmojiPickerFor} onOpenChange={(o) => !o && setFullEmojiPickerFor(null)}>
+        <DialogContent className="p-0 max-w-sm w-[min(92vw,360px)] overflow-hidden">
+          <EmojiPicker
+            onEmojiClick={(e) => {
+              if (fullEmojiPickerFor) sendReaction(fullEmojiPickerFor, e.emoji);
+              setFullEmojiPickerFor(null);
+            }}
+            emojiStyle={EmojiStyle.NATIVE}
+            theme={Theme.AUTO}
+            width="100%"
+            height={420}
+            previewConfig={{ showPreview: false }}
+            searchPlaceHolder="Buscar emoji..."
+            lazyLoadEmojis
+          />
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
@@ -1186,35 +1224,45 @@ const WhatsAppPage: React.FC = () => {
 // Quick reaction emojis (estilo WhatsApp)
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
-// Bubble com renderização de mídia + reply + excluir + reações
-const MessageBubble: React.FC<{
+interface MessageBubbleProps {
   message: Message;
   quoted?: Message | null;
   reactionsList?: Reaction[];
-  onReact?: (emoji: string) => void;
-  onReply?: () => void;
-  onDelete?: () => void;
-}> = ({ message, quoted, reactionsList = [], onReact, onReply, onDelete }) => {
+  onReact?: (msg: Message, emoji: string) => void;
+  onReply?: (msg: Message) => void;
+  onDelete?: (msg: Message) => void;
+  onOpenFullPicker?: (msg: Message) => void;
+}
+
+// Bubble com renderização de mídia + reply + excluir + reações
+// Memoizado: só re-renderiza se props mudarem (evita re-render de 80 bubbles a cada keystroke)
+const MessageBubble = React.memo<MessageBubbleProps>(({
+  message,
+  quoted,
+  reactionsList,
+  onReact,
+  onReply,
+  onDelete,
+  onOpenFullPicker,
+}) => {
   const isMe = message.from_me;
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [fullPickerOpen, setFullPickerOpen] = useState(false);
+  const list = reactionsList || [];
 
   // Agrupa por emoji para exibição (estilo WhatsApp: emoji + contagem)
-  const grouped = reactionsList.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
+  const grouped = list.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
     if (!r.emoji) return acc;
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, mine: false };
     acc[r.emoji].count += 1;
     if (r.reactor_jid?.startsWith('me@')) acc[r.emoji].mine = true;
     return acc;
   }, {});
-  const myReaction = reactionsList.find((r) => r.reactor_jid?.startsWith('me@'))?.emoji || null;
+  const myReaction = list.find((r) => r.reactor_jid?.startsWith('me@'))?.emoji || null;
 
   const handleQuickReact = (emoji: string) => {
     setPickerOpen(false);
-    setFullPickerOpen(false);
     if (!onReact) return;
-    // Toggle: se já reagiu com o mesmo emoji, remove
-    onReact(myReaction === emoji ? '' : emoji);
+    onReact(message, myReaction === emoji ? '' : emoji);
   };
 
   const ReactionTrigger = (
@@ -1244,7 +1292,7 @@ const MessageBubble: React.FC<{
           </button>
         ))}
         <button
-          onClick={(ev) => { ev.stopPropagation(); setFullPickerOpen(true); setPickerOpen(false); }}
+          onClick={(ev) => { ev.stopPropagation(); setPickerOpen(false); onOpenFullPicker?.(message); }}
           className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground"
           aria-label="Mais emojis"
         >
@@ -1260,7 +1308,7 @@ const MessageBubble: React.FC<{
         <div className="flex flex-col gap-0.5 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition">
           {onDelete && (
             <button
-              onClick={onDelete}
+              onClick={() => onDelete(message)}
               className="p-1 rounded-full hover:bg-destructive/10 text-destructive"
               title="Excluir mensagem"
             >
@@ -1275,7 +1323,7 @@ const MessageBubble: React.FC<{
           )}
           {onReply && (
             <button
-              onClick={onReply}
+              onClick={() => onReply(message)}
               className="p-1 rounded-full hover:bg-muted text-muted-foreground"
               title="Responder"
             >
@@ -1297,13 +1345,13 @@ const MessageBubble: React.FC<{
             </div>
           )}
           {message.message_type === 'image' && message.media_url && (
-            <img src={message.media_url} alt="" className="rounded-lg max-w-full sm:max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
+            <img src={message.media_url} alt="" loading="lazy" decoding="async" className="rounded-lg max-w-full sm:max-w-xs mb-1 cursor-pointer" onClick={() => window.open(message.media_url!, '_blank')} />
           )}
           {message.message_type === 'video' && message.media_url && (
-            <video src={message.media_url} controls className="rounded-lg max-w-full sm:max-w-xs mb-1" />
+            <video src={message.media_url} controls preload="metadata" className="rounded-lg max-w-full sm:max-w-xs mb-1" />
           )}
           {message.message_type === 'audio' && message.media_url && (
-            <audio src={message.media_url} controls className="max-w-full" />
+            <audio src={message.media_url} controls preload="none" className="max-w-full" />
           )}
           {message.message_type === 'document' && message.media_url && (
             <a href={message.media_url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 rounded ${isMe ? 'bg-primary-foreground/10' : 'bg-muted'}`}>
@@ -1313,7 +1361,7 @@ const MessageBubble: React.FC<{
             </a>
           )}
           {message.message_type === 'sticker' && message.media_url && (
-            <img src={message.media_url} alt="sticker" className="w-28 h-28 sm:w-32 sm:h-32 object-contain" />
+            <img src={message.media_url} alt="sticker" loading="lazy" decoding="async" className="w-28 h-28 sm:w-32 sm:h-32 object-contain" />
           )}
           {(message.content || message.caption) && (
             <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.caption}</p>
@@ -1329,11 +1377,11 @@ const MessageBubble: React.FC<{
               onClick={() => onReact && setPickerOpen(true)}
               className="flex items-center gap-0.5 bg-card border border-border rounded-full px-1.5 py-0.5 shadow-sm hover:bg-muted transition"
             >
-              {Object.entries(grouped).map(([emoji, info]) => (
+              {Object.entries(grouped).map(([emoji]) => (
                 <span key={emoji} className="text-sm leading-none">{emoji}</span>
               ))}
-              {reactionsList.length > 1 && (
-                <span className="text-[10px] text-muted-foreground ml-0.5">{reactionsList.length}</span>
+              {list.length > 1 && (
+                <span className="text-[10px] text-muted-foreground ml-0.5">{list.length}</span>
               )}
             </button>
           </div>
@@ -1349,7 +1397,7 @@ const MessageBubble: React.FC<{
           )}
           {onReply && (
             <button
-              onClick={onReply}
+              onClick={() => onReply(message)}
               className="p-1 rounded-full hover:bg-muted text-muted-foreground"
               title="Responder"
             >
@@ -1358,24 +1406,9 @@ const MessageBubble: React.FC<{
           )}
         </div>
       )}
-
-      {/* Picker completo de emojis */}
-      <Dialog open={fullPickerOpen} onOpenChange={setFullPickerOpen}>
-        <DialogContent className="p-0 max-w-sm w-[min(92vw,360px)] overflow-hidden">
-          <EmojiPicker
-            onEmojiClick={(e) => handleQuickReact(e.emoji)}
-            emojiStyle={EmojiStyle.NATIVE}
-            theme={Theme.AUTO}
-            width="100%"
-            height={420}
-            previewConfig={{ showPreview: false }}
-            searchPlaceHolder="Buscar emoji..."
-            lazyLoadEmojis
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
-};
+});
+MessageBubble.displayName = 'MessageBubble';
 
 export default WhatsAppPage;
