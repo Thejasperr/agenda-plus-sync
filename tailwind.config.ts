@@ -79,8 +79,8 @@ export default {
 				'glow': 'var(--shadow-glow)'
 			},
 			fontFamily: {
-				display: ['"Playfair Display"', 'Georgia', 'serif'],
-				sans: ['Outfit', 'system-ui', 'sans-serif']
+				display: ['Nunito', 'system-ui', 'sans-serif'],
+				sans: ['Nunito', 'system-ui', 'sans-serif']
 			},
 			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',

@@ -119,20 +119,21 @@
     @apply border-border;
   }
   html {
-    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
     background-image:
       radial-gradient(circle at 0% 0%, hsl(32 45% 78% / 0.18) 0%, transparent 45%),
       radial-gradient(circle at 100% 100%, hsl(220 55% 25% / 0.06) 0%, transparent 50%);
     background-attachment: fixed;
   }
-  h1, h2, h3, .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
-    letter-spacing: -0.01em;
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.015em;
   }
 }
 
@@ -141,7 +142,8 @@
    ============================================================ */
 @layer utilities {
   .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 800;
   }
 
   .mobile-container {
