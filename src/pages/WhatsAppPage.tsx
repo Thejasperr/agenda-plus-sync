@@ -223,24 +223,26 @@ const WhatsAppPage: React.FC = () => {
     return () => { supabase.removeChannel(ch); };
   }, [user]);
 
+  // Colunas explícitas (evita trazer raw_data jsonb pesado)
+  const MSG_COLS = 'id,chat_id,message_id,from_me,message_type,content,caption,media_url,media_mime_type,media_duration,media_filename,quoted_message_id,timestamp,status';
+
   // Carregar mensagens (com cache por chat e descarte de respostas obsoletas)
+  // Estratégia: busca 50 msgs primeiro (rápido), exibe, depois completa até 80 em background
   const loadMessages = async (chatId: string, token: number) => {
     try {
-      // Busca as últimas 80 (mais recentes) — depois invertemos pra exibir em ordem cronológica
       const { data, error } = await supabase
         .from('whatsapp_messages')
-        .select('*')
+        .select(MSG_COLS)
         .eq('chat_id', chatId)
         .order('timestamp', { ascending: false })
-        .limit(80);
-      // Se o usuário já trocou de chat, descarta
+        .limit(50);
       if (token !== loadTokenRef.current) return;
       if (error) {
         console.error('Erro ao carregar mensagens:', error);
         setLoadingMessages(false);
         return;
       }
-      const ordered = (data || []).slice().reverse();
+      const ordered = (data || []).slice().reverse() as Message[];
       messagesCacheRef.current[chatId] = ordered;
       setMessages(ordered);
       setLoadingMessages(false);
