@@ -2,108 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Boutique Moderna — Azul Escuro × Areia × Branco
+   Tipografia: Playfair Display (títulos) + Outfit (body)
+   ============================================================ */
+
 @layer base {
   :root {
-    /* Primary Colors - Tons de Areia */
-    --primary: 35 45% 55%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 38 50% 65%;
-    
-    /* Secondary Colors - Areia Clara */
-    --secondary: 40 35% 88%;
-    --secondary-foreground: 35 40% 25%;
-    
-    /* Background Colors - Areia suave */
-    --background: 42 40% 96%;
-    --foreground: 30 25% 20%;
-    
-    /* Muted Colors */
-    --muted: 40 30% 90%;
-    --muted-foreground: 35 20% 50%;
-    
-    /* Accent Colors - Terracota suave */
-    --accent: 25 45% 75%;
-    --accent-foreground: 30 40% 25%;
-    
-    /* Destructive */
-    --destructive: 0 70% 58%;
+    /* ——— Base / superfícies ——— */
+    --background: 36 38% 96%;          /* areia muito clara, quase branco */
+    --foreground: 220 45% 14%;         /* azul-noite p/ texto principal */
+
+    --card: 0 0% 100%;                 /* branco puro nos cards */
+    --card-foreground: 220 45% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 45% 14%;
+
+    /* ——— Primária: Azul escuro elegante ——— */
+    --primary: 220 55% 18%;            /* azul-noite */
+    --primary-foreground: 36 40% 96%;  /* areia clara */
+    --primary-glow: 218 50% 30%;       /* azul médio para gradientes */
+
+    /* ——— Secundária: Areia média ——— */
+    --secondary: 35 32% 88%;
+    --secondary-foreground: 220 45% 18%;
+
+    /* ——— Muted ——— */
+    --muted: 36 28% 92%;
+    --muted-foreground: 220 15% 42%;
+
+    /* ——— Accent: Areia dourada (toque feminino) ——— */
+    --accent: 32 45% 78%;
+    --accent-foreground: 220 45% 18%;
+
+    /* ——— Estados ——— */
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
-    
-    /* Border - Areia média */
-    --border: 40 25% 85%;
-    --input: 40 25% 85%;
-    --ring: 35 45% 55%;
-    
-    /* Card - Areia muito clara */
-    --card: 42 35% 98%;
-    --card-foreground: 30 25% 20%;
-    
-    /* Popover */
-    --popover: 42 35% 98%;
-    --popover-foreground: 30 25% 20%;
-    
-    /* Success - Tom terroso */
-    --success: 120 35% 50%;
+    --success: 158 50% 38%;
     --success-foreground: 0 0% 100%;
-    
-    /* Warning */
-    --warning: 45 90% 55%;
-    --warning-foreground: 30 40% 20%;
-    
-    /* Gradients - Suaves e elegantes */
-    --gradient-primary: linear-gradient(135deg, hsl(35 45% 55%), hsl(38 50% 65%));
-    --gradient-secondary: linear-gradient(135deg, hsl(40 35% 88%), hsl(38 50% 80%));
-    --gradient-hero: linear-gradient(180deg, hsl(42 40% 96%), hsl(40 35% 92%));
-    
-    /* Shadows - Suaves e elegantes */
-    --shadow-mobile: 0 2px 8px -2px hsl(35 30% 40% / 0.12);
-    --shadow-card: 0 4px 16px -4px hsl(35 30% 40% / 0.15);
-    --shadow-elegant: 0 8px 24px -8px hsl(35 30% 40% / 0.18);
-    
-    /* Animations */
+    --warning: 38 90% 55%;
+    --warning-foreground: 220 45% 18%;
+
+    /* ——— Bordas / inputs ——— */
+    --border: 35 22% 86%;
+    --input: 35 22% 86%;
+    --ring: 220 55% 25%;
+
+    /* ——— Gradientes assinados ——— */
+    --gradient-primary: linear-gradient(135deg, hsl(220 55% 18%), hsl(218 50% 30%));
+    --gradient-sand: linear-gradient(135deg, hsl(36 40% 96%), hsl(32 38% 90%));
+    --gradient-hero: linear-gradient(160deg, hsl(36 40% 97%) 0%, hsl(32 32% 92%) 60%, hsl(30 28% 88%) 100%);
+    --gradient-elegant: linear-gradient(135deg, hsl(220 55% 18%) 0%, hsl(220 45% 25%) 50%, hsl(218 38% 38%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(36 38% 96%) 100%);
+
+    /* ——— Sombras suaves e elegantes ——— */
+    --shadow-mobile: 0 2px 10px -3px hsl(220 45% 14% / 0.08);
+    --shadow-card: 0 6px 24px -8px hsl(220 45% 14% / 0.12);
+    --shadow-elegant: 0 14px 40px -12px hsl(220 45% 14% / 0.18);
+    --shadow-glow: 0 0 28px -6px hsl(220 55% 25% / 0.35);
+
+    /* ——— Animações ——— */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    
-    /* Mobile specific */
-    --mobile-header-height: 3.5rem;
-    --mobile-nav-height: 4rem;
+
+    /* ——— Mobile ——— */
+    --mobile-header-height: 4rem;
+    --mobile-nav-height: 4.5rem;
     --mobile-padding: 1rem;
-    
-    /* Chart colors - Tons terrosos */
-    --chart-1: 35 50% 60%;
-    --chart-2: 25 45% 55%;
-    --chart-3: 45 40% 50%;
-    --chart-4: 30 55% 58%;
-    --chart-5: 40 48% 62%;
-    
+
+    /* ——— Charts (paleta harmônica) ——— */
+    --chart-1: 220 55% 25%;
+    --chart-2: 32 45% 65%;
+    --chart-3: 218 38% 45%;
+    --chart-4: 36 38% 75%;
+    --chart-5: 220 30% 55%;
+
     --radius: 1rem;
+
+    /* Sidebar */
+    --sidebar-background: 220 55% 18%;
+    --sidebar-foreground: 36 38% 96%;
+    --sidebar-primary: 32 45% 78%;
+    --sidebar-primary-foreground: 220 45% 14%;
+    --sidebar-accent: 220 45% 25%;
+    --sidebar-accent-foreground: 36 38% 96%;
+    --sidebar-border: 220 35% 28%;
+    --sidebar-ring: 32 45% 70%;
   }
-  
+
   .dark {
-    --background: 30 20% 12%;
-    --foreground: 40 30% 92%;
-    --muted: 35 15% 18%;
-    --muted-foreground: 40 20% 65%;
-    --popover: 30 20% 14%;
-    --popover-foreground: 40 30% 92%;
-    --card: 30 18% 15%;
-    --card-foreground: 40 30% 92%;
-    --border: 35 15% 22%;
-    --input: 35 15% 20%;
-    --primary: 35 45% 60%;
-    --primary-foreground: 30 20% 12%;
-    --secondary: 35 20% 25%;
-    --secondary-foreground: 40 25% 88%;
-    --accent: 25 30% 28%;
-    --accent-foreground: 40 30% 92%;
-    --destructive: 0 70% 62%;
+    --background: 220 45% 8%;
+    --foreground: 36 30% 92%;
+    --muted: 220 30% 14%;
+    --muted-foreground: 35 20% 70%;
+    --popover: 220 45% 10%;
+    --popover-foreground: 36 30% 92%;
+    --card: 220 40% 12%;
+    --card-foreground: 36 30% 92%;
+    --border: 220 30% 18%;
+    --input: 220 30% 18%;
+    --primary: 32 45% 75%;
+    --primary-foreground: 220 45% 12%;
+    --secondary: 220 30% 18%;
+    --secondary-foreground: 36 30% 92%;
+    --accent: 32 35% 30%;
+    --accent-foreground: 36 30% 92%;
+    --destructive: 0 70% 60%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 35 45% 60%;
-    --chart-1: 35 50% 65%;
-    --chart-2: 25 45% 60%;
-    --chart-3: 45 40% 55%;
-    --chart-4: 30 55% 63%;
-    --chart-5: 40 48% 67%;
+    --ring: 32 45% 70%;
   }
 }
 
@@ -111,43 +118,97 @@
   * {
     @apply border-border;
   }
+  html {
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    background-image:
+      radial-gradient(circle at 0% 0%, hsl(32 45% 78% / 0.18) 0%, transparent 45%),
+      radial-gradient(circle at 100% 100%, hsl(220 55% 25% / 0.06) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.01em;
   }
 }
 
-/* Mobile optimizations - Design elegante e moderno */
+/* ============================================================
+   Utilitários de design
+   ============================================================ */
 @layer utilities {
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
   .mobile-container {
-    @apply w-full min-h-screen bg-gradient-to-b from-background to-muted/30;
+    @apply w-full min-h-screen;
   }
-  
+
   .mobile-header {
-    @apply h-14 bg-gradient-to-r from-primary via-primary-glow to-primary text-primary-foreground shadow-lg backdrop-blur-sm;
+    height: var(--mobile-header-height);
+    background: var(--gradient-elegant);
+    @apply text-primary-foreground shadow-elegant backdrop-blur-md relative overflow-hidden;
   }
-  
+  .mobile-header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top right, hsl(32 45% 78% / 0.15), transparent 60%);
+    pointer-events: none;
+  }
+
   .mobile-content {
-    @apply flex-1 p-4 pb-24;
+    @apply flex-1 p-4 pb-28;
   }
-  
+
   .mobile-nav {
-    @apply fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border/50 shadow-elegant;
+    height: var(--mobile-nav-height);
+    @apply fixed bottom-0 left-0 right-0 z-40
+           bg-card/85 backdrop-blur-xl border-t border-border/60
+           shadow-[0_-8px_32px_-12px_hsl(220_45%_14%/0.18)];
   }
-  
+
   .mobile-card {
-    @apply bg-card rounded-2xl p-5 shadow-card border border-border/50 mb-4 transition-all duration-300 hover:shadow-elegant;
+    @apply bg-card rounded-2xl p-5 shadow-card border border-border/50 mb-4
+           transition-all duration-300 hover:shadow-elegant hover:-translate-y-0.5;
   }
-  
+
   .mobile-button {
-    @apply bg-gradient-to-r from-primary to-primary-glow text-primary-foreground font-semibold py-3.5 px-6 rounded-xl shadow-card transition-all duration-300 active:scale-95 hover:shadow-elegant;
+    background: var(--gradient-primary);
+    @apply text-primary-foreground font-semibold py-3.5 px-6 rounded-xl
+           shadow-card transition-all duration-300 active:scale-95
+           hover:shadow-glow hover:brightness-110;
   }
-  
+
   .mobile-button-secondary {
-    @apply bg-secondary text-secondary-foreground font-semibold py-3.5 px-6 rounded-xl shadow-sm border border-border/50 transition-all duration-300 active:scale-95 hover:bg-secondary/80;
+    @apply bg-secondary text-secondary-foreground font-semibold py-3.5 px-6 rounded-xl
+           shadow-sm border border-border/50 transition-all duration-300
+           active:scale-95 hover:bg-accent/40;
   }
-  
+
   .mobile-input {
-    @apply bg-background border-border/60 rounded-xl transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply bg-card border-border/60 rounded-xl transition-all duration-200
+           focus:border-primary focus:ring-2 focus:ring-primary/15;
+  }
+
+  /* Toques charmosos */
+  .glass {
+    @apply bg-card/70 backdrop-blur-xl border border-white/40;
+  }
+
+  .gold-divider {
+    background: linear-gradient(90deg, transparent, hsl(32 45% 65%), transparent);
+    height: 1px;
+  }
+
+  .text-gradient-primary {
+    background: var(--gradient-elegant);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 }
