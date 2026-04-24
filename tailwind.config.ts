@@ -75,7 +75,19 @@ export default {
 			boxShadow: {
 				'mobile': 'var(--shadow-mobile)',
 				'card': 'var(--shadow-card)',
-				'elegant': 'var(--shadow-elegant)'
+				'elegant': 'var(--shadow-elegant)',
+				'glow': 'var(--shadow-glow)'
+			},
+			fontFamily: {
+				display: ['"Playfair Display"', 'Georgia', 'serif'],
+				sans: ['Outfit', 'system-ui', 'sans-serif']
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-sand': 'var(--gradient-sand)',
+				'gradient-hero': 'var(--gradient-hero)',
+				'gradient-elegant': 'var(--gradient-elegant)',
+				'gradient-soft': 'var(--gradient-soft)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
