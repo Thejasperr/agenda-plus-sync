@@ -55,7 +55,7 @@ const Index = () => {
       <header className="mobile-header flex items-center justify-between px-5 relative z-10">
         <div className="flex items-center gap-3 relative z-10">
           <div className="h-10 w-10 rounded-full bg-accent/30 backdrop-blur-sm border border-accent/40 flex items-center justify-center shadow-glow">
-            <span className="font-display text-lg text-primary-foreground italic">G</span>
+            <span className="font-display text-lg text-primary-foreground font-extrabold">G</span>
           </div>
           <div className="leading-tight">
             <h1 className="font-display text-lg sm:text-xl font-semibold tracking-wide">
