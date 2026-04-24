@@ -1198,6 +1198,25 @@ const WhatsAppPage: React.FC = () => {
         />
       )}
 
+      {/* Picker completo de emojis (centralizado — instanciado apenas 1x para todas as mensagens) */}
+      <Dialog open={!!fullEmojiPickerFor} onOpenChange={(o) => !o && setFullEmojiPickerFor(null)}>
+        <DialogContent className="p-0 max-w-sm w-[min(92vw,360px)] overflow-hidden">
+          <EmojiPicker
+            onEmojiClick={(e) => {
+              if (fullEmojiPickerFor) sendReaction(fullEmojiPickerFor, e.emoji);
+              setFullEmojiPickerFor(null);
+            }}
+            emojiStyle={EmojiStyle.NATIVE}
+            theme={Theme.AUTO}
+            width="100%"
+            height={420}
+            previewConfig={{ showPreview: false }}
+            searchPlaceHolder="Buscar emoji..."
+            lazyLoadEmojis
+          />
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
