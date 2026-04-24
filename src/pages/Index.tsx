@@ -96,9 +96,9 @@ const Index = () => {
         <div style={{ display: activeTab === 'calendario' ? 'block' : 'none' }}><CalendarioPage /></div>
       </div>
 
-      {/* Navigation charmosa */}
+      {/* Bottom Nav moderna */}
       <nav className="mobile-nav">
-        <div className="flex items-center justify-around h-full px-2">
+        <div className="grid grid-cols-6 h-full max-w-screen-md mx-auto px-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -108,29 +108,32 @@ const Index = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-300 group ${
-                  isActive
-                    ? 'text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
+                className="relative flex flex-col items-center justify-center gap-1 transition-colors duration-200"
               >
-                {/* Pílula ativa */}
-                {isActive && (
-                  <span className="absolute inset-x-1 inset-y-0 rounded-2xl bg-gradient-elegant shadow-glow -z-0" />
-                )}
-                <div className="relative z-10 flex flex-col items-center">
-                  <div className="relative">
-                    <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
-                    {showBadge && (
-                      <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-md ring-2 ring-card">
-                        {unreadTotal > 99 ? '99+' : unreadTotal}
-                      </span>
-                    )}
-                  </div>
-                  <span className={`text-[10px] mt-0.5 font-medium tracking-wide ${isActive ? 'opacity-100' : 'opacity-80'}`}>
-                    {tab.label}
-                  </span>
+                {/* Ícone container */}
+                <div
+                  className={`relative flex items-center justify-center h-10 w-10 rounded-xl transition-all duration-300 ${
+                    isActive
+                      ? 'bg-gradient-elegant text-primary-foreground shadow-glow scale-105'
+                      : 'text-muted-foreground hover:text-primary hover:bg-accent/20'
+                  }`}
+                >
+                  <Icon size={20} strokeWidth={isActive ? 2.4 : 2} />
+                  {showBadge && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm ring-2 ring-card">
+                      {unreadTotal > 99 ? '99+' : unreadTotal}
+                    </span>
+                  )}
                 </div>
+                <span
+                  className={`text-[10px] leading-none font-semibold tracking-wide transition-colors duration-200 ${
+                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  {tab.label}
+                </span>
               </button>
             );
           })}
