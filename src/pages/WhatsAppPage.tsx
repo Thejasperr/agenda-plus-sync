@@ -334,8 +334,9 @@ const WhatsAppPage: React.FC = () => {
   }, [activeChat?.id, user]);
 
   // Envia/remove reação a uma mensagem (otimista)
-  const sendReaction = (msg: Message, emoji: string) => {
-    if (!activeChat || !msg.message_id || !user) return;
+  const sendReaction = useCallback((msg: Message, emoji: string) => {
+    if (!activeChatRef.current || !msg.message_id || !user) return;
+    const chat = activeChatRef.current;
     const reactorJid = `me@${user.id}`;
     // Otimista
     setReactions((prev) => {
@@ -349,8 +350,8 @@ const WhatsAppPage: React.FC = () => {
     });
     supabase.functions.invoke('whatsapp-react', {
       body: {
-        chat_id: activeChat.id,
-        remote_jid: activeChat.remote_jid,
+        chat_id: chat.id,
+        remote_jid: chat.remote_jid,
         message_id: msg.message_id,
         from_me: msg.from_me,
         emoji,
@@ -358,7 +359,22 @@ const WhatsAppPage: React.FC = () => {
     }).then(({ error }) => {
       if (error) toast({ title: 'Erro ao reagir', description: error.message, variant: 'destructive' });
     });
-  };
+  }, [user, toast]);
+
+  // Estado centralizado do picker de emoji completo (fora dos bubbles para não recriar)
+  const [fullEmojiPickerFor, setFullEmojiPickerFor] = useState<Message | null>(null);
+  const handleOpenFullPicker = useCallback((m: Message) => setFullEmojiPickerFor(m), []);
+  const handleReplyTo = useCallback((m: Message) => setReplyTo(m), []);
+  const handleDeleteTarget = useCallback((m: Message) => setDeleteTarget(m), []);
+
+  // Índice O(1) por message_id (evita messages.find a cada bubble — era O(n²))
+  const messagesByMessageId = useMemo(() => {
+    const map: Record<string, Message> = {};
+    for (const m of messages) {
+      if (m.message_id) map[m.message_id] = m;
+    }
+    return map;
+  }, [messages]);
 
 
   const isGroup = (jid: string) => jid?.endsWith('@g.us');
