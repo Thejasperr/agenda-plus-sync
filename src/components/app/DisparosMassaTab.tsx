@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DispararMassaDialog } from '@/components/DispararMassaDialog';
+import { DisparoTimer } from '@/components/app/DisparoTimer';
 
 interface Disparo {
   id: string;
@@ -690,6 +691,14 @@ const DisparosMassaTab = () => {
                       </span>
                     </div>
                     <Progress value={((d.total_enviados || 0) / (d.total_destinatarios || 1)) * 100} className="h-2" />
+                    <DisparoTimer
+                      iniciadoAt={(d as any).iniciado_at}
+                      finalizadoAt={(d as any).finalizado_at}
+                      total={d.total_destinatarios || 0}
+                      processados={(d.total_enviados || 0) + (d.total_falhas || 0)}
+                      delayMedioSegundos={(delayMinSalvo + delayMaxSalvo) / 2}
+                      ativo={d.status === 'enviando'}
+                    />
                   </div>
                 )}
 
@@ -1041,6 +1050,14 @@ const DisparosMassaTab = () => {
                               </span>
                             </div>
                           </div>
+                          <DisparoTimer
+                            iniciadoAt={t.iniciado_at}
+                            finalizadoAt={t.finalizado_at}
+                            total={t.quantidade_total || 0}
+                            processados={(t.enviadas || 0) + (t.falhas || 0)}
+                            delayMedioSegundos={(delayMinSalvo + delayMaxSalvo) / 2}
+                            ativo={ativo}
+                          />
                           {t.ultimo_erro && (
                             <p className="text-xs text-destructive mt-1.5 truncate">
                               Último erro: {t.ultimo_erro}

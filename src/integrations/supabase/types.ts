@@ -226,7 +226,9 @@ export type Database = {
       disparos_massa: {
         Row: {
           created_at: string
+          finalizado_at: string | null
           id: string
+          iniciado_at: string | null
           media_filename: string | null
           media_mime: string | null
           media_type: string | null
@@ -242,7 +244,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          finalizado_at?: string | null
           id?: string
+          iniciado_at?: string | null
           media_filename?: string | null
           media_mime?: string | null
           media_type?: string | null
@@ -258,7 +262,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          finalizado_at?: string | null
           id?: string
+          iniciado_at?: string | null
           media_filename?: string | null
           media_mime?: string | null
           media_type?: string | null
@@ -371,6 +377,7 @@ export type Database = {
           falhas: number
           finalizado_at: string | null
           id: string
+          iniciado_at: string | null
           log_envios: Json
           proximo_indice: number
           quantidade_total: number
@@ -387,6 +394,7 @@ export type Database = {
           falhas?: number
           finalizado_at?: string | null
           id?: string
+          iniciado_at?: string | null
           log_envios?: Json
           proximo_indice?: number
           quantidade_total: number
@@ -403,6 +411,7 @@ export type Database = {
           falhas?: number
           finalizado_at?: string | null
           id?: string
+          iniciado_at?: string | null
           log_envios?: Json
           proximo_indice?: number
           quantidade_total?: number
