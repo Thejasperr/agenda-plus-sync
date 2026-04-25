@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock, AlertTriangle, Ban, Timer } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,16 +49,23 @@ const DisparosMassaTab = () => {
   const [webhookSalvo, setWebhookSalvo] = useState('');
   const [webhookEnvio, setWebhookEnvio] = useState('');
   const [webhookEnvioSalvo, setWebhookEnvioSalvo] = useState('');
+  const [delayMin, setDelayMin] = useState<number>(5);
+  const [delayMax, setDelayMax] = useState<number>(15);
+  const [delayMinSalvo, setDelayMinSalvo] = useState<number>(5);
+  const [delayMaxSalvo, setDelayMaxSalvo] = useState<number>(15);
   const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
-  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico'>('criar');
+  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico' | 'logs'>('criar');
   const [envios, setEnvios] = useState<any[]>([]);
   const [loadingEnvios, setLoadingEnvios] = useState(false);
   const [loadingMais, setLoadingMais] = useState(false);
   const [temMais, setTemMais] = useState(true);
   const [buscaEnvios, setBuscaEnvios] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'sucesso' | 'falha' | 'pendente'>('todos');
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'enviado' | 'falha' | 'pendente' | 'cancelado'>('todos');
+  const [logsErros, setLogsErros] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const PAGE_SIZE = 50;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
