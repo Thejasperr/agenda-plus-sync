@@ -22,6 +22,10 @@ function evoUrl(path: string) {
   return `${EVOLUTION_API_URL.replace(/\/$/, "")}${path}/${EVOLUTION_INSTANCE}`;
 }
 
+// Padrões que indicam que o número NÃO existe no WhatsApp (resposta da Evolution).
+// Quando detectados, marcamos como falha e SEGUIMOS para o próximo contato.
+const NUMERO_INEXISTENTE_REGEX = /(exists?\s*[:=]\s*false|not\s*exist|n[ãa]o\s*existe|invalid\s*(jid|number|wuid)|number.*not.*registered|notInWhatsapp|wuid.*null)/i;
+
 async function evoSend(path: string, body: Record<string, unknown>) {
   const r = await fetch(evoUrl(path), {
     method: "POST",
@@ -29,7 +33,19 @@ async function evoSend(path: string, body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
   const text = await r.text();
-  if (!r.ok) throw new Error(`Evolution ${r.status}: ${text.slice(0, 300)}`);
+  if (!r.ok) {
+    // Lança erro tipado para o caller distinguir "número inexistente" de erro real
+    const err: any = new Error(`Evolution ${r.status}: ${text.slice(0, 300)}`);
+    err.numeroInexistente = NUMERO_INEXISTENTE_REGEX.test(text);
+    err.status = r.status;
+    throw err;
+  }
+  // Mesmo com 200 OK, a Evolution às vezes retorna { exists: false } no payload
+  if (NUMERO_INEXISTENTE_REGEX.test(text)) {
+    const err: any = new Error(`Número não está no WhatsApp: ${text.slice(0, 200)}`);
+    err.numeroInexistente = true;
+    throw err;
+  }
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
@@ -37,6 +53,8 @@ function normalizarTelefone(tel: string): string {
   let limpo = String(tel || "").replace(/\D/g, "");
   if (!limpo) return "";
   if (!limpo.startsWith("55")) limpo = "55" + limpo;
+  // 55 + DDD (2) + numero (8 ou 9) = 12 ou 13 dígitos
+  if (limpo.length < 12 || limpo.length > 13) return "";
   return limpo;
 }
 
