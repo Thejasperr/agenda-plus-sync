@@ -223,12 +223,12 @@ export const DispararMassaDialog: React.FC<Props> = ({ disparoId, open, onClose,
       }
 
       const { data, error } = await supabase.functions.invoke('disparo-massa-testar', {
-        body: { disparo_id: disparoId, telefone_teste: tel, quantidade: qtdTeste },
+        body: { disparo_id: disparoId, telefone_teste: tel, quantidade: qtdTeste, modo: 'novo' },
       });
       if (error) throw error;
       toast({
         title: '🧪 Teste iniciado!',
-        description: `${data?.total || qtdTeste} mensagens serão enviadas para ${data?.numero || tel}. Tempo estimado: ~${data?.tempo_estimado_segundos || 0}s`,
+        description: `${data?.total || qtdTeste} mensagens para ${data?.numero || tel}. Acompanhe na aba "Testes" (~${data?.tempo_estimado_segundos || 0}s).`,
       });
     } catch (e: any) {
       toast({ title: 'Erro no teste', description: e.message || 'Falha ao enviar teste', variant: 'destructive' });
