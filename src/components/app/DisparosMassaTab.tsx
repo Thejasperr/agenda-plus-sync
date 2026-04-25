@@ -950,6 +950,164 @@ const DisparosMassaTab = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="testes" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FlaskConical className="h-4 w-4 text-amber-600" />
+                Histórico de Testes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {testes.length} {testes.length === 1 ? 'teste registrado' : 'testes registrados'}
+                </p>
+                <Button size="sm" variant="outline" onClick={fetchTestes} disabled={loadingTestes}>
+                  {loadingTestes ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Atualizar</>}
+                </Button>
+              </div>
+
+              {loadingTestes ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : testes.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <FlaskConical className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+                  <p className="text-sm text-muted-foreground">Nenhum teste realizado ainda.</p>
+                  <p className="text-xs text-muted-foreground">Use o "Modo Teste" no diálogo de disparo para começar.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {testes.map((t) => {
+                    const expandido = testeExpandido === t.id;
+                    const progresso = t.quantidade_total > 0
+                      ? Math.round(((t.enviadas + t.falhas) / t.quantidade_total) * 100)
+                      : 0;
+                    const ativo = t.status === 'em_andamento' || t.status === 'pendente';
+                    const statusCls: Record<string, string> = {
+                      pendente: 'bg-muted text-muted-foreground',
+                      em_andamento: 'bg-primary/15 text-primary',
+                      concluido: 'bg-emerald-100 text-emerald-700',
+                      cancelado: 'bg-destructive/15 text-destructive',
+                      erro: 'bg-destructive/15 text-destructive',
+                    };
+                    const statusLabel: Record<string, string> = {
+                      pendente: 'Pendente',
+                      em_andamento: 'Em andamento',
+                      concluido: 'Concluído',
+                      cancelado: 'Cancelado',
+                      erro: 'Erro',
+                    };
+                    const log: any[] = Array.isArray(t.log_envios) ? t.log_envios : [];
+                    return (
+                      <div key={t.id} className="border rounded-xl bg-card overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-full text-left p-3 hover:bg-muted/30 transition-colors"
+                          onClick={() => setTesteExpandido(expandido ? null : t.id)}
+                        >
+                          <div className="flex items-start justify-between gap-2 flex-wrap mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FlaskConical className="h-4 w-4 text-amber-600 shrink-0" />
+                              <span className="font-medium text-sm">{t.telefone_teste}</span>
+                              <Badge className={statusCls[t.status] || 'bg-muted'}>
+                                {ativo && <Loader2 className="h-3 w-3 mr-1 animate-spin inline" />}
+                                {statusLabel[t.status] || t.status}
+                              </Badge>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(t.created_at).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          <Progress value={progresso} className="h-2 mb-1.5" />
+                          <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                            <span className="text-muted-foreground">
+                              {t.enviadas + t.falhas} / {t.quantidade_total} processadas ({progresso}%)
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="flex items-center gap-1 text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" /> {t.enviadas}
+                              </span>
+                              <span className="flex items-center gap-1 text-destructive">
+                                <XCircle className="h-3 w-3" /> {t.falhas}
+                              </span>
+                            </div>
+                          </div>
+                          {t.ultimo_erro && (
+                            <p className="text-xs text-destructive mt-1.5 truncate">
+                              Último erro: {t.ultimo_erro}
+                            </p>
+                          )}
+                        </button>
+
+                        {/* Ações */}
+                        <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap border-t pt-2">
+                          {ativo && (
+                            <Button size="sm" variant="outline" onClick={() => cancelarTeste(t.id)}>
+                              <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar
+                            </Button>
+                          )}
+                          {(t.status === 'cancelado' || t.status === 'erro') && t.proximo_indice < t.quantidade_total && (
+                            <Button size="sm" variant="outline" onClick={() => retomarTeste(t.id)}>
+                              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retomar
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="text-destructive ml-auto" onClick={() => excluirTeste(t.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+
+                        {/* Log expandido */}
+                        {expandido && (
+                          <div className="border-t bg-muted/20 p-3 space-y-1.5 max-h-80 overflow-y-auto">
+                            <p className="text-xs font-semibold text-muted-foreground sticky top-0 bg-muted/40 backdrop-blur py-1">
+                              Log de envios ({log.length})
+                            </p>
+                            {log.length === 0 ? (
+                              <p className="text-xs text-muted-foreground italic">Aguardando envios...</p>
+                            ) : (
+                              log.slice().reverse().map((l, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`text-xs p-2 rounded border ${
+                                    l.status === 'enviado'
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
+                                      : 'bg-destructive/5 border-destructive/30'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                      {l.status === 'enviado' ? (
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                      ) : (
+                                        <XCircle className="h-3 w-3 text-destructive" />
+                                      )}
+                                      #{l.indice} · {l.simulando}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {l.timestamp ? new Date(l.timestamp).toLocaleTimeString('pt-BR') : ''}
+                                      {l.variacao_ordem ? ` · var ${l.variacao_ordem}` : ''}
+                                    </span>
+                                  </div>
+                                  {l.erro && (
+                                    <p className="text-destructive mt-1 break-all">{l.erro}</p>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <DispararMassaDialog
