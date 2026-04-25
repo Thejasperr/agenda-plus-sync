@@ -161,13 +161,12 @@ export const DispararMassaDialog: React.FC<Props> = ({ disparoId, open, onClose,
         })
         .eq('id', disparoId);
 
-      // Chama edge function
+      // Chama edge function (delay vem das configurações globais do usuário)
       const { data, error } = await supabase.functions.invoke('disparo-massa-enviar-direto', {
         body: {
           disparo_id: disparoId,
           cliente_ids: Array.from(selecionados),
-          delay_min: 5,
-          delay_max: 15,
+          modo: 'novo',
         },
       });
       if (error) throw error;

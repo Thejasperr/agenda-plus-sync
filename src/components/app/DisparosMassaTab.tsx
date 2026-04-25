@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock, AlertTriangle, Ban, Timer } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,16 +49,23 @@ const DisparosMassaTab = () => {
   const [webhookSalvo, setWebhookSalvo] = useState('');
   const [webhookEnvio, setWebhookEnvio] = useState('');
   const [webhookEnvioSalvo, setWebhookEnvioSalvo] = useState('');
+  const [delayMin, setDelayMin] = useState<number>(5);
+  const [delayMax, setDelayMax] = useState<number>(15);
+  const [delayMinSalvo, setDelayMinSalvo] = useState<number>(5);
+  const [delayMaxSalvo, setDelayMaxSalvo] = useState<number>(15);
   const [salvandoWebhook, setSalvandoWebhook] = useState(false);
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
-  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico'>('criar');
+  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico' | 'logs'>('criar');
   const [envios, setEnvios] = useState<any[]>([]);
   const [loadingEnvios, setLoadingEnvios] = useState(false);
   const [loadingMais, setLoadingMais] = useState(false);
   const [temMais, setTemMais] = useState(true);
   const [buscaEnvios, setBuscaEnvios] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'sucesso' | 'falha' | 'pendente'>('todos');
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'enviado' | 'falha' | 'pendente' | 'cancelado'>('todos');
+  const [logsErros, setLogsErros] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const PAGE_SIZE = 50;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -90,13 +97,61 @@ const DisparosMassaTab = () => {
   const fetchConfig = async () => {
     const { data } = await supabase
       .from('disparos_massa_config')
-      .select('webhook_url, webhook_envio_url')
+      .select('webhook_url, webhook_envio_url, delay_min, delay_max')
       .maybeSingle();
     if (data) {
       setWebhookUrl(data.webhook_url || '');
       setWebhookSalvo(data.webhook_url || '');
       setWebhookEnvio(data.webhook_envio_url || '');
       setWebhookEnvioSalvo(data.webhook_envio_url || '');
+      const dMin = Number((data as any).delay_min ?? 5);
+      const dMax = Number((data as any).delay_max ?? 15);
+      setDelayMin(dMin);
+      setDelayMax(dMax);
+      setDelayMinSalvo(dMin);
+      setDelayMaxSalvo(dMax);
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    const { data } = await supabase
+      .from('disparos_massa_envios')
+      .select('*')
+      .eq('status', 'falha')
+      .order('updated_at', { ascending: false })
+      .limit(200);
+    setLogsErros(data || []);
+    setLoadingLogs(false);
+  };
+
+  const cancelarDisparo = async (id: string) => {
+    if (!confirm('Cancelar este disparo? As mensagens já enviadas permanecem, mas as pendentes serão interrompidas.')) return;
+    setCancelandoId(id);
+    const { error } = await supabase
+      .from('disparos_massa')
+      .update({ status: 'cancelado' })
+      .eq('id', id);
+    setCancelandoId(null);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Disparo cancelado', description: 'A interrupção pode levar alguns segundos.' });
+      fetchDisparos();
+    }
+  };
+
+  const retomarDisparo = async (id: string) => {
+    try {
+      await supabase.from('disparos_massa').update({ status: 'enviando' }).eq('id', id);
+      const { error } = await supabase.functions.invoke('disparo-massa-enviar-direto', {
+        body: { disparo_id: id, modo: 'continuar' },
+      });
+      if (error) throw error;
+      toast({ title: 'Disparo retomado', description: 'Continuando os envios pendentes.' });
+      fetchDisparos();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message || 'Falha ao retomar', variant: 'destructive' });
     }
   };
 
@@ -111,6 +166,14 @@ const DisparosMassaTab = () => {
       toast({ title: 'URL de envio inválida', description: 'Deve começar com http:// ou https://', variant: 'destructive' });
       return;
     }
+    if (delayMin < 2) {
+      toast({ title: 'Delay mínimo inválido', description: 'O mínimo é 2 segundos.', variant: 'destructive' });
+      return;
+    }
+    if (delayMax < delayMin) {
+      toast({ title: 'Delay máximo inválido', description: 'Deve ser maior ou igual ao mínimo.', variant: 'destructive' });
+      return;
+    }
     setSalvandoWebhook(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -119,12 +182,20 @@ const DisparosMassaTab = () => {
       const { error } = await supabase
         .from('disparos_massa_config')
         .upsert(
-          { user_id: userData.user.id, webhook_url: url, webhook_envio_url: urlEnvio || null },
+          {
+            user_id: userData.user.id,
+            webhook_url: url,
+            webhook_envio_url: urlEnvio || null,
+            delay_min: delayMin,
+            delay_max: delayMax,
+          },
           { onConflict: 'user_id' },
         );
       if (error) throw error;
       setWebhookSalvo(url);
       setWebhookEnvioSalvo(urlEnvio);
+      setDelayMinSalvo(delayMin);
+      setDelayMaxSalvo(delayMax);
       toast({ title: 'Configurações salvas' });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -195,6 +266,7 @@ const DisparosMassaTab = () => {
 
   useEffect(() => {
     if (tabAtiva === 'historico') fetchEnvios(true);
+    if (tabAtiva === 'logs') fetchLogs();
   }, [tabAtiva]);
 
   // Lazy loading: observa o sentinel e carrega mais ao chegar perto do fim
@@ -304,12 +376,18 @@ const DisparosMassaTab = () => {
       concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
       enviando: { label: 'Enviando...', cls: 'bg-primary/15 text-primary' },
       enviado: { label: 'Enviado', cls: 'bg-emerald-100 text-emerald-700' },
+      cancelado: { label: 'Cancelado', cls: 'bg-destructive/15 text-destructive' },
+      falha: { label: 'Falha', cls: 'bg-destructive/15 text-destructive' },
     };
     const m = map[status] || { label: status, cls: 'bg-muted' };
     return <Badge className={m.cls}>{m.label}</Badge>;
   };
 
-  const dirty = webhookUrl !== webhookSalvo || webhookEnvio !== webhookEnvioSalvo;
+  const dirty =
+    webhookUrl !== webhookSalvo ||
+    webhookEnvio !== webhookEnvioSalvo ||
+    delayMin !== delayMinSalvo ||
+    delayMax !== delayMaxSalvo;
 
   return (
     <div className="space-y-4">
@@ -321,7 +399,7 @@ const DisparosMassaTab = () => {
                 <CardTitle className="flex items-center justify-between gap-2 text-base">
                   <span className="flex items-center gap-2">
                     <Link2 className="h-4 w-4" />
-                    Configuração dos Webhooks
+                    Configurações de Disparo
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
                 </CardTitle>
@@ -352,6 +430,35 @@ const DisparosMassaTab = () => {
                   Recebe as 10 mensagens prontas + lista de clientes para realizar o disparo real.
                 </p>
               </div>
+              <div className="space-y-1.5 pt-2 border-t">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Timer className="h-4 w-4" />
+                  Intervalo entre mensagens (segundos)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Mínimo</p>
+                    <Input
+                      type="number"
+                      min={2}
+                      value={delayMin}
+                      onChange={(e) => setDelayMin(Math.max(2, Number(e.target.value) || 2))}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Máximo</p>
+                    <Input
+                      type="number"
+                      min={delayMin}
+                      value={delayMax}
+                      onChange={(e) => setDelayMax(Math.max(delayMin, Number(e.target.value) || delayMin))}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Cada mensagem aguarda um tempo aleatório dentro deste intervalo. Recomendado mín. 5s para evitar bloqueios do WhatsApp.
+                </p>
+              </div>
               <Button
                 onClick={salvarWebhook}
                 disabled={salvandoWebhook || !dirty}
@@ -369,8 +476,8 @@ const DisparosMassaTab = () => {
         </Card>
       </Collapsible>
 
-      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico')}>
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico' | 'logs')}>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="criar" className="flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Criar</span>
@@ -378,6 +485,10 @@ const DisparosMassaTab = () => {
           <TabsTrigger value="historico" className="flex items-center gap-1.5">
             <History className="h-3.5 w-3.5" />
             <span>Histórico</span>
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span>Erros</span>
           </TabsTrigger>
         </TabsList>
 
@@ -444,27 +555,52 @@ const DisparosMassaTab = () => {
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => toggleExpandir(d.id)}
-                    className="flex-1"
+                    className="flex-1 min-w-[120px]"
                   >
                     {expandido === d.id ? 'Ocultar variações' : 'Ver variações'}
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => abrirDispararDialog(d.id)}
-                    disabled={d.status === 'enviando'}
-                    className="flex-1"
-                  >
-                    {d.status === 'enviando' ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Enviando...</>
-                    ) : (
-                      <><Rocket className="h-3.5 w-3.5 mr-1" /> Disparar</>
-                    )}
-                  </Button>
+                  {d.status === 'enviando' ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => cancelarDisparo(d.id)}
+                      disabled={cancelandoId === d.id}
+                      className="flex-1 min-w-[120px]"
+                    >
+                      {cancelandoId === d.id ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Cancelando...</>
+                      ) : (
+                        <><Ban className="h-3.5 w-3.5 mr-1" /> Cancelar disparo</>
+                      )}
+                    </Button>
+                  ) : (
+                    <>
+                      {/* Retomar quando há pendentes (enviados < total) e não está enviando */}
+                      {(d.total_destinatarios || 0) > 0 &&
+                        ((d.total_enviados || 0) + (d.total_falhas || 0)) < (d.total_destinatarios || 0) && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => retomarDisparo(d.id)}
+                            className="flex-1 min-w-[120px]"
+                          >
+                            <Rocket className="h-3.5 w-3.5 mr-1" /> Retomar pendentes
+                          </Button>
+                        )}
+                      <Button
+                        size="sm"
+                        onClick={() => abrirDispararDialog(d.id)}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        <Rocket className="h-3.5 w-3.5 mr-1" /> Disparar
+                      </Button>
+                    </>
+                  )}
                 </div>
 
                 {/* Progresso de envio */}
@@ -574,7 +710,7 @@ const DisparosMassaTab = () => {
                   />
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  {(['todos', 'sucesso', 'falha', 'pendente'] as const).map((s) => (
+                  {(['todos', 'enviado', 'falha', 'pendente', 'cancelado'] as const).map((s) => (
                     <Button
                       key={s}
                       size="sm"
@@ -622,10 +758,12 @@ const DisparosMassaTab = () => {
                     </p>
                     {filtrados.map((e) => {
                       const statusIcon =
-                        e.status === 'sucesso' ? (
+                        e.status === 'enviado' ? (
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                         ) : e.status === 'falha' ? (
                           <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        ) : e.status === 'cancelado' ? (
+                          <Ban className="h-3.5 w-3.5 text-destructive" />
                         ) : (
                           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                         );
@@ -678,6 +816,68 @@ const DisparosMassaTab = () => {
                   </div>
                 );
               })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logs" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Log de Erros de Envio
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {logsErros.length} {logsErros.length === 1 ? 'erro registrado' : 'erros registrados'}
+                </p>
+                <Button size="sm" variant="outline" onClick={fetchLogs} disabled={loadingLogs}>
+                  {loadingLogs ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Atualizar'}
+                </Button>
+              </div>
+              {loadingLogs ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : logsErros.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
+                  <p className="text-sm text-muted-foreground">Nenhum erro registrado. Tudo certo!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {logsErros.map((e) => (
+                    <div key={e.id} className="border border-destructive/30 rounded-lg p-3 space-y-1.5 bg-destructive/5">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                          <span className="font-medium text-sm truncate">{e.cliente_nome}</span>
+                          <span className="text-xs text-muted-foreground">·</span>
+                          <span className="text-xs text-muted-foreground">{e.telefone}</span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(e.updated_at || e.created_at).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-destructive font-medium bg-destructive/10 rounded p-2">
+                        {e.erro || 'Erro não especificado'}
+                      </p>
+                      {e.mensagem_enviada && (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                            Ver mensagem
+                          </summary>
+                          <p className="mt-1.5 whitespace-pre-wrap text-foreground/80 bg-muted/40 rounded p-2">
+                            {e.mensagem_enviada}
+                          </p>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

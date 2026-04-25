@@ -277,6 +277,8 @@ export type Database = {
       disparos_massa_config: {
         Row: {
           created_at: string
+          delay_max: number
+          delay_min: number
           id: string
           updated_at: string
           user_id: string
@@ -285,6 +287,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delay_max?: number
+          delay_min?: number
           id?: string
           updated_at?: string
           user_id?: string
@@ -293,6 +297,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delay_max?: number
+          delay_min?: number
           id?: string
           updated_at?: string
           user_id?: string
