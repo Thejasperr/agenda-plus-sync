@@ -252,6 +252,7 @@ const DisparosMassaTab = () => {
 
   useEffect(() => {
     if (tabAtiva === 'historico') fetchEnvios(true);
+    if (tabAtiva === 'logs') fetchLogs();
   }, [tabAtiva]);
 
   // Lazy loading: observa o sentinel e carrega mais ao chegar perto do fim
