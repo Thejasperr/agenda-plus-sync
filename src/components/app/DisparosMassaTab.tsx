@@ -735,9 +735,8 @@ const DisparosMassaTab = () => {
                     </>
                   ) : (
                     <>
-                      {/* Retomar quando há pendentes e NÃO está cancelado */}
-                      {d.status !== 'cancelado' &&
-                        (d.total_destinatarios || 0) > 0 &&
+                      {/* Retomar quando há pendentes (cancelados serão revertidos) */}
+                      {(d.total_destinatarios || 0) > 0 &&
                         ((d.total_enviados || 0) + (d.total_falhas || 0)) < (d.total_destinatarios || 0) && (
                           <Button
                             size="sm"
