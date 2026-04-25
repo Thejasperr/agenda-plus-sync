@@ -864,9 +864,16 @@ const DisparosMassaTab = () => {
                               </span>
                             </div>
                             {e.mensagem_enviada && (
-                              <p className="mt-1.5 whitespace-pre-wrap text-foreground/90 bg-background/60 rounded p-1.5 leading-snug">
-                                {e.mensagem_enviada}
-                              </p>
+                              <details className="mt-1.5 group">
+                                <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground select-none flex items-center gap-1">
+                                  <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+                                  <span className="group-open:hidden">Ver mensagem</span>
+                                  <span className="hidden group-open:inline">Ocultar mensagem</span>
+                                </summary>
+                                <p className="mt-1 whitespace-pre-wrap text-foreground/90 bg-background/60 rounded p-1.5 leading-snug">
+                                  {e.mensagem_enviada}
+                                </p>
+                              </details>
                             )}
                             {e.erro && (
                               <p className="text-destructive mt-1 break-all">Erro: {e.erro}</p>
