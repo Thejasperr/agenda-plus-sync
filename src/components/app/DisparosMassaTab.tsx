@@ -367,7 +367,11 @@ const DisparosMassaTab = () => {
     return <Badge className={m.cls}>{m.label}</Badge>;
   };
 
-  const dirty = webhookUrl !== webhookSalvo || webhookEnvio !== webhookEnvioSalvo;
+  const dirty =
+    webhookUrl !== webhookSalvo ||
+    webhookEnvio !== webhookEnvioSalvo ||
+    delayMin !== delayMinSalvo ||
+    delayMax !== delayMaxSalvo;
 
   return (
     <div className="space-y-4">
@@ -379,7 +383,7 @@ const DisparosMassaTab = () => {
                 <CardTitle className="flex items-center justify-between gap-2 text-base">
                   <span className="flex items-center gap-2">
                     <Link2 className="h-4 w-4" />
-                    Configuração dos Webhooks
+                    Configurações de Disparo
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
                 </CardTitle>
@@ -410,6 +414,35 @@ const DisparosMassaTab = () => {
                   Recebe as 10 mensagens prontas + lista de clientes para realizar o disparo real.
                 </p>
               </div>
+              <div className="space-y-1.5 pt-2 border-t">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Timer className="h-4 w-4" />
+                  Intervalo entre mensagens (segundos)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Mínimo</p>
+                    <Input
+                      type="number"
+                      min={2}
+                      value={delayMin}
+                      onChange={(e) => setDelayMin(Math.max(2, Number(e.target.value) || 2))}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Máximo</p>
+                    <Input
+                      type="number"
+                      min={delayMin}
+                      value={delayMax}
+                      onChange={(e) => setDelayMax(Math.max(delayMin, Number(e.target.value) || delayMin))}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Cada mensagem aguarda um tempo aleatório dentro deste intervalo. Recomendado mín. 5s para evitar bloqueios do WhatsApp.
+                </p>
+              </div>
               <Button
                 onClick={salvarWebhook}
                 disabled={salvandoWebhook || !dirty}
@@ -427,8 +460,8 @@ const DisparosMassaTab = () => {
         </Card>
       </Collapsible>
 
-      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico')}>
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico' | 'logs')}>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="criar" className="flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Criar</span>
@@ -436,6 +469,10 @@ const DisparosMassaTab = () => {
           <TabsTrigger value="historico" className="flex items-center gap-1.5">
             <History className="h-3.5 w-3.5" />
             <span>Histórico</span>
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span>Erros</span>
           </TabsTrigger>
         </TabsList>
 
