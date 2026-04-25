@@ -70,8 +70,32 @@ const DisparosMassaTab = () => {
   const [testes, setTestes] = useState<any[]>([]);
   const [loadingTestes, setLoadingTestes] = useState(false);
   const [testeExpandido, setTesteExpandido] = useState<string | null>(null);
+  const [historicoExpandido, setHistoricoExpandido] = useState<string | null>(null);
+  const [enviosPorDisparo, setEnviosPorDisparo] = useState<Record<string, any[]>>({});
+  const [loadingEnviosDisparo, setLoadingEnviosDisparo] = useState<string | null>(null);
   const PAGE_SIZE = 50;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchEnviosPorDisparo = async (disparoId: string) => {
+    setLoadingEnviosDisparo(disparoId);
+    const { data } = await supabase
+      .from('disparos_massa_envios')
+      .select('*')
+      .eq('disparo_id', disparoId)
+      .order('updated_at', { ascending: false })
+      .limit(2000);
+    setEnviosPorDisparo((prev) => ({ ...prev, [disparoId]: data || [] }));
+    setLoadingEnviosDisparo(null);
+  };
+
+  const toggleHistorico = (disparoId: string) => {
+    if (historicoExpandido === disparoId) {
+      setHistoricoExpandido(null);
+    } else {
+      setHistoricoExpandido(disparoId);
+      fetchEnviosPorDisparo(disparoId);
+    }
+  };
 
   const fetchEnvios = async (reset = true) => {
     if (reset) {
@@ -304,7 +328,11 @@ const DisparosMassaTab = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'disparos_massa_envios' },
-        () => { fetchDisparos(); fetchEnvios(); },
+        () => {
+          fetchDisparos();
+          fetchEnvios();
+          if (historicoExpandido) fetchEnviosPorDisparo(historicoExpandido);
+        },
       )
       .on(
         'postgres_changes',
@@ -314,7 +342,7 @@ const DisparosMassaTab = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [historicoExpandido]);
 
   // Polling de segurança: enquanto houver disparo OU teste em andamento, refaz fetch a cada 1.5s
   useEffect(() => {
@@ -322,7 +350,10 @@ const DisparosMassaTab = () => {
     const temTesteAtivo = testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente');
     if (!temEnviando && !temTesteAtivo) return;
     const interval = setInterval(() => {
-      if (temEnviando) fetchDisparos();
+      if (temEnviando) {
+        fetchDisparos();
+        if (historicoExpandido) fetchEnviosPorDisparo(historicoExpandido);
+      }
       if (temEnviando && tabAtiva === 'historico') fetchEnvios();
       if (temTesteAtivo) fetchTestes();
     }, 1500);
@@ -332,6 +363,7 @@ const DisparosMassaTab = () => {
     disparos.some((d) => d.status === 'enviando'),
     testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente'),
     tabAtiva,
+    historicoExpandido,
   ]);
 
   useEffect(() => {
@@ -639,6 +671,17 @@ const DisparosMassaTab = () => {
                   >
                     {expandido === d.id ? 'Ocultar variações' : 'Ver variações'}
                   </Button>
+                  {(d.total_destinatarios || 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleHistorico(d.id)}
+                      className="flex-1 min-w-[120px]"
+                    >
+                      <History className="h-3.5 w-3.5 mr-1" />
+                      {historicoExpandido === d.id ? 'Ocultar histórico' : 'Ver histórico'}
+                    </Button>
+                  )}
                   {d.status === 'enviando' ? (
                     <Button
                       size="sm"
@@ -764,6 +807,74 @@ const DisparosMassaTab = () => {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Histórico de envios deste disparo (estilo log dos testes) */}
+                {historicoExpandido === d.id && (
+                  <div className="border-t -mx-4 -mb-4 mt-2 bg-muted/20 p-3 space-y-1.5 max-h-96 overflow-y-auto rounded-b-lg">
+                    <p className="text-xs font-semibold text-muted-foreground sticky top-0 bg-muted/40 backdrop-blur py-1 -mx-3 px-3">
+                      Log de envios ({(enviosPorDisparo[d.id] || []).length})
+                    </p>
+                    {loadingEnviosDisparo === d.id && !enviosPorDisparo[d.id] ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (enviosPorDisparo[d.id] || []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic text-center py-3">
+                        Nenhum envio registrado ainda.
+                      </p>
+                    ) : (
+                      (enviosPorDisparo[d.id] || []).map((e, idx) => {
+                        const ok = e.status === 'enviado';
+                        const cancelado = e.status === 'cancelado';
+                        const pendente = e.status === 'pendente';
+                        return (
+                          <div
+                            key={e.id}
+                            className={`text-xs p-2 rounded border ${
+                              ok
+                                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
+                                : pendente
+                                  ? 'bg-muted/40 border-border'
+                                  : 'bg-destructive/5 border-destructive/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="flex items-center gap-1.5 font-medium min-w-0">
+                                {ok ? (
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                                ) : cancelado ? (
+                                  <Ban className="h-3 w-3 text-destructive shrink-0" />
+                                ) : pendente ? (
+                                  <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                                ) : (
+                                  <XCircle className="h-3 w-3 text-destructive shrink-0" />
+                                )}
+                                <span className="truncate">
+                                  #{(enviosPorDisparo[d.id] || []).length - idx} · {e.cliente_nome}
+                                </span>
+                                <span className="text-muted-foreground">·</span>
+                                <span className="text-muted-foreground truncate">{e.telefone}</span>
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {e.enviado_at
+                                  ? new Date(e.enviado_at).toLocaleTimeString('pt-BR')
+                                  : new Date(e.updated_at || e.created_at).toLocaleTimeString('pt-BR')}
+                              </span>
+                            </div>
+                            {e.mensagem_enviada && (
+                              <p className="mt-1.5 whitespace-pre-wrap text-foreground/90 bg-background/60 rounded p-1.5 leading-snug">
+                                {e.mensagem_enviada}
+                              </p>
+                            )}
+                            {e.erro && (
+                              <p className="text-destructive mt-1 break-all">Erro: {e.erro}</p>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </CardContent>
