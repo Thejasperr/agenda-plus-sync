@@ -731,10 +731,12 @@ const DisparosMassaTab = () => {
                     </p>
                     {filtrados.map((e) => {
                       const statusIcon =
-                        e.status === 'sucesso' ? (
+                        e.status === 'enviado' ? (
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                         ) : e.status === 'falha' ? (
                           <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        ) : e.status === 'cancelado' ? (
+                          <Ban className="h-3.5 w-3.5 text-destructive" />
                         ) : (
                           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                         );
