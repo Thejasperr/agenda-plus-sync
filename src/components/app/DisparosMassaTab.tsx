@@ -240,7 +240,17 @@ const DisparosMassaTab = () => {
 
   const retomarDisparo = async (id: string) => {
     try {
-      await supabase.from('disparos_massa').update({ status: 'enviando' }).eq('id', id);
+      // Reverte envios cancelados (de pausas/cancelamentos antigos) para pendente
+      // para que possam ser processados novamente.
+      await supabase
+        .from('disparos_massa_envios')
+        .update({ status: 'pendente', erro: null })
+        .eq('disparo_id', id)
+        .eq('status', 'cancelado');
+      await supabase
+        .from('disparos_massa')
+        .update({ status: 'enviando', finalizado_at: null })
+        .eq('id', id);
       const { error } = await supabase.functions.invoke('disparo-massa-enviar-direto', {
         body: { disparo_id: id, modo: 'continuar' },
       });
