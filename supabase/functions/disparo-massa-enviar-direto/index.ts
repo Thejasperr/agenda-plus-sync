@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
       if (cErr) throw cErr;
       if (!clientes || !clientes.length) throw new Error("Nenhum cliente válido");
 
-      // Histórico: variações já enviadas a cada cliente
+      // Histórico: variações já enviadas a cada cliente (em qualquer disparo anterior)
       const { data: historico } = await admin
         .from("disparos_massa_envios")
         .select("cliente_id, variacao_id")
@@ -187,35 +187,22 @@ Deno.serve(async (req) => {
         enviadasPorCliente.get(h.cliente_id)!.add(h.variacao_id);
       });
 
-      // Contador para balancear distribuição no disparo atual
-      const usoVariacao = new Map<string, number>();
-      mensagensPool.forEach((v) => v.id && usoVariacao.set(v.id, 0));
-
       // Limpa envios antigos do disparo (idempotente)
       await admin.from("disparos_massa_envios").delete().eq("disparo_id", disparoId);
 
       const envios = clientes.map((c) => {
         const jaEnviadas = enviadasPorCliente.get(c.id) || new Set();
 
-        // Filtra variações ainda não enviadas para essa pessoa
+        // Filtra variações ainda NÃO enviadas para essa pessoa
         let candidatas = mensagensPool.filter(
           (v) => !v.id || !jaEnviadas.has(v.id),
         );
-        // Se todas já foram enviadas, libera todas (fallback)
+        // Fallback: se TODAS já foram enviadas anteriormente, libera todas
+        // (caso contrário o cliente não receberia nada).
         if (candidatas.length === 0) candidatas = mensagensPool;
 
-        // Escolhe a candidata menos usada neste disparo (balanceamento)
-        candidatas.sort((a, b) => {
-          const ua = a.id ? (usoVariacao.get(a.id) ?? 0) : 0;
-          const ub = b.id ? (usoVariacao.get(b.id) ?? 0) : 0;
-          return ua - ub;
-        });
-        const minUso = candidatas[0].id ? (usoVariacao.get(candidatas[0].id) ?? 0) : 0;
-        const empatadas = candidatas.filter(
-          (v) => (v.id ? (usoVariacao.get(v.id) ?? 0) : 0) === minUso,
-        );
-        const escolhida = empatadas[Math.floor(Math.random() * empatadas.length)];
-        if (escolhida.id) usoVariacao.set(escolhida.id, (usoVariacao.get(escolhida.id) ?? 0) + 1);
+        // Escolha 100% aleatória entre as candidatas
+        const escolhida = candidatas[Math.floor(Math.random() * candidatas.length)];
 
         return {
           disparo_id: disparoId,
