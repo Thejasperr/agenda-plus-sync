@@ -691,6 +691,14 @@ const DisparosMassaTab = () => {
                       </span>
                     </div>
                     <Progress value={((d.total_enviados || 0) / (d.total_destinatarios || 1)) * 100} className="h-2" />
+                    <DisparoTimer
+                      iniciadoAt={(d as any).iniciado_at}
+                      finalizadoAt={(d as any).finalizado_at}
+                      total={d.total_destinatarios || 0}
+                      processados={(d.total_enviados || 0) + (d.total_falhas || 0)}
+                      delayMedioSegundos={(delayMinSalvo + delayMaxSalvo) / 2}
+                      ativo={d.status === 'enviando'}
+                    />
                   </div>
                 )}
 
