@@ -493,6 +493,7 @@ const DisparosMassaTab = () => {
       aguardando_webhook: { label: 'Aguardando Webhook', cls: 'bg-accent text-accent-foreground' },
       concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
       enviando: { label: 'Enviando...', cls: 'bg-primary/15 text-primary' },
+      pausado: { label: 'Pausado', cls: 'bg-amber-100 text-amber-700' },
       enviado: { label: 'Enviado', cls: 'bg-emerald-100 text-emerald-700' },
       cancelado: { label: 'Cancelado', cls: 'bg-destructive/15 text-destructive' },
       falha: { label: 'Falha', cls: 'bg-destructive/15 text-destructive' },
