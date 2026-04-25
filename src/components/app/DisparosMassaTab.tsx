@@ -141,6 +141,20 @@ const DisparosMassaTab = () => {
     }
   };
 
+  const retomarDisparo = async (id: string) => {
+    try {
+      await supabase.from('disparos_massa').update({ status: 'enviando' }).eq('id', id);
+      const { error } = await supabase.functions.invoke('disparo-massa-enviar-direto', {
+        body: { disparo_id: id, modo: 'continuar' },
+      });
+      if (error) throw error;
+      toast({ title: 'Disparo retomado', description: 'Continuando os envios pendentes.' });
+      fetchDisparos();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message || 'Falha ao retomar', variant: 'destructive' });
+    }
+  };
+
   const salvarWebhook = async () => {
     const url = webhookUrl.trim();
     const urlEnvio = webhookEnvio.trim();
