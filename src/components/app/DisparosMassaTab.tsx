@@ -1050,6 +1050,14 @@ const DisparosMassaTab = () => {
                               </span>
                             </div>
                           </div>
+                          <DisparoTimer
+                            iniciadoAt={t.iniciado_at}
+                            finalizadoAt={t.finalizado_at}
+                            total={t.quantidade_total || 0}
+                            processados={(t.enviadas || 0) + (t.falhas || 0)}
+                            delayMedioSegundos={(delayMinSalvo + delayMaxSalvo) / 2}
+                            ativo={ativo}
+                          />
                           {t.ultimo_erro && (
                             <p className="text-xs text-destructive mt-1.5 truncate">
                               Último erro: {t.ultimo_erro}
