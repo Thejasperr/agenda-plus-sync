@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock, AlertTriangle, Ban, Timer } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock, AlertTriangle, Ban, Timer, FlaskConical, RefreshCw } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,7 +57,7 @@ const DisparosMassaTab = () => {
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
   const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
-  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico' | 'logs'>('criar');
+  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico' | 'logs' | 'testes'>('criar');
   const [envios, setEnvios] = useState<any[]>([]);
   const [loadingEnvios, setLoadingEnvios] = useState(false);
   const [loadingMais, setLoadingMais] = useState(false);
@@ -66,6 +66,9 @@ const DisparosMassaTab = () => {
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'enviado' | 'falha' | 'pendente' | 'cancelado'>('todos');
   const [logsErros, setLogsErros] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [testes, setTestes] = useState<any[]>([]);
+  const [loadingTestes, setLoadingTestes] = useState(false);
+  const [testeExpandido, setTesteExpandido] = useState<string | null>(null);
   const PAGE_SIZE = 50;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -123,6 +126,60 @@ const DisparosMassaTab = () => {
       .limit(200);
     setLogsErros(data || []);
     setLoadingLogs(false);
+  };
+
+  const fetchTestes = async () => {
+    setLoadingTestes(true);
+    const { data } = await (supabase as any)
+      .from('disparos_massa_testes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setTestes(data || []);
+    setLoadingTestes(false);
+  };
+
+  const cancelarTeste = async (id: string) => {
+    if (!confirm('Cancelar este teste? Os envios já feitos permanecem; os pendentes serão interrompidos.')) return;
+    const { error } = await (supabase as any)
+      .from('disparos_massa_testes')
+      .update({ status: 'cancelado', finalizado_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Teste cancelado' });
+      fetchTestes();
+    }
+  };
+
+  const retomarTeste = async (id: string) => {
+    try {
+      await (supabase as any)
+        .from('disparos_massa_testes')
+        .update({ status: 'em_andamento' })
+        .eq('id', id);
+      const { error } = await supabase.functions.invoke('disparo-massa-testar', {
+        body: { teste_id: id, modo: 'retomar' },
+      });
+      if (error) throw error;
+      toast({ title: 'Teste retomado' });
+      fetchTestes();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message || 'Falha ao retomar', variant: 'destructive' });
+    }
+  };
+
+  const excluirTeste = async (id: string) => {
+    if (!confirm('Excluir este teste e todo o histórico de envios?')) return;
+    const { error } = await (supabase as any)
+      .from('disparos_massa_testes')
+      .delete()
+      .eq('id', id);
+    if (!error) {
+      toast({ title: 'Excluído' });
+      fetchTestes();
+    }
   };
 
   const cancelarDisparo = async (id: string) => {
@@ -248,25 +305,33 @@ const DisparosMassaTab = () => {
         { event: '*', schema: 'public', table: 'disparos_massa_envios' },
         () => { fetchDisparos(); fetchEnvios(); },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'disparos_massa_testes' },
+        () => fetchTestes(),
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Polling de segurança: enquanto houver disparo "enviando", refaz fetch a cada 2s
+  // Polling de segurança: enquanto houver disparo OU teste em andamento, refaz fetch a cada 2s
   useEffect(() => {
     const temEnviando = disparos.some((d) => d.status === 'enviando');
-    if (!temEnviando) return;
+    const temTesteAtivo = testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente');
+    if (!temEnviando && !temTesteAtivo) return;
     const interval = setInterval(() => {
-      fetchDisparos();
-      if (tabAtiva === 'historico') fetchEnvios();
+      if (temEnviando) fetchDisparos();
+      if (temEnviando && tabAtiva === 'historico') fetchEnvios();
+      if (temTesteAtivo) fetchTestes();
     }, 2000);
     return () => clearInterval(interval);
-  }, [disparos, tabAtiva]);
+  }, [disparos, testes, tabAtiva]);
 
   useEffect(() => {
     if (tabAtiva === 'historico') fetchEnvios(true);
     if (tabAtiva === 'logs') fetchLogs();
+    if (tabAtiva === 'testes') fetchTestes();
   }, [tabAtiva]);
 
   // Lazy loading: observa o sentinel e carrega mais ao chegar perto do fim
@@ -476,19 +541,23 @@ const DisparosMassaTab = () => {
         </Card>
       </Collapsible>
 
-      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico' | 'logs')}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="criar" className="flex items-center gap-1.5">
+      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico' | 'logs' | 'testes')}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="criar" className="flex items-center gap-1 text-xs sm:text-sm">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Criar</span>
+            <span className="hidden sm:inline">Criar</span>
           </TabsTrigger>
-          <TabsTrigger value="historico" className="flex items-center gap-1.5">
+          <TabsTrigger value="historico" className="flex items-center gap-1 text-xs sm:text-sm">
             <History className="h-3.5 w-3.5" />
-            <span>Histórico</span>
+            <span className="hidden sm:inline">Histórico</span>
           </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-1.5">
+          <TabsTrigger value="logs" className="flex items-center gap-1 text-xs sm:text-sm">
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span>Erros</span>
+            <span className="hidden sm:inline">Erros</span>
+          </TabsTrigger>
+          <TabsTrigger value="testes" className="flex items-center gap-1 text-xs sm:text-sm">
+            <FlaskConical className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Testes</span>
           </TabsTrigger>
         </TabsList>
 
@@ -876,6 +945,164 @@ const DisparosMassaTab = () => {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="testes" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FlaskConical className="h-4 w-4 text-amber-600" />
+                Histórico de Testes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {testes.length} {testes.length === 1 ? 'teste registrado' : 'testes registrados'}
+                </p>
+                <Button size="sm" variant="outline" onClick={fetchTestes} disabled={loadingTestes}>
+                  {loadingTestes ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Atualizar</>}
+                </Button>
+              </div>
+
+              {loadingTestes ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : testes.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <FlaskConical className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+                  <p className="text-sm text-muted-foreground">Nenhum teste realizado ainda.</p>
+                  <p className="text-xs text-muted-foreground">Use o "Modo Teste" no diálogo de disparo para começar.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {testes.map((t) => {
+                    const expandido = testeExpandido === t.id;
+                    const progresso = t.quantidade_total > 0
+                      ? Math.round(((t.enviadas + t.falhas) / t.quantidade_total) * 100)
+                      : 0;
+                    const ativo = t.status === 'em_andamento' || t.status === 'pendente';
+                    const statusCls: Record<string, string> = {
+                      pendente: 'bg-muted text-muted-foreground',
+                      em_andamento: 'bg-primary/15 text-primary',
+                      concluido: 'bg-emerald-100 text-emerald-700',
+                      cancelado: 'bg-destructive/15 text-destructive',
+                      erro: 'bg-destructive/15 text-destructive',
+                    };
+                    const statusLabel: Record<string, string> = {
+                      pendente: 'Pendente',
+                      em_andamento: 'Em andamento',
+                      concluido: 'Concluído',
+                      cancelado: 'Cancelado',
+                      erro: 'Erro',
+                    };
+                    const log: any[] = Array.isArray(t.log_envios) ? t.log_envios : [];
+                    return (
+                      <div key={t.id} className="border rounded-xl bg-card overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-full text-left p-3 hover:bg-muted/30 transition-colors"
+                          onClick={() => setTesteExpandido(expandido ? null : t.id)}
+                        >
+                          <div className="flex items-start justify-between gap-2 flex-wrap mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FlaskConical className="h-4 w-4 text-amber-600 shrink-0" />
+                              <span className="font-medium text-sm">{t.telefone_teste}</span>
+                              <Badge className={statusCls[t.status] || 'bg-muted'}>
+                                {ativo && <Loader2 className="h-3 w-3 mr-1 animate-spin inline" />}
+                                {statusLabel[t.status] || t.status}
+                              </Badge>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(t.created_at).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          <Progress value={progresso} className="h-2 mb-1.5" />
+                          <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                            <span className="text-muted-foreground">
+                              {t.enviadas + t.falhas} / {t.quantidade_total} processadas ({progresso}%)
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="flex items-center gap-1 text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" /> {t.enviadas}
+                              </span>
+                              <span className="flex items-center gap-1 text-destructive">
+                                <XCircle className="h-3 w-3" /> {t.falhas}
+                              </span>
+                            </div>
+                          </div>
+                          {t.ultimo_erro && (
+                            <p className="text-xs text-destructive mt-1.5 truncate">
+                              Último erro: {t.ultimo_erro}
+                            </p>
+                          )}
+                        </button>
+
+                        {/* Ações */}
+                        <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap border-t pt-2">
+                          {ativo && (
+                            <Button size="sm" variant="outline" onClick={() => cancelarTeste(t.id)}>
+                              <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar
+                            </Button>
+                          )}
+                          {(t.status === 'cancelado' || t.status === 'erro') && t.proximo_indice < t.quantidade_total && (
+                            <Button size="sm" variant="outline" onClick={() => retomarTeste(t.id)}>
+                              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retomar
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="text-destructive ml-auto" onClick={() => excluirTeste(t.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+
+                        {/* Log expandido */}
+                        {expandido && (
+                          <div className="border-t bg-muted/20 p-3 space-y-1.5 max-h-80 overflow-y-auto">
+                            <p className="text-xs font-semibold text-muted-foreground sticky top-0 bg-muted/40 backdrop-blur py-1">
+                              Log de envios ({log.length})
+                            </p>
+                            {log.length === 0 ? (
+                              <p className="text-xs text-muted-foreground italic">Aguardando envios...</p>
+                            ) : (
+                              log.slice().reverse().map((l, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`text-xs p-2 rounded border ${
+                                    l.status === 'enviado'
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
+                                      : 'bg-destructive/5 border-destructive/30'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                      {l.status === 'enviado' ? (
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                      ) : (
+                                        <XCircle className="h-3 w-3 text-destructive" />
+                                      )}
+                                      #{l.indice} · {l.simulando}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {l.timestamp ? new Date(l.timestamp).toLocaleTimeString('pt-BR') : ''}
+                                      {l.variacao_ordem ? ` · var ${l.variacao_ordem}` : ''}
+                                    </span>
+                                  </div>
+                                  {l.erro && (
+                                    <p className="text-destructive mt-1 break-all">{l.erro}</p>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
