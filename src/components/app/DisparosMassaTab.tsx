@@ -555,12 +555,12 @@ const DisparosMassaTab = () => {
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => toggleExpandir(d.id)}
-                    className="flex-1"
+                    className="flex-1 min-w-[120px]"
                   >
                     {expandido === d.id ? 'Ocultar variações' : 'Ver variações'}
                   </Button>
@@ -570,7 +570,7 @@ const DisparosMassaTab = () => {
                       variant="destructive"
                       onClick={() => cancelarDisparo(d.id)}
                       disabled={cancelandoId === d.id}
-                      className="flex-1"
+                      className="flex-1 min-w-[120px]"
                     >
                       {cancelandoId === d.id ? (
                         <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Cancelando...</>
@@ -579,14 +579,27 @@ const DisparosMassaTab = () => {
                       )}
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => abrirDispararDialog(d.id)}
-                      disabled={d.status === 'cancelado' && false}
-                      className="flex-1"
-                    >
-                      <Rocket className="h-3.5 w-3.5 mr-1" /> Disparar
-                    </Button>
+                    <>
+                      {/* Retomar quando há pendentes (enviados < total) e não está enviando */}
+                      {(d.total_destinatarios || 0) > 0 &&
+                        ((d.total_enviados || 0) + (d.total_falhas || 0)) < (d.total_destinatarios || 0) && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => retomarDisparo(d.id)}
+                            className="flex-1 min-w-[120px]"
+                          >
+                            <Rocket className="h-3.5 w-3.5 mr-1" /> Retomar pendentes
+                          </Button>
+                        )}
+                      <Button
+                        size="sm"
+                        onClick={() => abrirDispararDialog(d.id)}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        <Rocket className="h-3.5 w-3.5 mr-1" /> Disparar
+                      </Button>
+                    </>
                   )}
                 </div>
 
