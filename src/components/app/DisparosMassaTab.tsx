@@ -128,6 +128,60 @@ const DisparosMassaTab = () => {
     setLoadingLogs(false);
   };
 
+  const fetchTestes = async () => {
+    setLoadingTestes(true);
+    const { data } = await (supabase as any)
+      .from('disparos_massa_testes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setTestes(data || []);
+    setLoadingTestes(false);
+  };
+
+  const cancelarTeste = async (id: string) => {
+    if (!confirm('Cancelar este teste? Os envios já feitos permanecem; os pendentes serão interrompidos.')) return;
+    const { error } = await (supabase as any)
+      .from('disparos_massa_testes')
+      .update({ status: 'cancelado', finalizado_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Teste cancelado' });
+      fetchTestes();
+    }
+  };
+
+  const retomarTeste = async (id: string) => {
+    try {
+      await (supabase as any)
+        .from('disparos_massa_testes')
+        .update({ status: 'em_andamento' })
+        .eq('id', id);
+      const { error } = await supabase.functions.invoke('disparo-massa-testar', {
+        body: { teste_id: id, modo: 'retomar' },
+      });
+      if (error) throw error;
+      toast({ title: 'Teste retomado' });
+      fetchTestes();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message || 'Falha ao retomar', variant: 'destructive' });
+    }
+  };
+
+  const excluirTeste = async (id: string) => {
+    if (!confirm('Excluir este teste e todo o histórico de envios?')) return;
+    const { error } = await (supabase as any)
+      .from('disparos_massa_testes')
+      .delete()
+      .eq('id', id);
+    if (!error) {
+      toast({ title: 'Excluído' });
+      fetchTestes();
+    }
+  };
+
   const cancelarDisparo = async (id: string) => {
     if (!confirm('Cancelar este disparo? As mensagens já enviadas permanecem, mas as pendentes serão interrompidas.')) return;
     setCancelandoId(id);
