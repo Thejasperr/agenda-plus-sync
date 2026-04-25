@@ -192,6 +192,51 @@ export const DispararMassaDialog: React.FC<Props> = ({ disparoId, open, onClose,
     }
   };
 
+  const enviarTeste = async () => {
+    if (!disparoId) return;
+    const tel = telefoneTeste.replace(/\D/g, '');
+    if (tel.length < 10) {
+      toast({ title: 'Telefone inválido', description: 'Digite um número com DDD (ex: 14997778888).', variant: 'destructive' });
+      return;
+    }
+    if (qtdTeste < 1 || qtdTeste > 500) {
+      toast({ title: 'Quantidade inválida', description: 'Entre 1 e 500 mensagens.', variant: 'destructive' });
+      return;
+    }
+    setEnviandoTeste(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Não autenticado');
+
+      const midia = await fazerUploadMidia(userId);
+      if (midia) {
+        await supabase
+          .from('disparos_massa')
+          .update({
+            media_url: midia.url,
+            media_type: midia.type,
+            media_mime: midia.mime,
+            media_filename: midia.filename,
+          })
+          .eq('id', disparoId);
+      }
+
+      const { data, error } = await supabase.functions.invoke('disparo-massa-testar', {
+        body: { disparo_id: disparoId, telefone_teste: tel, quantidade: qtdTeste },
+      });
+      if (error) throw error;
+      toast({
+        title: '🧪 Teste iniciado!',
+        description: `${data?.total || qtdTeste} mensagens serão enviadas para ${data?.numero || tel}. Tempo estimado: ~${data?.tempo_estimado_segundos || 0}s`,
+      });
+    } catch (e: any) {
+      toast({ title: 'Erro no teste', description: e.message || 'Falha ao enviar teste', variant: 'destructive' });
+    } finally {
+      setEnviandoTeste(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !enviando && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
