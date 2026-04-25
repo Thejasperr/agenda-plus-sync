@@ -698,23 +698,35 @@ const DisparosMassaTab = () => {
                     </Button>
                   )}
                   {d.status === 'enviando' ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => cancelarDisparo(d.id)}
-                      disabled={cancelandoId === d.id}
-                      className="flex-1 min-w-[120px]"
-                    >
-                      {cancelandoId === d.id ? (
-                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Cancelando...</>
-                      ) : (
-                        <><Ban className="h-3.5 w-3.5 mr-1" /> Cancelar disparo</>
-                      )}
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => pausarDisparo(d.id)}
+                        disabled={cancelandoId === d.id}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        {cancelandoId === d.id ? (
+                          <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Aguarde...</>
+                        ) : (
+                          <><Pause className="h-3.5 w-3.5 mr-1" /> Pausar</>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => cancelarDisparo(d.id)}
+                        disabled={cancelandoId === d.id}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar
+                      </Button>
+                    </>
                   ) : (
                     <>
-                      {/* Retomar quando há pendentes (enviados < total) e não está enviando */}
-                      {(d.total_destinatarios || 0) > 0 &&
+                      {/* Retomar quando há pendentes e NÃO está cancelado */}
+                      {d.status !== 'cancelado' &&
+                        (d.total_destinatarios || 0) > 0 &&
                         ((d.total_enviados || 0) + (d.total_falhas || 0)) < (d.total_destinatarios || 0) && (
                           <Button
                             size="sm"
@@ -722,7 +734,8 @@ const DisparosMassaTab = () => {
                             onClick={() => retomarDisparo(d.id)}
                             className="flex-1 min-w-[120px]"
                           >
-                            <Rocket className="h-3.5 w-3.5 mr-1" /> Retomar pendentes
+                            <Rocket className="h-3.5 w-3.5 mr-1" />
+                            {d.status === 'pausado' ? 'Retomar' : 'Retomar pendentes'}
                           </Button>
                         )}
                       <Button
@@ -737,7 +750,7 @@ const DisparosMassaTab = () => {
                 </div>
 
                 {/* Progresso de envio */}
-                {(d.status === 'enviando' || d.status === 'concluido') && (d.total_destinatarios || 0) > 0 && (
+                {(d.status === 'enviando' || d.status === 'pausado' || d.status === 'concluido' || d.status === 'cancelado') && (d.total_destinatarios || 0) > 0 && (
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">
