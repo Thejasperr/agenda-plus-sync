@@ -363,6 +363,7 @@ const DisparosMassaTab = () => {
     disparos.some((d) => d.status === 'enviando'),
     testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente'),
     tabAtiva,
+    historicoExpandido,
   ]);
 
   useEffect(() => {
