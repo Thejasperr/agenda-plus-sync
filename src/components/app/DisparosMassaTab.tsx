@@ -305,25 +305,33 @@ const DisparosMassaTab = () => {
         { event: '*', schema: 'public', table: 'disparos_massa_envios' },
         () => { fetchDisparos(); fetchEnvios(); },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'disparos_massa_testes' },
+        () => fetchTestes(),
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Polling de segurança: enquanto houver disparo "enviando", refaz fetch a cada 2s
+  // Polling de segurança: enquanto houver disparo OU teste em andamento, refaz fetch a cada 2s
   useEffect(() => {
     const temEnviando = disparos.some((d) => d.status === 'enviando');
-    if (!temEnviando) return;
+    const temTesteAtivo = testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente');
+    if (!temEnviando && !temTesteAtivo) return;
     const interval = setInterval(() => {
-      fetchDisparos();
-      if (tabAtiva === 'historico') fetchEnvios();
+      if (temEnviando) fetchDisparos();
+      if (temEnviando && tabAtiva === 'historico') fetchEnvios();
+      if (temTesteAtivo) fetchTestes();
     }, 2000);
     return () => clearInterval(interval);
-  }, [disparos, tabAtiva]);
+  }, [disparos, testes, tabAtiva]);
 
   useEffect(() => {
     if (tabAtiva === 'historico') fetchEnvios(true);
     if (tabAtiva === 'logs') fetchLogs();
+    if (tabAtiva === 'testes') fetchTestes();
   }, [tabAtiva]);
 
   // Lazy loading: observa o sentinel e carrega mais ao chegar perto do fim
