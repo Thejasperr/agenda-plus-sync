@@ -152,6 +152,14 @@ const DisparosMassaTab = () => {
       toast({ title: 'URL de envio inválida', description: 'Deve começar com http:// ou https://', variant: 'destructive' });
       return;
     }
+    if (delayMin < 2) {
+      toast({ title: 'Delay mínimo inválido', description: 'O mínimo é 2 segundos.', variant: 'destructive' });
+      return;
+    }
+    if (delayMax < delayMin) {
+      toast({ title: 'Delay máximo inválido', description: 'Deve ser maior ou igual ao mínimo.', variant: 'destructive' });
+      return;
+    }
     setSalvandoWebhook(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -160,12 +168,20 @@ const DisparosMassaTab = () => {
       const { error } = await supabase
         .from('disparos_massa_config')
         .upsert(
-          { user_id: userData.user.id, webhook_url: url, webhook_envio_url: urlEnvio || null },
+          {
+            user_id: userData.user.id,
+            webhook_url: url,
+            webhook_envio_url: urlEnvio || null,
+            delay_min: delayMin,
+            delay_max: delayMax,
+          },
           { onConflict: 'user_id' },
         );
       if (error) throw error;
       setWebhookSalvo(url);
       setWebhookEnvioSalvo(urlEnvio);
+      setDelayMinSalvo(delayMin);
+      setDelayMaxSalvo(delayMax);
       toast({ title: 'Configurações salvas' });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
