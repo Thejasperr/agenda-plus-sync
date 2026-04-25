@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock, AlertTriangle, Ban, Timer, FlaskConical, RefreshCw } from 'lucide-react';
+import { Send, Loader2, Trash2, Copy, Check, Pencil, Save, X, Sparkles, Link2, Rocket, Image as ImageIcon, Video, ChevronDown, History, Search, CheckCircle2, XCircle, Clock, AlertTriangle, Ban, Timer, FlaskConical, RefreshCw, Pause } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -208,7 +208,7 @@ const DisparosMassaTab = () => {
   };
 
   const cancelarDisparo = async (id: string) => {
-    if (!confirm('Cancelar este disparo? As mensagens já enviadas permanecem, mas as pendentes serão interrompidas.')) return;
+    if (!confirm('CANCELAR este disparo? Os envios pendentes serão marcados como cancelados e NÃO poderão ser retomados.')) return;
     setCancelandoId(id);
     const { error } = await supabase
       .from('disparos_massa')
@@ -218,14 +218,39 @@ const DisparosMassaTab = () => {
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Disparo cancelado', description: 'A interrupção pode levar alguns segundos.' });
+      toast({ title: 'Disparo cancelado', description: 'Os pendentes serão marcados como cancelados em alguns segundos.' });
+      fetchDisparos();
+    }
+  };
+
+  const pausarDisparo = async (id: string) => {
+    setCancelandoId(id);
+    const { error } = await supabase
+      .from('disparos_massa')
+      .update({ status: 'pausado' })
+      .eq('id', id);
+    setCancelandoId(null);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Disparo pausado', description: 'Os envios pendentes permanecem e podem ser retomados.' });
       fetchDisparos();
     }
   };
 
   const retomarDisparo = async (id: string) => {
     try {
-      await supabase.from('disparos_massa').update({ status: 'enviando' }).eq('id', id);
+      // Reverte envios cancelados (de pausas/cancelamentos antigos) para pendente
+      // para que possam ser processados novamente.
+      await supabase
+        .from('disparos_massa_envios')
+        .update({ status: 'pendente', erro: null })
+        .eq('disparo_id', id)
+        .eq('status', 'cancelado');
+      await supabase
+        .from('disparos_massa')
+        .update({ status: 'enviando', finalizado_at: null })
+        .eq('id', id);
       const { error } = await supabase.functions.invoke('disparo-massa-enviar-direto', {
         body: { disparo_id: id, modo: 'continuar' },
       });
@@ -478,6 +503,7 @@ const DisparosMassaTab = () => {
       aguardando_webhook: { label: 'Aguardando Webhook', cls: 'bg-accent text-accent-foreground' },
       concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
       enviando: { label: 'Enviando...', cls: 'bg-primary/15 text-primary' },
+      pausado: { label: 'Pausado', cls: 'bg-amber-100 text-amber-700' },
       enviado: { label: 'Enviado', cls: 'bg-emerald-100 text-emerald-700' },
       cancelado: { label: 'Cancelado', cls: 'bg-destructive/15 text-destructive' },
       falha: { label: 'Falha', cls: 'bg-destructive/15 text-destructive' },
@@ -683,22 +709,33 @@ const DisparosMassaTab = () => {
                     </Button>
                   )}
                   {d.status === 'enviando' ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => cancelarDisparo(d.id)}
-                      disabled={cancelandoId === d.id}
-                      className="flex-1 min-w-[120px]"
-                    >
-                      {cancelandoId === d.id ? (
-                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Cancelando...</>
-                      ) : (
-                        <><Ban className="h-3.5 w-3.5 mr-1" /> Cancelar disparo</>
-                      )}
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => pausarDisparo(d.id)}
+                        disabled={cancelandoId === d.id}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        {cancelandoId === d.id ? (
+                          <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Aguarde...</>
+                        ) : (
+                          <><Pause className="h-3.5 w-3.5 mr-1" /> Pausar</>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => cancelarDisparo(d.id)}
+                        disabled={cancelandoId === d.id}
+                        className="flex-1 min-w-[120px]"
+                      >
+                        <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar
+                      </Button>
+                    </>
                   ) : (
                     <>
-                      {/* Retomar quando há pendentes (enviados < total) e não está enviando */}
+                      {/* Retomar quando há pendentes (cancelados serão revertidos) */}
                       {(d.total_destinatarios || 0) > 0 &&
                         ((d.total_enviados || 0) + (d.total_falhas || 0)) < (d.total_destinatarios || 0) && (
                           <Button
@@ -707,7 +744,8 @@ const DisparosMassaTab = () => {
                             onClick={() => retomarDisparo(d.id)}
                             className="flex-1 min-w-[120px]"
                           >
-                            <Rocket className="h-3.5 w-3.5 mr-1" /> Retomar pendentes
+                            <Rocket className="h-3.5 w-3.5 mr-1" />
+                            {d.status === 'pausado' ? 'Retomar' : 'Retomar pendentes'}
                           </Button>
                         )}
                       <Button
@@ -722,7 +760,7 @@ const DisparosMassaTab = () => {
                 </div>
 
                 {/* Progresso de envio */}
-                {(d.status === 'enviando' || d.status === 'concluido') && (d.total_destinatarios || 0) > 0 && (
+                {(d.status === 'enviando' || d.status === 'pausado' || d.status === 'concluido' || d.status === 'cancelado') && (d.total_destinatarios || 0) > 0 && (
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">
