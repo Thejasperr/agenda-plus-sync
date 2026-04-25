@@ -57,7 +57,7 @@ const DisparosMassaTab = () => {
   const [disparandoId, setDisparandoId] = useState<string | null>(null);
   const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [dialogDisparoId, setDialogDisparoId] = useState<string | null>(null);
-  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico' | 'logs'>('criar');
+  const [tabAtiva, setTabAtiva] = useState<'criar' | 'historico' | 'logs' | 'testes'>('criar');
   const [envios, setEnvios] = useState<any[]>([]);
   const [loadingEnvios, setLoadingEnvios] = useState(false);
   const [loadingMais, setLoadingMais] = useState(false);
@@ -66,6 +66,9 @@ const DisparosMassaTab = () => {
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'enviado' | 'falha' | 'pendente' | 'cancelado'>('todos');
   const [logsErros, setLogsErros] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [testes, setTestes] = useState<any[]>([]);
+  const [loadingTestes, setLoadingTestes] = useState(false);
+  const [testeExpandido, setTesteExpandido] = useState<string | null>(null);
   const PAGE_SIZE = 50;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
