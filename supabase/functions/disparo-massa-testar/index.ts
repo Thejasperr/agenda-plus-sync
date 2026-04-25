@@ -42,14 +42,14 @@ function normalizarTelefone(tel: string): string {
 
 function personalizar(msg: string, nome: string): string {
   const nomeCompleto = (nome || "").trim();
-  const primeiro = nomeCompleto.split(" ")[0] || "";
+  const primeiro = nomeCompleto.split(/\s+/)[0] || "";
   return String(msg || "")
-    .replace(/\[\s*nome\s*\]/gi, nomeCompleto)
+    .replace(/\[\s*nome\s*\]/gi, primeiro)
     .replace(/\[\s*primeiro[_\s-]?nome\s*\]/gi, primeiro)
-    .replace(/\[\s*cliente\s*\]/gi, nomeCompleto)
-    .replace(/\{\s*nome\s*\}/gi, nomeCompleto)
+    .replace(/\[\s*cliente\s*\]/gi, primeiro)
+    .replace(/\{\s*nome\s*\}/gi, primeiro)
     .replace(/\{\s*primeiro[_\s-]?nome\s*\}/gi, primeiro)
-    .replace(/\{\s*cliente\s*\}/gi, nomeCompleto);
+    .replace(/\{\s*cliente\s*\}/gi, primeiro);
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
