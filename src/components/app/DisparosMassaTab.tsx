@@ -97,13 +97,47 @@ const DisparosMassaTab = () => {
   const fetchConfig = async () => {
     const { data } = await supabase
       .from('disparos_massa_config')
-      .select('webhook_url, webhook_envio_url')
+      .select('webhook_url, webhook_envio_url, delay_min, delay_max')
       .maybeSingle();
     if (data) {
       setWebhookUrl(data.webhook_url || '');
       setWebhookSalvo(data.webhook_url || '');
       setWebhookEnvio(data.webhook_envio_url || '');
       setWebhookEnvioSalvo(data.webhook_envio_url || '');
+      const dMin = Number((data as any).delay_min ?? 5);
+      const dMax = Number((data as any).delay_max ?? 15);
+      setDelayMin(dMin);
+      setDelayMax(dMax);
+      setDelayMinSalvo(dMin);
+      setDelayMaxSalvo(dMax);
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    const { data } = await supabase
+      .from('disparos_massa_envios')
+      .select('*')
+      .eq('status', 'falha')
+      .order('updated_at', { ascending: false })
+      .limit(200);
+    setLogsErros(data || []);
+    setLoadingLogs(false);
+  };
+
+  const cancelarDisparo = async (id: string) => {
+    if (!confirm('Cancelar este disparo? As mensagens já enviadas permanecem, mas as pendentes serão interrompidas.')) return;
+    setCancelandoId(id);
+    const { error } = await supabase
+      .from('disparos_massa')
+      .update({ status: 'cancelado' })
+      .eq('id', id);
+    setCancelandoId(null);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Disparo cancelado', description: 'A interrupção pode levar alguns segundos.' });
+      fetchDisparos();
     }
   };
 
