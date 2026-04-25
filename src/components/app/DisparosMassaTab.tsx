@@ -809,6 +809,74 @@ const DisparosMassaTab = () => {
                     ))}
                   </div>
                 )}
+
+                {/* Histórico de envios deste disparo (estilo log dos testes) */}
+                {historicoExpandido === d.id && (
+                  <div className="border-t -mx-4 -mb-4 mt-2 bg-muted/20 p-3 space-y-1.5 max-h-96 overflow-y-auto rounded-b-lg">
+                    <p className="text-xs font-semibold text-muted-foreground sticky top-0 bg-muted/40 backdrop-blur py-1 -mx-3 px-3">
+                      Log de envios ({(enviosPorDisparo[d.id] || []).length})
+                    </p>
+                    {loadingEnviosDisparo === d.id && !enviosPorDisparo[d.id] ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (enviosPorDisparo[d.id] || []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic text-center py-3">
+                        Nenhum envio registrado ainda.
+                      </p>
+                    ) : (
+                      (enviosPorDisparo[d.id] || []).map((e, idx) => {
+                        const ok = e.status === 'enviado';
+                        const cancelado = e.status === 'cancelado';
+                        const pendente = e.status === 'pendente';
+                        return (
+                          <div
+                            key={e.id}
+                            className={`text-xs p-2 rounded border ${
+                              ok
+                                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
+                                : pendente
+                                  ? 'bg-muted/40 border-border'
+                                  : 'bg-destructive/5 border-destructive/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="flex items-center gap-1.5 font-medium min-w-0">
+                                {ok ? (
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                                ) : cancelado ? (
+                                  <Ban className="h-3 w-3 text-destructive shrink-0" />
+                                ) : pendente ? (
+                                  <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                                ) : (
+                                  <XCircle className="h-3 w-3 text-destructive shrink-0" />
+                                )}
+                                <span className="truncate">
+                                  #{(enviosPorDisparo[d.id] || []).length - idx} · {e.cliente_nome}
+                                </span>
+                                <span className="text-muted-foreground">·</span>
+                                <span className="text-muted-foreground truncate">{e.telefone}</span>
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {e.enviado_at
+                                  ? new Date(e.enviado_at).toLocaleTimeString('pt-BR')
+                                  : new Date(e.updated_at || e.created_at).toLocaleTimeString('pt-BR')}
+                              </span>
+                            </div>
+                            {e.mensagem_enviada && (
+                              <p className="mt-1.5 whitespace-pre-wrap text-foreground/90 bg-background/60 rounded p-1.5 leading-snug">
+                                {e.mensagem_enviada}
+                              </p>
+                            )}
+                            {e.erro && (
+                              <p className="text-destructive mt-1 break-all">Erro: {e.erro}</p>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
