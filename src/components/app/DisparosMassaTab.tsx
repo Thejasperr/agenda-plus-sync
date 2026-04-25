@@ -70,8 +70,32 @@ const DisparosMassaTab = () => {
   const [testes, setTestes] = useState<any[]>([]);
   const [loadingTestes, setLoadingTestes] = useState(false);
   const [testeExpandido, setTesteExpandido] = useState<string | null>(null);
+  const [historicoExpandido, setHistoricoExpandido] = useState<string | null>(null);
+  const [enviosPorDisparo, setEnviosPorDisparo] = useState<Record<string, any[]>>({});
+  const [loadingEnviosDisparo, setLoadingEnviosDisparo] = useState<string | null>(null);
   const PAGE_SIZE = 50;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchEnviosPorDisparo = async (disparoId: string) => {
+    setLoadingEnviosDisparo(disparoId);
+    const { data } = await supabase
+      .from('disparos_massa_envios')
+      .select('*')
+      .eq('disparo_id', disparoId)
+      .order('updated_at', { ascending: false })
+      .limit(2000);
+    setEnviosPorDisparo((prev) => ({ ...prev, [disparoId]: data || [] }));
+    setLoadingEnviosDisparo(null);
+  };
+
+  const toggleHistorico = (disparoId: string) => {
+    if (historicoExpandido === disparoId) {
+      setHistoricoExpandido(null);
+    } else {
+      setHistoricoExpandido(disparoId);
+      fetchEnviosPorDisparo(disparoId);
+    }
+  };
 
   const fetchEnvios = async (reset = true) => {
     if (reset) {
