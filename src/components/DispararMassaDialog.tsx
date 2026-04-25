@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Image as ImageIcon, Video, X, Rocket, Loader2, CheckSquare, Square, Upload } from 'lucide-react';
+import { Search, Image as ImageIcon, Video, X, Rocket, Loader2, CheckSquare, Square, Upload, FlaskConical, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -37,12 +38,19 @@ export const DispararMassaDialog: React.FC<Props> = ({ disparoId, open, onClose,
   const [uploadando, setUploadando] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Teste
+  const [telefoneTeste, setTelefoneTeste] = useState('');
+  const [qtdTeste, setQtdTeste] = useState<number>(3);
+  const [enviandoTeste, setEnviandoTeste] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setBusca('');
     setSelecionados(new Set());
     setMediaFile(null);
     setMediaPreview(null);
+    setTelefoneTeste('');
+    setQtdTeste(3);
     carregarClientes();
   }, [open]);
 
