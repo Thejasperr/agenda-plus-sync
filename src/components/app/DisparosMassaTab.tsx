@@ -315,7 +315,7 @@ const DisparosMassaTab = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Polling de segurança: enquanto houver disparo OU teste em andamento, refaz fetch a cada 2s
+  // Polling de segurança: enquanto houver disparo OU teste em andamento, refaz fetch a cada 1.5s
   useEffect(() => {
     const temEnviando = disparos.some((d) => d.status === 'enviando');
     const temTesteAtivo = testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente');
@@ -324,9 +324,14 @@ const DisparosMassaTab = () => {
       if (temEnviando) fetchDisparos();
       if (temEnviando && tabAtiva === 'historico') fetchEnvios();
       if (temTesteAtivo) fetchTestes();
-    }, 2000);
+    }, 1500);
     return () => clearInterval(interval);
-  }, [disparos, testes, tabAtiva]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    disparos.some((d) => d.status === 'enviando'),
+    testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente'),
+    tabAtiva,
+  ]);
 
   useEffect(() => {
     if (tabAtiva === 'historico') fetchEnvios(true);
