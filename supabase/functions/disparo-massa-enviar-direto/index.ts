@@ -316,43 +316,69 @@ Deno.serve(async (req) => {
           }
         }
 
-        const number = normalizarTelefone(env.telefone);
-        if (!number) {
-          await admin.from("disparos_massa_envios")
-            .update({ status: "falha", erro: "Telefone inválido" })
-            .eq("id", env.id);
-          falhas++;
-        } else {
-          try {
-            if (mediaUrl && mediaType) {
-              await evoSend("/message/sendMedia", {
-                number,
-                mediatype: mediaType,
-                media: mediaUrl,
-                caption: env.mensagem_enviada || "",
-                fileName: mediaFilename || `file.${(mediaMime?.split("/")[1]) || "bin"}`,
-              });
-            } else {
-              await evoSend("/message/sendText", {
-                number,
-                text: env.mensagem_enviada || "",
-              });
-            }
+        // Envolve TUDO num try para garantir que nenhum erro inesperado pare o loop.
+        // Mesmo se o número não existir / for inválido / der erro de rede, seguimos.
+        try {
+          const number = normalizarTelefone(env.telefone);
+          if (!number) {
             await admin.from("disparos_massa_envios")
-              .update({ status: "enviado", enviado_at: new Date().toISOString() })
-              .eq("id", env.id);
-            enviados++;
-          } catch (err) {
-            await admin.from("disparos_massa_envios")
-              .update({ status: "falha", erro: String((err as Error).message || err).slice(0, 500) })
+              .update({ status: "falha", erro: "Telefone inválido (formato incorreto)" })
               .eq("id", env.id);
             falhas++;
+            console.log(`[disparo ${disparoId}] telefone inválido: ${env.telefone}`);
+          } else {
+            try {
+              if (mediaUrl && mediaType) {
+                await evoSend("/message/sendMedia", {
+                  number,
+                  mediatype: mediaType,
+                  media: mediaUrl,
+                  caption: env.mensagem_enviada || "",
+                  fileName: mediaFilename || `file.${(mediaMime?.split("/")[1]) || "bin"}`,
+                });
+              } else {
+                await evoSend("/message/sendText", {
+                  number,
+                  text: env.mensagem_enviada || "",
+                });
+              }
+              await admin.from("disparos_massa_envios")
+                .update({ status: "enviado", enviado_at: new Date().toISOString() })
+                .eq("id", env.id);
+              enviados++;
+            } catch (err) {
+              const erroMsg = String((err as Error).message || err);
+              const inexistente = (err as any)?.numeroInexistente === true;
+              const erroSalvar = inexistente
+                ? `Número não está no WhatsApp: ${env.telefone}`
+                : erroMsg.slice(0, 500);
+              await admin.from("disparos_massa_envios")
+                .update({ status: "falha", erro: erroSalvar })
+                .eq("id", env.id);
+              falhas++;
+              console.log(`[disparo ${disparoId}] falha ${env.telefone}: ${erroSalvar.slice(0, 120)}`);
+              // IMPORTANTE: NÃO faz throw — segue para o próximo contato.
+            }
           }
-        }
 
-        await admin.from("disparos_massa")
-          .update({ total_enviados: enviados, total_falhas: falhas })
-          .eq("id", disparoId);
+          // Atualiza contadores (em try próprio para não parar se a DB falhar momentaneamente)
+          try {
+            await admin.from("disparos_massa")
+              .update({ total_enviados: enviados, total_falhas: falhas })
+              .eq("id", disparoId);
+          } catch (dbErr) {
+            console.error(`[disparo ${disparoId}] erro ao atualizar contadores:`, dbErr);
+          }
+        } catch (loopErr) {
+          // Última proteção: qualquer erro inesperado vira falha mas o loop continua.
+          falhas++;
+          console.error(`[disparo ${disparoId}] erro inesperado no contato ${env.telefone}:`, loopErr);
+          try {
+            await admin.from("disparos_massa_envios")
+              .update({ status: "falha", erro: `Erro inesperado: ${String((loopErr as Error)?.message || loopErr).slice(0, 400)}` })
+              .eq("id", env.id);
+          } catch { /* ignora */ }
+        }
 
         processadosNestaRun++;
       }
