@@ -263,19 +263,30 @@ Deno.serve(async (req) => {
           return;
         }
 
-        // Verifica cancelamento
+        // Verifica cancelamento ou pausa
         const { data: dStatus } = await admin
           .from("disparos_massa")
           .select("status")
           .eq("id", disparoId)
           .single();
         if (dStatus?.status === "cancelado") {
-          // Marca pendentes como cancelado
+          // Marca pendentes como cancelado (definitivo)
           await admin
             .from("disparos_massa_envios")
             .update({ status: "cancelado" })
             .eq("disparo_id", disparoId)
             .eq("status", "pendente");
+          await admin
+            .from("disparos_massa")
+            .update({ finalizado_at: new Date().toISOString() })
+            .eq("id", disparoId)
+            .is("finalizado_at", null);
+          return;
+        }
+        if (dStatus?.status === "pausado") {
+          // Para o loop SEM tocar nos envios — eles continuam "pendente"
+          // e podem ser retomados depois.
+          console.log(`[disparo ${disparoId}] pausado pelo usuário`);
           return;
         }
 
