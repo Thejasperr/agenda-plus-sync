@@ -223,6 +223,8 @@ Deno.serve(async (req) => {
           total_destinatarios: envios.length,
           total_enviados: 0,
           total_falhas: 0,
+          iniciado_at: new Date().toISOString(),
+          finalizado_at: null,
         })
         .eq("id", disparoId);
     }
