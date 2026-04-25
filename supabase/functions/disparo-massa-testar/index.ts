@@ -283,13 +283,11 @@ Deno.serve(async (req) => {
 
         i++;
 
-        // Persiste a cada 5 envios para evitar perda em caso de crash
-        if (i % 5 === 0) {
-          await admin
-            .from("disparos_massa_testes")
-            .update({ enviadas, falhas, proximo_indice: i, log_envios: logEnvios })
-            .eq("id", testeId);
-        }
+        // Persiste após CADA envio para que o progresso atualize em tempo real na UI
+        await admin
+          .from("disparos_massa_testes")
+          .update({ enviadas, falhas, proximo_indice: i, log_envios: logEnvios })
+          .eq("id", testeId);
 
         // Delay entre mensagens
         if (i < teste.quantidade_total) {
