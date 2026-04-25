@@ -328,7 +328,11 @@ const DisparosMassaTab = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'disparos_massa_envios' },
-        () => { fetchDisparos(); fetchEnvios(); },
+        () => {
+          fetchDisparos();
+          fetchEnvios();
+          if (historicoExpandido) fetchEnviosPorDisparo(historicoExpandido);
+        },
       )
       .on(
         'postgres_changes',
@@ -338,7 +342,7 @@ const DisparosMassaTab = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [historicoExpandido]);
 
   // Polling de segurança: enquanto houver disparo OU teste em andamento, refaz fetch a cada 1.5s
   useEffect(() => {
@@ -346,7 +350,10 @@ const DisparosMassaTab = () => {
     const temTesteAtivo = testes.some((t) => t.status === 'em_andamento' || t.status === 'pendente');
     if (!temEnviando && !temTesteAtivo) return;
     const interval = setInterval(() => {
-      if (temEnviando) fetchDisparos();
+      if (temEnviando) {
+        fetchDisparos();
+        if (historicoExpandido) fetchEnviosPorDisparo(historicoExpandido);
+      }
       if (temEnviando && tabAtiva === 'historico') fetchEnvios();
       if (temTesteAtivo) fetchTestes();
     }, 1500);
