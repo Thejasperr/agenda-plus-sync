@@ -139,6 +139,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Se foi pausado e estamos retomando, volta para "enviando"
+    if (disparo.status === "pausado" && modo === "continuar") {
+      await admin
+        .from("disparos_massa")
+        .update({ status: "enviando" })
+        .eq("id", disparoId);
+    }
+
     const { data: configRow } = await admin
       .from("disparos_massa_config")
       .select("delay_min, delay_max")
