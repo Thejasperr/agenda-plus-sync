@@ -173,10 +173,12 @@ Deno.serve(async (req) => {
       .order("nome")
       .limit(teste.quantidade_total);
 
-    // Marca como em_andamento
+    // Marca como em_andamento (preserva iniciado_at se já existir, senão grava agora)
+    const updateInicio: Record<string, unknown> = { status: "em_andamento" };
+    if (!teste.iniciado_at) updateInicio.iniciado_at = new Date().toISOString();
     await admin
       .from("disparos_massa_testes")
-      .update({ status: "em_andamento" })
+      .update(updateInicio)
       .eq("id", testeId);
 
     const numero = teste.telefone_teste;
