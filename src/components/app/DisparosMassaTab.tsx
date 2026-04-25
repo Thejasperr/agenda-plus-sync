@@ -208,7 +208,7 @@ const DisparosMassaTab = () => {
   };
 
   const cancelarDisparo = async (id: string) => {
-    if (!confirm('Cancelar este disparo? As mensagens já enviadas permanecem, mas as pendentes serão interrompidas.')) return;
+    if (!confirm('CANCELAR este disparo? Os envios pendentes serão marcados como cancelados e NÃO poderão ser retomados.')) return;
     setCancelandoId(id);
     const { error } = await supabase
       .from('disparos_massa')
@@ -218,7 +218,22 @@ const DisparosMassaTab = () => {
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Disparo cancelado', description: 'A interrupção pode levar alguns segundos.' });
+      toast({ title: 'Disparo cancelado', description: 'Os pendentes serão marcados como cancelados em alguns segundos.' });
+      fetchDisparos();
+    }
+  };
+
+  const pausarDisparo = async (id: string) => {
+    setCancelandoId(id);
+    const { error } = await supabase
+      .from('disparos_massa')
+      .update({ status: 'pausado' })
+      .eq('id', id);
+    setCancelandoId(null);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Disparo pausado', description: 'Os envios pendentes permanecem e podem ser retomados.' });
       fetchDisparos();
     }
   };
