@@ -671,6 +671,17 @@ const DisparosMassaTab = () => {
                   >
                     {expandido === d.id ? 'Ocultar variações' : 'Ver variações'}
                   </Button>
+                  {(d.total_destinatarios || 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleHistorico(d.id)}
+                      className="flex-1 min-w-[120px]"
+                    >
+                      <History className="h-3.5 w-3.5 mr-1" />
+                      {historicoExpandido === d.id ? 'Ocultar histórico' : 'Ver histórico'}
+                    </Button>
+                  )}
                   {d.status === 'enviando' ? (
                     <Button
                       size="sm"
