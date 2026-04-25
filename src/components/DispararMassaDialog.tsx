@@ -286,6 +286,62 @@ export const DispararMassaDialog: React.FC<Props> = ({ disparoId, open, onClose,
             </p>
           </div>
 
+          {/* TESTE */}
+          <Collapsible>
+            <div className="border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl bg-amber-50/50 dark:bg-amber-950/20">
+              <CollapsibleTrigger asChild>
+                <button type="button" className="w-full flex items-center justify-between p-3 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 rounded-xl transition-colors">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    <FlaskConical className="h-4 w-4" />
+                    Modo Teste — enviar para 1 número
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-amber-700 dark:text-amber-300 transition-transform data-[state=open]:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-3 pt-0 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Envia N cópias das mensagens (com variações balanceadas) para um único número, simulando o disparo real. Não conta no histórico nem no progresso.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-xs font-medium">Telefone de teste</label>
+                      <Input
+                        placeholder="14997778888 (com DDD)"
+                        value={telefoneTeste}
+                        onChange={(e) => setTelefoneTeste(e.target.value)}
+                        inputMode="tel"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium">Quantidade</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={qtdTeste}
+                        onChange={(e) => setQtdTeste(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={enviarTeste}
+                    disabled={enviandoTeste || uploadando}
+                    className="w-full border-amber-400 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                  >
+                    {enviandoTeste || uploadando ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {uploadando ? 'Enviando mídia...' : 'Iniciando teste...'}</>
+                    ) : (
+                      <><FlaskConical className="h-4 w-4 mr-2" /> Enviar {qtdTeste} mensagem{qtdTeste !== 1 ? 's' : ''} de teste</>
+                    )}
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
           {/* Busca + selecionar todos */}
           <div className="space-y-2 sticky top-0 bg-background pb-2 z-10">
             <div className="flex items-center gap-2">
