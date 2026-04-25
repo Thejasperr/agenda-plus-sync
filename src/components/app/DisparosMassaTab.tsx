@@ -541,19 +541,23 @@ const DisparosMassaTab = () => {
         </Card>
       </Collapsible>
 
-      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico' | 'logs')}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="criar" className="flex items-center gap-1.5">
+      <Tabs value={tabAtiva} onValueChange={(v) => setTabAtiva(v as 'criar' | 'historico' | 'logs' | 'testes')}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="criar" className="flex items-center gap-1 text-xs sm:text-sm">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Criar</span>
+            <span className="hidden sm:inline">Criar</span>
           </TabsTrigger>
-          <TabsTrigger value="historico" className="flex items-center gap-1.5">
+          <TabsTrigger value="historico" className="flex items-center gap-1 text-xs sm:text-sm">
             <History className="h-3.5 w-3.5" />
-            <span>Histórico</span>
+            <span className="hidden sm:inline">Histórico</span>
           </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-1.5">
+          <TabsTrigger value="logs" className="flex items-center gap-1 text-xs sm:text-sm">
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span>Erros</span>
+            <span className="hidden sm:inline">Erros</span>
+          </TabsTrigger>
+          <TabsTrigger value="testes" className="flex items-center gap-1 text-xs sm:text-sm">
+            <FlaskConical className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Testes</span>
           </TabsTrigger>
         </TabsList>
 
