@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
       body: JSON.stringify({}),
     });
     const txt = await r.text();
-    let chats: any[] = [];
+    let chats: any = [];
     try { chats = JSON.parse(txt); } catch { chats = []; }
-    if (!Array.isArray(chats)) chats = chats?.chats || [];
+    if (!Array.isArray(chats)) chats = (chats as any)?.chats || [];
 
     // 2) Pré-carregar todos os clientes do user uma única vez
     const { data: clientes } = await admin
