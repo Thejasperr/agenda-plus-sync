@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
           // Acabou
           await admin
             .from("disparos_massa")
-            .update({ status: "concluido" })
+            .update({ status: "concluido", finalizado_at: new Date().toISOString() })
             .eq("id", disparoId);
           return;
         }
