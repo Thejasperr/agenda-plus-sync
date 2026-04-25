@@ -190,6 +190,7 @@ Deno.serve(async (req) => {
       // Limpa envios antigos do disparo (idempotente)
       await admin.from("disparos_massa_envios").delete().eq("disparo_id", disparoId);
 
+      let ultimaVariacaoId: string | null = null;
       const envios = clientes.map((c) => {
         const jaEnviadas = enviadasPorCliente.get(c.id) || new Set();
 
@@ -201,8 +202,16 @@ Deno.serve(async (req) => {
         // (caso contrário o cliente não receberia nada).
         if (candidatas.length === 0) candidatas = mensagensPool;
 
+        // Evita repetir a mesma variação consecutivamente entre clientes.
+        // Só remove a última se ainda sobrar pelo menos uma alternativa.
+        if (ultimaVariacaoId && candidatas.length > 1) {
+          const semRepetir = candidatas.filter((v) => v.id !== ultimaVariacaoId);
+          if (semRepetir.length > 0) candidatas = semRepetir;
+        }
+
         // Escolha 100% aleatória entre as candidatas
         const escolhida = candidatas[Math.floor(Math.random() * candidatas.length)];
+        ultimaVariacaoId = escolhida.id;
 
         return {
           disparo_id: disparoId,
