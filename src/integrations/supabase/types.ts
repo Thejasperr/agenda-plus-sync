@@ -363,6 +363,57 @@ export type Database = {
           },
         ]
       }
+      disparos_massa_testes: {
+        Row: {
+          created_at: string
+          disparo_id: string
+          enviadas: number
+          falhas: number
+          finalizado_at: string | null
+          id: string
+          log_envios: Json
+          proximo_indice: number
+          quantidade_total: number
+          status: string
+          telefone_teste: string
+          ultimo_erro: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disparo_id: string
+          enviadas?: number
+          falhas?: number
+          finalizado_at?: string | null
+          id?: string
+          log_envios?: Json
+          proximo_indice?: number
+          quantidade_total: number
+          status?: string
+          telefone_teste: string
+          ultimo_erro?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          disparo_id?: string
+          enviadas?: number
+          falhas?: number
+          finalizado_at?: string | null
+          id?: string
+          log_envios?: Json
+          proximo_indice?: number
+          quantidade_total?: number
+          status?: string
+          telefone_teste?: string
+          ultimo_erro?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       disparos_massa_variacoes: {
         Row: {
           created_at: string
