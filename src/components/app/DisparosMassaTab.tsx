@@ -548,18 +548,30 @@ const DisparosMassaTab = () => {
                   >
                     {expandido === d.id ? 'Ocultar variações' : 'Ver variações'}
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => abrirDispararDialog(d.id)}
-                    disabled={d.status === 'enviando'}
-                    className="flex-1"
-                  >
-                    {d.status === 'enviando' ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Enviando...</>
-                    ) : (
-                      <><Rocket className="h-3.5 w-3.5 mr-1" /> Disparar</>
-                    )}
-                  </Button>
+                  {d.status === 'enviando' ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => cancelarDisparo(d.id)}
+                      disabled={cancelandoId === d.id}
+                      className="flex-1"
+                    >
+                      {cancelandoId === d.id ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Cancelando...</>
+                      ) : (
+                        <><Ban className="h-3.5 w-3.5 mr-1" /> Cancelar disparo</>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => abrirDispararDialog(d.id)}
+                      disabled={d.status === 'cancelado' && false}
+                      className="flex-1"
+                    >
+                      <Rocket className="h-3.5 w-3.5 mr-1" /> Disparar
+                    </Button>
+                  )}
                 </div>
 
                 {/* Progresso de envio */}
