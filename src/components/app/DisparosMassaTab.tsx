@@ -362,6 +362,8 @@ const DisparosMassaTab = () => {
       concluido: { label: 'Concluído', cls: 'bg-primary/15 text-primary' },
       enviando: { label: 'Enviando...', cls: 'bg-primary/15 text-primary' },
       enviado: { label: 'Enviado', cls: 'bg-emerald-100 text-emerald-700' },
+      cancelado: { label: 'Cancelado', cls: 'bg-destructive/15 text-destructive' },
+      falha: { label: 'Falha', cls: 'bg-destructive/15 text-destructive' },
     };
     const m = map[status] || { label: status, cls: 'bg-muted' };
     return <Badge className={m.cls}>{m.label}</Badge>;
@@ -681,7 +683,7 @@ const DisparosMassaTab = () => {
                   />
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  {(['todos', 'sucesso', 'falha', 'pendente'] as const).map((s) => (
+                  {(['todos', 'enviado', 'falha', 'pendente', 'cancelado'] as const).map((s) => (
                     <Button
                       key={s}
                       size="sm"
