@@ -792,6 +792,68 @@ const DisparosMassaTab = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="logs" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Log de Erros de Envio
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {logsErros.length} {logsErros.length === 1 ? 'erro registrado' : 'erros registrados'}
+                </p>
+                <Button size="sm" variant="outline" onClick={fetchLogs} disabled={loadingLogs}>
+                  {loadingLogs ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Atualizar'}
+                </Button>
+              </div>
+              {loadingLogs ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : logsErros.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
+                  <p className="text-sm text-muted-foreground">Nenhum erro registrado. Tudo certo!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {logsErros.map((e) => (
+                    <div key={e.id} className="border border-destructive/30 rounded-lg p-3 space-y-1.5 bg-destructive/5">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                          <span className="font-medium text-sm truncate">{e.cliente_nome}</span>
+                          <span className="text-xs text-muted-foreground">·</span>
+                          <span className="text-xs text-muted-foreground">{e.telefone}</span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(e.updated_at || e.created_at).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-destructive font-medium bg-destructive/10 rounded p-2">
+                        {e.erro || 'Erro não especificado'}
+                      </p>
+                      {e.mensagem_enviada && (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                            Ver mensagem
+                          </summary>
+                          <p className="mt-1.5 whitespace-pre-wrap text-foreground/80 bg-muted/40 rounded p-2">
+                            {e.mensagem_enviada}
+                          </p>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <DispararMassaDialog
