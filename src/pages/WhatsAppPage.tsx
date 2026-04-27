@@ -1333,8 +1333,8 @@ const MessageBubble = React.memo<MessageBubbleProps>(({
           )}
         </div>
       )}
-      <div className="relative">
-        <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+      <div className="relative max-w-[85%] sm:max-w-[65%]">
+        <div className={`rounded-2xl px-3 py-2 shadow-sm break-words ${isMe ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
           {quoted && (
             <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-xs ${isMe ? 'bg-primary-foreground/10 border-primary-foreground/40' : 'bg-muted border-primary'}`}>
               <p className={`font-semibold text-[10px] ${isMe ? 'text-primary-foreground/80' : 'text-primary'}`}>
