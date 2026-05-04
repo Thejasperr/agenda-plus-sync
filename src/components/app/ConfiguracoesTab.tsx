@@ -11,6 +11,7 @@ import ConfiguracaoPixTab from './ConfiguracaoPixTab';
 import PacotesTab from './PacotesTab';
 import DisparosMassaTab from './DisparosMassaTab';
 import GruposConfigTab from './GruposConfigTab';
+import EvolutionConfigTab from './EvolutionConfigTab';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
