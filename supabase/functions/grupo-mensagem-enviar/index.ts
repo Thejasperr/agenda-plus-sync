@@ -109,13 +109,13 @@ Deno.serve(async (req) => {
     try {
       if (!midias || midias.length === 0) {
         // Apenas texto
-        await evoSend('/message/sendText', { number, text: texto });
+        await evoSend(cfg, '/message/sendText', { number, text: texto });
       } else {
         // 1ª mídia leva a legenda; demais sem legenda
         for (let i = 0; i < midias.length; i++) {
           const m = midias[i];
           const isFirst = i === 0;
-          await evoSend('/message/sendMedia', {
+          await evoSend(cfg, '/message/sendMedia', {
             number,
             mediatype: m.media_type, // image | video
             media: m.media_url,
