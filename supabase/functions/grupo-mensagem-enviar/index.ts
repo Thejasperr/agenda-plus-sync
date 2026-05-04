@@ -13,14 +13,25 @@ const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')!;
 const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')!;
 const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE_NAME')!;
 
-function evoUrl(path: string) {
-  return `${EVOLUTION_API_URL.replace(/\/$/, '')}${path}/${EVOLUTION_INSTANCE}`;
+type EvoCfg = { url: string; instance: string; key: string };
+
+async function loadEvoConfig(admin: any, userId: string): Promise<EvoCfg> {
+  const { data } = await admin
+    .from('evolution_config')
+    .select('api_url, instance_name, api_key')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return {
+    url: (data?.api_url || EVOLUTION_API_URL || '').replace(/\/$/, ''),
+    instance: data?.instance_name || EVOLUTION_INSTANCE,
+    key: data?.api_key || EVOLUTION_API_KEY,
+  };
 }
 
-async function evoSend(path: string, body: Record<string, unknown>) {
-  const r = await fetch(evoUrl(path), {
+async function evoSend(cfg: EvoCfg, path: string, body: Record<string, unknown>) {
+  const r = await fetch(`${cfg.url}${path}/${cfg.instance}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
+    headers: { 'Content-Type': 'application/json', apikey: cfg.key },
     body: JSON.stringify(body),
   });
   const text = await r.text();
@@ -58,6 +69,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = userData.user.id;
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const mensagemId = String(body.mensagem_id || '');
     const remoteJid = String(body.remote_jid || '');
@@ -98,13 +110,13 @@ Deno.serve(async (req) => {
     try {
       if (!midias || midias.length === 0) {
         // Apenas texto
-        await evoSend('/message/sendText', { number, text: texto });
+        await evoSend(cfg, '/message/sendText', { number, text: texto });
       } else {
         // 1ª mídia leva a legenda; demais sem legenda
         for (let i = 0; i < midias.length; i++) {
           const m = midias[i];
           const isFirst = i === 0;
-          await evoSend('/message/sendMedia', {
+          await evoSend(cfg, '/message/sendMedia', {
             number,
             mediatype: m.media_type, // image | video
             media: m.media_url,

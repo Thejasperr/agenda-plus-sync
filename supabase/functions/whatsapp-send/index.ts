@@ -14,14 +14,23 @@ const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL")!;
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY")!;
 const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE_NAME")!;
 
-function evoUrl(path: string) {
-  return `${EVOLUTION_API_URL.replace(/\/$/, "")}${path}/${EVOLUTION_INSTANCE}`;
+async function loadEvoConfig(admin: any, userId: string) {
+  const { data } = await admin
+    .from("evolution_config")
+    .select("api_url, instance_name, api_key")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return {
+    url: (data?.api_url || EVOLUTION_API_URL || "").replace(/\/$/, ""),
+    instance: data?.instance_name || EVOLUTION_INSTANCE,
+    key: data?.api_key || EVOLUTION_API_KEY,
+  };
 }
 
-async function evoFetch(path: string, body: any) {
-  const r = await fetch(evoUrl(path), {
+async function evoFetch(cfg: { url: string; instance: string; key: string }, path: string, body: any) {
+  const r = await fetch(`${cfg.url}${path}/${cfg.instance}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+    headers: { "Content-Type": "application/json", apikey: cfg.key },
     body: JSON.stringify(body),
   });
   const text = await r.text();
@@ -45,6 +54,7 @@ Deno.serve(async (req) => {
     if (!userId || userErr) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const { chat_id, remote_jid, type, content, media_base64, media_mime, filename, caption, quoted } = body;
 
@@ -63,7 +73,7 @@ Deno.serve(async (req) => {
     let evoResp: any; let mediaUrl: string | null = null;
 
     if (type === "text") {
-      evoResp = await evoFetch("/message/sendText", { number, text: content, ...(quotedPayload ? { quoted: quotedPayload } : {}) });
+      evoResp = await evoFetch(cfg, "/message/sendText", { number, text: content, ...(quotedPayload ? { quoted: quotedPayload } : {}) });
     } else if (type === "image" || type === "video" || type === "document") {
       // Upload para storage primeiro
       if (media_base64) {
@@ -78,7 +88,7 @@ Deno.serve(async (req) => {
         const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
         mediaUrl = pub.publicUrl;
       }
-      evoResp = await evoFetch("/message/sendMedia", {
+      evoResp = await evoFetch(cfg, "/message/sendMedia", {
         number,
         mediatype: type, // image | video | document
         media: mediaUrl || media_base64,
@@ -99,7 +109,7 @@ Deno.serve(async (req) => {
         const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
         mediaUrl = pub.publicUrl;
       }
-      evoResp = await evoFetch("/message/sendSticker", {
+      evoResp = await evoFetch(cfg, "/message/sendSticker", {
         number, sticker: mediaUrl || media_base64,
         ...(quotedPayload ? { quoted: quotedPayload } : {}),
       });
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
         const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
         mediaUrl = pub.publicUrl;
       }
-      evoResp = await evoFetch("/message/sendWhatsAppAudio", {
+      evoResp = await evoFetch(cfg, "/message/sendWhatsAppAudio", {
         number, audio: mediaUrl || media_base64,
         ...(quotedPayload ? { quoted: quotedPayload } : {}),
       });

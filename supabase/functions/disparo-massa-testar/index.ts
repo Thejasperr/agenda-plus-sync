@@ -18,14 +18,25 @@ const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE_NAME")!;
 
 const MAX_RUN_MS = 110_000; // 110s — abaixo do limite de 150s
 
-function evoUrl(path: string) {
-  return `${EVOLUTION_API_URL.replace(/\/$/, "")}${path}/${EVOLUTION_INSTANCE}`;
+type EvoCfg = { url: string; instance: string; key: string };
+
+async function loadEvoConfig(admin: any, userId: string): Promise<EvoCfg> {
+  const { data } = await admin
+    .from("evolution_config")
+    .select("api_url, instance_name, api_key")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return {
+    url: (data?.api_url || EVOLUTION_API_URL || "").replace(/\/$/, ""),
+    instance: data?.instance_name || EVOLUTION_INSTANCE,
+    key: data?.api_key || EVOLUTION_API_KEY,
+  };
 }
 
-async function evoSend(path: string, body: Record<string, unknown>) {
-  const r = await fetch(evoUrl(path), {
+async function evoSend(cfg: EvoCfg, path: string, body: Record<string, unknown>) {
+  const r = await fetch(`${cfg.url}${path}/${cfg.instance}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+    headers: { "Content-Type": "application/json", apikey: cfg.key },
     body: JSON.stringify(body),
   });
   const text = await r.text();
@@ -89,6 +100,7 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const modo = String(body.modo || "novo");
 
@@ -245,7 +257,7 @@ Deno.serve(async (req) => {
         const inicioEnvio = Date.now();
         try {
           if (mediaUrl && mediaType) {
-            await evoSend("/message/sendMedia", {
+            await evoSend(cfg, "/message/sendMedia", {
               number: numero,
               mediatype: mediaType,
               media: mediaUrl,
@@ -253,7 +265,7 @@ Deno.serve(async (req) => {
               fileName: mediaFilename || `file.${(mediaMime?.split("/")[1]) || "bin"}`,
             });
           } else {
-            await evoSend("/message/sendText", { number: numero, text: texto });
+            await evoSend(cfg, "/message/sendText", { number: numero, text: texto });
           }
           enviadas++;
           logEnvios.push({

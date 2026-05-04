@@ -18,18 +18,29 @@ const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE_NAME")!;
 // Limites do edge function: paramos antes de bater no timeout (~150s)
 const MAX_RUN_MS = 110_000; // 110s por execução, depois reagenda
 
-function evoUrl(path: string) {
-  return `${EVOLUTION_API_URL.replace(/\/$/, "")}${path}/${EVOLUTION_INSTANCE}`;
+type EvoCfg = { url: string; instance: string; key: string };
+
+async function loadEvoConfig(admin: any, userId: string): Promise<EvoCfg> {
+  const { data } = await admin
+    .from("evolution_config")
+    .select("api_url, instance_name, api_key")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return {
+    url: (data?.api_url || EVOLUTION_API_URL || "").replace(/\/$/, ""),
+    instance: data?.instance_name || EVOLUTION_INSTANCE,
+    key: data?.api_key || EVOLUTION_API_KEY,
+  };
 }
 
 // Padrões que indicam que o número NÃO existe no WhatsApp (resposta da Evolution).
 // Quando detectados, marcamos como falha e SEGUIMOS para o próximo contato.
 const NUMERO_INEXISTENTE_REGEX = /(exists?\s*[:=]\s*false|not\s*exist|n[ãa]o\s*existe|invalid\s*(jid|number|wuid)|number.*not.*registered|notInWhatsapp|wuid.*null)/i;
 
-async function evoSend(path: string, body: Record<string, unknown>) {
-  const r = await fetch(evoUrl(path), {
+async function evoSend(cfg: EvoCfg, path: string, body: Record<string, unknown>) {
+  const r = await fetch(`${cfg.url}${path}/${cfg.instance}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+    headers: { "Content-Type": "application/json", apikey: cfg.key },
     body: JSON.stringify(body),
   });
   const text = await r.text();
@@ -117,6 +128,7 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const disparoId = String(body.disparo_id || "").trim();
     const modo = String(body.modo || "novo"); // "novo" ou "continuar"
@@ -344,7 +356,7 @@ Deno.serve(async (req) => {
           } else {
             try {
               if (mediaUrl && mediaType) {
-                await evoSend("/message/sendMedia", {
+                await evoSend(cfg, "/message/sendMedia", {
                   number,
                   mediatype: mediaType,
                   media: mediaUrl,
@@ -352,7 +364,7 @@ Deno.serve(async (req) => {
                   fileName: mediaFilename || `file.${(mediaMime?.split("/")[1]) || "bin"}`,
                 });
               } else {
-                await evoSend("/message/sendText", {
+                await evoSend(cfg, "/message/sendText", {
                   number,
                   text: env.mensagem_enviada || "",
                 });
