@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     if (!userId || userErr) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const { chat_id, remote_jid, type, content, media_base64, media_mime, filename, caption, quoted } = body;
 
