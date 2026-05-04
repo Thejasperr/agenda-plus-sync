@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
         const inicioEnvio = Date.now();
         try {
           if (mediaUrl && mediaType) {
-            await evoSend("/message/sendMedia", {
+            await evoSend(cfg, "/message/sendMedia", {
               number: numero,
               mediatype: mediaType,
               media: mediaUrl,
@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
               fileName: mediaFilename || `file.${(mediaMime?.split("/")[1]) || "bin"}`,
             });
           } else {
-            await evoSend("/message/sendText", { number: numero, text: texto });
+            await evoSend(cfg, "/message/sendText", { number: numero, text: texto });
           }
           enviadas++;
           logEnvios.push({
