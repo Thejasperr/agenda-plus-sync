@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     let evoResp: any; let mediaUrl: string | null = null;
 
     if (type === "text") {
-      evoResp = await evoFetch("/message/sendText", { number, text: content, ...(quotedPayload ? { quoted: quotedPayload } : {}) });
+      evoResp = await evoFetch(cfg, "/message/sendText", { number, text: content, ...(quotedPayload ? { quoted: quotedPayload } : {}) });
     } else if (type === "image" || type === "video" || type === "document") {
       // Upload para storage primeiro
       if (media_base64) {
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
         mediaUrl = pub.publicUrl;
       }
-      evoResp = await evoFetch("/message/sendMedia", {
+      evoResp = await evoFetch(cfg, "/message/sendMedia", {
         number,
         mediatype: type, // image | video | document
         media: mediaUrl || media_base64,
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
         mediaUrl = pub.publicUrl;
       }
-      evoResp = await evoFetch("/message/sendSticker", {
+      evoResp = await evoFetch(cfg, "/message/sendSticker", {
         number, sticker: mediaUrl || media_base64,
         ...(quotedPayload ? { quoted: quotedPayload } : {}),
       });
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
         const { data: pub } = admin.storage.from("whatsapp-media").getPublicUrl(path);
         mediaUrl = pub.publicUrl;
       }
-      evoResp = await evoFetch("/message/sendWhatsAppAudio", {
+      evoResp = await evoFetch(cfg, "/message/sendWhatsAppAudio", {
         number, audio: mediaUrl || media_base64,
         ...(quotedPayload ? { quoted: quotedPayload } : {}),
       });
