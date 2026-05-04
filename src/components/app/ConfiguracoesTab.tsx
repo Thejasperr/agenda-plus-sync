@@ -103,7 +103,7 @@ const ConfiguracoesTab = () => {
       <h2 className="text-2xl font-bold">Configurações</h2>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="servicos" className="flex items-center gap-1 text-xs sm:text-sm">
             <Wrench className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Serviços</span>
@@ -131,6 +131,10 @@ const ConfiguracoesTab = () => {
           <TabsTrigger value="grupos" className="flex items-center gap-1 text-xs sm:text-sm">
             <Sparkles className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Grupos</span>
+          </TabsTrigger>
+          <TabsTrigger value="evolution" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Plug className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Evolution</span>
           </TabsTrigger>
         </TabsList>
 
