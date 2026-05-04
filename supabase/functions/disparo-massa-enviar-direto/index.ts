@@ -355,7 +355,7 @@ Deno.serve(async (req) => {
           } else {
             try {
               if (mediaUrl && mediaType) {
-                await evoSend("/message/sendMedia", {
+                await evoSend(cfg, "/message/sendMedia", {
                   number,
                   mediatype: mediaType,
                   media: mediaUrl,
@@ -363,7 +363,7 @@ Deno.serve(async (req) => {
                   fileName: mediaFilename || `file.${(mediaMime?.split("/")[1]) || "bin"}`,
                 });
               } else {
-                await evoSend("/message/sendText", {
+                await evoSend(cfg, "/message/sendText", {
                   number,
                   text: env.mensagem_enviada || "",
                 });
