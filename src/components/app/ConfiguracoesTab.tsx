@@ -165,6 +165,10 @@ const ConfiguracoesTab = () => {
         <TabsContent value="grupos">
           <GruposConfigTab />
         </TabsContent>
+
+        <TabsContent value="evolution">
+          <EvolutionConfigTab />
+        </TabsContent>
       </Tabs>
 
       <Card>
