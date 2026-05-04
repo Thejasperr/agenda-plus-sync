@@ -40,7 +40,11 @@ Deno.serve(async (req) => {
     }
 
     const reactionEmoji = typeof emoji === "string" ? emoji : "";
-    const url = `${EVOLUTION_API_URL.replace(/\/$/, "")}/message/sendReaction/${EVOLUTION_INSTANCE}`;
+    const { data: cfgRow } = await admin.from("evolution_config").select("api_url, instance_name, api_key").eq("user_id", userId).maybeSingle();
+    const evoUrlBase = (cfgRow?.api_url || EVOLUTION_API_URL || "").replace(/\/$/, "");
+    const evoInstance = cfgRow?.instance_name || EVOLUTION_INSTANCE;
+    const evoKey = cfgRow?.api_key || EVOLUTION_API_KEY;
+    const url = `${evoUrlBase}/message/sendReaction/${evoInstance}`;
     // Evolution API v2 espera payload plano { key, reaction }
     const evoBody = {
       key: { id: message_id, remoteJid: remote_jid, fromMe: !!from_me },
@@ -49,7 +53,7 @@ Deno.serve(async (req) => {
 
     const r = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+      headers: { "Content-Type": "application/json", apikey: evoKey },
       body: JSON.stringify(evoBody),
     });
     const txt = await r.text();
