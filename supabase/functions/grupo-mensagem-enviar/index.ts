@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = userData.user.id;
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const mensagemId = String(body.mensagem_id || '');
     const remoteJid = String(body.remote_jid || '');
