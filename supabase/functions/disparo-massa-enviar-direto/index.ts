@@ -128,6 +128,7 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const disparoId = String(body.disparo_id || "").trim();
     const modo = String(body.modo || "novo"); // "novo" ou "continuar"
