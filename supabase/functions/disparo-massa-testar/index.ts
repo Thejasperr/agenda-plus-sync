@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const cfg = await loadEvoConfig(admin, userId);
     const body = await req.json();
     const modo = String(body.modo || "novo");
 
