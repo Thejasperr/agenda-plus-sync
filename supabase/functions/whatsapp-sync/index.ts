@@ -29,11 +29,16 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    const { data: cfgRow } = await admin.from("evolution_config").select("api_url, instance_name, api_key").eq("user_id", userId).maybeSingle();
+    const evoUrlBase = (cfgRow?.api_url || EVOLUTION_API_URL || "").replace(/\/$/, "");
+    const evoInstance = cfgRow?.instance_name || EVOLUTION_INSTANCE;
+    const evoKey = cfgRow?.api_key || EVOLUTION_API_KEY;
+
     // 1) Buscar chats da Evolution
-    const url = `${EVOLUTION_API_URL.replace(/\/$/, "")}/chat/findChats/${EVOLUTION_INSTANCE}`;
+    const url = `${evoUrlBase}/chat/findChats/${evoInstance}`;
     const r = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+      headers: { "Content-Type": "application/json", apikey: evoKey },
       body: JSON.stringify({}),
     });
     const txt = await r.text();
