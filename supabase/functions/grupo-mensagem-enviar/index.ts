@@ -13,14 +13,25 @@ const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')!;
 const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')!;
 const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE_NAME')!;
 
-function evoUrl(path: string) {
-  return `${EVOLUTION_API_URL.replace(/\/$/, '')}${path}/${EVOLUTION_INSTANCE}`;
+type EvoCfg = { url: string; instance: string; key: string };
+
+async function loadEvoConfig(admin: any, userId: string): Promise<EvoCfg> {
+  const { data } = await admin
+    .from('evolution_config')
+    .select('api_url, instance_name, api_key')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return {
+    url: (data?.api_url || EVOLUTION_API_URL || '').replace(/\/$/, ''),
+    instance: data?.instance_name || EVOLUTION_INSTANCE,
+    key: data?.api_key || EVOLUTION_API_KEY,
+  };
 }
 
-async function evoSend(path: string, body: Record<string, unknown>) {
-  const r = await fetch(evoUrl(path), {
+async function evoSend(cfg: EvoCfg, path: string, body: Record<string, unknown>) {
+  const r = await fetch(`${cfg.url}${path}/${cfg.instance}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
+    headers: { 'Content-Type': 'application/json', apikey: cfg.key },
     body: JSON.stringify(body),
   });
   const text = await r.text();
