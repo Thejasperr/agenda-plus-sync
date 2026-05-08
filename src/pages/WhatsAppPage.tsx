@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2, PenSquare, Sparkles } from 'lucide-react';
+import { Search, ArrowLeft, RefreshCw, MessageCircle, BadgeCheck, UserPlus, CalendarPlus, Send, Paperclip, Mic, Square, Image as ImageIcon, Video, FileText, Play, Pause, Download, Users as UsersIcon, User as UserIcon, Reply, Smile, X, Wallet, AlertCircle, CalendarCheck, Trash2, PenSquare, Sparkles, CheckCheck } from 'lucide-react';
 import GerarMensagemGrupoDialog from '@/components/GerarMensagemGrupoDialog';
 import EmojiPicker, { EmojiStyle, Theme } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -416,6 +416,28 @@ const WhatsAppPage: React.FC = () => {
     loadChats();
   };
 
+  const handleMarkGroupsAsRead = async () => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('whatsapp_chats')
+        .update({ unread_count: 0 })
+        .eq('user_id', user.id)
+        .like('remote_jid', '%@g.us');
+
+      if (error) throw error;
+
+      setChats((prev) =>
+        prev.map((c) => (isGroup(c.remote_jid) ? { ...c, unread_count: 0 } : c))
+      );
+
+      toast({ title: 'Sucesso', description: 'Todos os grupos foram marcados como lidos.' });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Erro', description: 'Não foi possível marcar os grupos como lidos.', variant: 'destructive' });
+    }
+  };
+
   // Enviar texto — não bloqueia o input. Permite enviar várias em sequência.
   const sendText = () => {
     if (!text.trim() || !activeChat) return;
@@ -718,6 +740,17 @@ const WhatsAppPage: React.FC = () => {
         <div className="p-2.5 sm:p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-foreground flex-1">Conversas</h2>
+            {tab === 'group' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleMarkGroupsAsRead}
+                className="h-8 w-8 p-0"
+                title="Marcar todos como lidos"
+              >
+                <CheckCheck className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
