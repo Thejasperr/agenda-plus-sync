@@ -274,6 +274,13 @@ const WhatsAppPage: React.FC = () => {
     // zerar unread (local imediato + banco)
     setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, unread_count: 0 } : c)));
     supabase.from('whatsapp_chats').update({ unread_count: 0 }).eq('id', chatId).then();
+    
+    // Marcar como lido no WhatsApp real via Evolution API
+    if (activeChat?.remote_jid) {
+      supabase.functions.invoke('whatsapp-read', {
+        body: { remote_jid: activeChat.remote_jid }
+      }).catch(err => console.error('Erro ao marcar como lido no WhatsApp:', err));
+    }
 
     const ch = supabase.channel(`wa-msgs-${chatId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `chat_id=eq.${chatId}` }, (payload) => {
