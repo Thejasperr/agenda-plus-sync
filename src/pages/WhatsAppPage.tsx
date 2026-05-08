@@ -1400,9 +1400,26 @@ const MessageBubble = React.memo<MessageBubbleProps>(({
           {(message.content || message.caption) && (
             <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.caption}</p>
           )}
-          <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-            {format(new Date(message.timestamp), 'HH:mm')}
-          </p>
+          <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+            <span className="text-[10px]">
+              {format(new Date(message.timestamp), 'HH:mm')}
+            </span>
+            {isMe && (
+              <div className="flex items-center">
+                {message.status === 'error' ? (
+                  <AlertCircle className="h-3 w-3 text-destructive" />
+                ) : message.status === 'pending' ? (
+                  <Clock className="h-3 w-3" />
+                ) : message.status === 'read' ? (
+                  <CheckCheck className="h-3.5 w-3.5 text-blue-400" />
+                ) : message.status === 'delivered' ? (
+                  <CheckCheck className="h-3.5 w-3.5" />
+                ) : (
+                  <CheckCheck className="h-3.5 w-3.5 opacity-50" />
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {/* Bolha de reações sobreposta — estilo WhatsApp */}
         {Object.keys(grouped).length > 0 && (
