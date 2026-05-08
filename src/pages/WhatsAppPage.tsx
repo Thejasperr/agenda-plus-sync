@@ -426,6 +426,7 @@ const WhatsAppPage: React.FC = () => {
   const handleMarkGroupsAsRead = async () => {
     if (!user) return;
     try {
+      // 1. Atualizar banco de dados local
       const { error } = await supabase
         .from('whatsapp_chats')
         .update({ unread_count: 0 })
@@ -434,9 +435,19 @@ const WhatsAppPage: React.FC = () => {
 
       if (error) throw error;
 
+      // 2. Atualizar UI local
       setChats((prev) =>
         prev.map((c) => (isGroup(c.remote_jid) ? { ...c, unread_count: 0 } : c))
       );
+
+      // 3. Notificar WhatsApp real para cada grupo com mensagens não lidas
+      const groupsToMark = chats.filter(c => isGroup(c.remote_jid) && c.unread_count > 0);
+      
+      Promise.all(groupsToMark.map(group => 
+        supabase.functions.invoke('whatsapp-read', {
+          body: { remote_jid: group.remote_jid }
+        })
+      )).catch(err => console.error('Erro ao marcar grupos como lidos no WhatsApp:', err));
 
       toast({ title: 'Sucesso', description: 'Todos os grupos foram marcados como lidos.' });
     } catch (e: any) {
