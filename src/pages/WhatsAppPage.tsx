@@ -416,6 +416,28 @@ const WhatsAppPage: React.FC = () => {
     loadChats();
   };
 
+  const handleMarkGroupsAsRead = async () => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('whatsapp_chats')
+        .update({ unread_count: 0 })
+        .eq('user_id', user.id)
+        .like('remote_jid', '%@g.us');
+
+      if (error) throw error;
+
+      setChats((prev) =>
+        prev.map((c) => (isGroup(c.remote_jid) ? { ...c, unread_count: 0 } : c))
+      );
+
+      toast({ title: 'Sucesso', description: 'Todos os grupos foram marcados como lidos.' });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Erro', description: 'Não foi possível marcar os grupos como lidos.', variant: 'destructive' });
+    }
+  };
+
   // Enviar texto — não bloqueia o input. Permite enviar várias em sequência.
   const sendText = () => {
     if (!text.trim() || !activeChat) return;
