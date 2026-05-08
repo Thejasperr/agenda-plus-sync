@@ -274,6 +274,13 @@ const WhatsAppPage: React.FC = () => {
     // zerar unread (local imediato + banco)
     setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, unread_count: 0 } : c)));
     supabase.from('whatsapp_chats').update({ unread_count: 0 }).eq('id', chatId).then();
+    
+    // Marcar como lido no WhatsApp real via Evolution API
+    if (activeChat?.remote_jid) {
+      supabase.functions.invoke('whatsapp-read', {
+        body: { remote_jid: activeChat.remote_jid }
+      }).catch(err => console.error('Erro ao marcar como lido no WhatsApp:', err));
+    }
 
     const ch = supabase.channel(`wa-msgs-${chatId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `chat_id=eq.${chatId}` }, (payload) => {
@@ -419,6 +426,7 @@ const WhatsAppPage: React.FC = () => {
   const handleMarkGroupsAsRead = async () => {
     if (!user) return;
     try {
+      // 1. Atualizar banco de dados local
       const { error } = await supabase
         .from('whatsapp_chats')
         .update({ unread_count: 0 })
@@ -427,9 +435,19 @@ const WhatsAppPage: React.FC = () => {
 
       if (error) throw error;
 
+      // 2. Atualizar UI local
       setChats((prev) =>
         prev.map((c) => (isGroup(c.remote_jid) ? { ...c, unread_count: 0 } : c))
       );
+
+      // 3. Notificar WhatsApp real para cada grupo com mensagens não lidas
+      const groupsToMark = chats.filter(c => isGroup(c.remote_jid) && c.unread_count > 0);
+      
+      Promise.all(groupsToMark.map(group => 
+        supabase.functions.invoke('whatsapp-read', {
+          body: { remote_jid: group.remote_jid }
+        })
+      )).catch(err => console.error('Erro ao marcar grupos como lidos no WhatsApp:', err));
 
       toast({ title: 'Sucesso', description: 'Todos os grupos foram marcados como lidos.' });
     } catch (e: any) {
