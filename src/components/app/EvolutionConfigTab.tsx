@@ -94,12 +94,11 @@ const EvolutionConfigTab = () => {
             <Plug className="h-5 w-5" />
             Conexão Evolution API
           </CardTitle>
+          <CardDescription>
+            Conecte o app diretamente ao seu servidor Evolution para envios e sincronização em tempo real.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Conecte o app diretamente ao seu servidor Evolution. Estes dados são usados para todos os envios e sincronizações de WhatsApp.
-          </p>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>URL da Evolution</Label>
@@ -133,7 +132,7 @@ const EvolutionConfigTab = () => {
           <div className="flex flex-col sm:flex-row gap-2">
             <Button onClick={salvar} disabled={saving} className="flex-1">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Salvar
+              Salvar Dados de Acesso
             </Button>
             <Button onClick={testar} variant="outline" disabled={testing || !apiUrl || !instanceName || !apiKey}>
               {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
@@ -146,41 +145,53 @@ const EvolutionConfigTab = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Webhook e Tempo Real</CardTitle>
+          <CardDescription>
+            Configuração necessária para receber mensagens instantaneamente no app.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Para receber mensagens em tempo real, configure o webhook abaixo na sua instância da Evolution API:
+            Copie o URL abaixo e cole nas configurações de Webhook da sua instância na Evolution API:
           </p>
-          <div className="bg-muted p-3 rounded-md break-all font-mono text-xs select-all">
+          <div className="bg-muted p-3 rounded-md break-all font-mono text-xs select-all border border-dashed">
             {webhookUrl}
           </div>
-          <p className="text-[10px] text-muted-foreground italic">
-            * Certifique-se de ativar os eventos <b>MESSAGES_UPSERT</b> e <b>CHATS_UPSERT</b> na Evolution.
-          </p>
+          <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-800 border border-blue-100">
+            <p className="font-semibold mb-1">Eventos sugeridos:</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>MESSAGES_UPSERT (Recebimento de mensagens)</li>
+              <li>CHATS_UPSERT (Criação de novas conversas)</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Limpeza Automática</CardTitle>
+          <CardDescription>
+            Libere espaço apagando mensagens e chats antigos do sistema.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/10">
             <div className="space-y-0.5">
-              <Label>Ativar limpeza automática</Label>
-              <p className="text-xs text-muted-foreground">Apaga mensagens do app (não do WhatsApp real) diariamente.</p>
+              <Label className="text-base">Ativar limpeza diária</Label>
+              <p className="text-xs text-muted-foreground italic">
+                Atenção: Isso apaga as mensagens APENAS no app, mantendo-as no seu WhatsApp.
+              </p>
             </div>
             <input 
               type="checkbox" 
               checked={cleanupEnabled} 
               onChange={(e) => setCleanupEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
             />
           </div>
 
           {cleanupEnabled && (
-            <div className="space-y-2">
-              <Label>Horário da limpeza</Label>
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+              <Label>Horário preferencial para a limpeza</Label>
               <Input
                 type="time"
                 value={cleanupTime}
@@ -191,7 +202,7 @@ const EvolutionConfigTab = () => {
           )}
 
           <Button onClick={salvar} disabled={saving} variant="secondary" className="w-full">
-            Salvar Configurações de Limpeza
+            Salvar Preferências de Limpeza
           </Button>
         </CardContent>
       </Card>
