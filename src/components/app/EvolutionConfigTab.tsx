@@ -52,6 +52,8 @@ const EvolutionConfigTab = () => {
         api_url: apiUrl.trim().replace(/\/$/, ''),
         instance_name: instanceName.trim(),
         api_key: apiKey.trim(),
+        cleanup_time: cleanupTime,
+        cleanup_enabled: cleanupEnabled,
       }, { onConflict: 'user_id' });
 
     setSaving(false);
@@ -82,59 +84,118 @@ const EvolutionConfigTab = () => {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
 
+  const webhookUrl = `${(supabase as any).supabaseUrl}/functions/v1/whatsapp-webhook`;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plug className="h-5 w-5" />
-          Conexão Evolution API
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Conecte o app diretamente ao seu servidor Evolution. Estes dados são usados para todos os envios e sincronizações de WhatsApp.
-        </p>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plug className="h-5 w-5" />
+            Conexão Evolution API
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Conecte o app diretamente ao seu servidor Evolution. Estes dados são usados para todos os envios e sincronizações de WhatsApp.
+          </p>
 
-        <div className="space-y-2">
-          <Label>URL da Evolution</Label>
-          <Input
-            placeholder="https://sua-evolution.com"
-            value={apiUrl}
-            onChange={(e) => setApiUrl(e.target.value)}
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>URL da Evolution</Label>
+              <Input
+                placeholder="https://sua-evolution.com"
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label>Nome da Instância</Label>
-          <Input
-            placeholder="minha-instancia"
-            value={instanceName}
-            onChange={(e) => setInstanceName(e.target.value)}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label>Nome da Instância</Label>
+              <Input
+                placeholder="minha-instancia"
+                value={instanceName}
+                onChange={(e) => setInstanceName(e.target.value)}
+              />
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label>API Key</Label>
-          <Input
-            type="password"
-            placeholder="sua chave de API"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-        </div>
+          <div className="space-y-2">
+            <Label>API Key</Label>
+            <Input
+              type="password"
+              placeholder="sua chave de API"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+          </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={salvar} disabled={saving} className="flex-1">
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-            Salvar
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={salvar} disabled={saving} className="flex-1">
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Salvar
+            </Button>
+            <Button onClick={testar} variant="outline" disabled={testing || !apiUrl || !instanceName || !apiKey}>
+              {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Testar conexão
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Webhook e Tempo Real</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Para receber mensagens em tempo real, configure o webhook abaixo na sua instância da Evolution API:
+          </p>
+          <div className="bg-muted p-3 rounded-md break-all font-mono text-xs select-all">
+            {webhookUrl}
+          </div>
+          <p className="text-[10px] text-muted-foreground italic">
+            * Certifique-se de ativar os eventos <b>MESSAGES_UPSERT</b> e <b>CHATS_UPSERT</b> na Evolution.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Limpeza Automática</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Ativar limpeza automática</Label>
+              <p className="text-xs text-muted-foreground">Apaga mensagens do app (não do WhatsApp real) diariamente.</p>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={cleanupEnabled} 
+              onChange={(e) => setCleanupEnabled(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+          </div>
+
+          {cleanupEnabled && (
+            <div className="space-y-2">
+              <Label>Horário da limpeza</Label>
+              <Input
+                type="time"
+                value={cleanupTime}
+                onChange={(e) => setCleanupTime(e.target.value)}
+                className="w-32"
+              />
+            </div>
+          )}
+
+          <Button onClick={salvar} disabled={saving} variant="secondary" className="w-full">
+            Salvar Configurações de Limpeza
           </Button>
-          <Button onClick={testar} variant="outline" disabled={testing || !apiUrl || !instanceName || !apiKey}>
-            {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-            Testar conexão
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
