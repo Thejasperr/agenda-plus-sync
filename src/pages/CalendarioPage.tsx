@@ -867,10 +867,19 @@ const CalendarioPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="data">Data *</Label>
-                  <Input id="data" type="date" value={formData.data_agendamento} onChange={e => setFormData({
-                  ...formData,
-                  data_agendamento: e.target.value
-                })} />
+                  <Input id="data" type="date" value={formData.data_agendamento} onChange={e => {
+                    const newDateStr = e.target.value;
+                    setFormData({
+                      ...formData,
+                      data_agendamento: newDateStr
+                    });
+                    if (newDateStr) {
+                      // Importante: parse da data como local para não dar problema de fuso
+                      const [year, month, day] = newDateStr.split('-').map(Number);
+                      setSelectedDate(new Date(year, month - 1, day));
+                      setSelectedTimeSlot('');
+                    }
+                  }} />
                 </div>
                 <div>
                   <Label htmlFor="hora">Hora *</Label>
