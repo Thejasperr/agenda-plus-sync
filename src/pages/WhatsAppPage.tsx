@@ -740,6 +740,17 @@ const WhatsAppPage: React.FC = () => {
         <div className="p-2.5 sm:p-3 border-b border-border space-y-2 bg-card shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-foreground flex-1">Conversas</h2>
+            {tab === 'group' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleMarkGroupsAsRead}
+                className="h-8 w-8 p-0"
+                title="Marcar todos como lidos"
+              >
+                <CheckCheck className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
