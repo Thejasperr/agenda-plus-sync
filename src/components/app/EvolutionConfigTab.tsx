@@ -15,6 +15,8 @@ const EvolutionConfigTab = () => {
   const [apiUrl, setApiUrl] = useState('');
   const [instanceName, setInstanceName] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [cleanupTime, setCleanupTime] = useState('00:00');
+  const [cleanupEnabled, setCleanupEnabled] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -26,6 +28,8 @@ const EvolutionConfigTab = () => {
         setApiUrl(data.api_url || '');
         setInstanceName(data.instance_name || '');
         setApiKey(data.api_key || '');
+        setCleanupTime(data.cleanup_time || '00:00');
+        setCleanupEnabled(data.cleanup_enabled || false);
       }
       setLoading(false);
     })();
