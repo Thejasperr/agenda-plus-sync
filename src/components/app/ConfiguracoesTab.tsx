@@ -20,6 +20,7 @@ const ConfiguracoesTab = () => {
   const [activeTab, setActiveTab] = useState('servicos');
   const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const exportToExcel = async () => {
     try {
@@ -99,96 +100,121 @@ const ConfiguracoesTab = () => {
     }
   };
 
+  const menuItems = [
+    { id: 'servicos', label: 'Serviços', icon: Wrench, category: 'Cadastro' },
+    { id: 'pacotes', label: 'Pacotes', icon: Package, category: 'Cadastro' },
+    { id: 'horarios', label: 'Horários', icon: Clock, category: 'Agendamento' },
+    { id: 'evolution', label: 'WhatsApp (Evolution)', icon: Plug, category: 'Integrações' },
+    { id: 'disparos', label: 'Mensagens em Massa', icon: Megaphone, category: 'Marketing' },
+    { id: 'grupos', label: 'Grupos WhatsApp', icon: Sparkles, category: 'Marketing' },
+    { id: 'pagamentos', label: 'Formas de Pagamento', icon: CreditCard, category: 'Financeiro' },
+    { id: 'pix', label: 'Configuração PIX', icon: QrCode, category: 'Financeiro' },
+    { id: 'backup', label: 'Backup e Exportação', icon: Database, category: 'Sistema' },
+  ];
+
+  const categories = Array.from(new Set(menuItems.map(item => item.category)));
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Configurações</h2>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">Configurações</h2>
+        <p className="text-muted-foreground">Gerencie os parâmetros do seu sistema em um só lugar.</p>
+      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="servicos" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Wrench className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Serviços</span>
-          </TabsTrigger>
-          <TabsTrigger value="pacotes" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Package className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Pacotes</span>
-          </TabsTrigger>
-          <TabsTrigger value="horarios" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Clock className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Horários</span>
-          </TabsTrigger>
-          <TabsTrigger value="pagamentos" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Settings className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Pagam.</span>
-          </TabsTrigger>
-          <TabsTrigger value="pix" className="flex items-center gap-1 text-xs sm:text-sm">
-            <QrCode className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">PIX</span>
-          </TabsTrigger>
-          <TabsTrigger value="disparos" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Megaphone className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Disparos</span>
-          </TabsTrigger>
-          <TabsTrigger value="grupos" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Grupos</span>
-          </TabsTrigger>
-          <TabsTrigger value="evolution" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Plug className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Evolution</span>
-          </TabsTrigger>
-        </TabsList>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Menu Lateral Estilizado */}
+        <div className="lg:col-span-1 space-y-4">
+          <Card className="p-2">
+            <nav className="space-y-1">
+              {categories.map(category => (
+                <div key={category} className="py-2">
+                  <h3 className="px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    {category}
+                  </h3>
+                  {menuItems.filter(item => item.category === category).map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                        activeTab === item.id 
+                        ? 'bg-primary text-primary-foreground shadow-sm' 
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      <item.icon className={`h-4 w-4 ${activeTab === item.id ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </nav>
+          </Card>
+        </div>
 
-        <TabsContent value="servicos">
-          <ServicosTab />
-        </TabsContent>
-
-        <TabsContent value="pacotes">
-          <PacotesTab />
-        </TabsContent>
-
-        <TabsContent value="horarios">
-          <HorariosTab />
-        </TabsContent>
-
-        <TabsContent value="pagamentos">
-          <FormasPagamentoTab />
-        </TabsContent>
-
-        <TabsContent value="pix">
-          <ConfiguracaoPixTab />
-        </TabsContent>
-
-        <TabsContent value="disparos">
-          <DisparosMassaTab />
-        </TabsContent>
-
-        <TabsContent value="grupos">
-          <GruposConfigTab />
-        </TabsContent>
-
-        <TabsContent value="evolution">
-          <EvolutionConfigTab />
-        </TabsContent>
-      </Tabs>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Exportar Dados
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Exporte um backup completo de todos os seus dados em formato Excel.
-          </p>
-          <Button onClick={exportToExcel} disabled={exporting} className="w-full md:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            {exporting ? 'Exportando...' : 'Exportar Planilha Excel'}
-          </Button>
-        </CardContent>
-      </Card>
+        {/* Conteúdo Central */}
+        <div className="lg:col-span-3">
+          <Card className="min-h-[500px]">
+            <CardHeader className="border-b bg-muted/20 pb-4">
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const Icon = menuItems.find(i => i.id === activeTab)?.icon || Settings;
+                  return <Icon className="h-5 w-5 text-primary" />;
+                })()}
+                <div>
+                  <CardTitle className="text-lg">
+                    {menuItems.find(i => i.id === activeTab)?.label}
+                  </CardTitle>
+                  <CardDescription>
+                    {activeTab === 'servicos' && 'Gerencie os procedimentos oferecidos.'}
+                    {activeTab === 'pacotes' && 'Configure combos e pacotes promocionais.'}
+                    {activeTab === 'horarios' && 'Defina seus horários de atendimento.'}
+                    {activeTab === 'evolution' && 'Configure sua API do WhatsApp.'}
+                    {activeTab === 'disparos' && 'Crie campanhas de mensagens.'}
+                    {activeTab === 'grupos' && 'Gerencie disparos para grupos.'}
+                    {activeTab === 'pagamentos' && 'Configure métodos aceitos.'}
+                    {activeTab === 'pix' && 'Configure as chaves para recebimento.'}
+                    {activeTab === 'backup' && 'Exporte seus dados para segurança.'}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {activeTab === 'servicos' && <ServicosTab />}
+              {activeTab === 'pacotes' && <PacotesTab />}
+              {activeTab === 'horarios' && <HorariosTab />}
+              {activeTab === 'evolution' && <EvolutionConfigTab />}
+              {activeTab === 'disparos' && <DisparosMassaTab />}
+              {activeTab === 'grupos' && <GruposConfigTab />}
+              {activeTab === 'pagamentos' && <FormasPagamentoTab />}
+              {activeTab === 'pix' && <ConfiguracaoPixTab />}
+              {activeTab === 'backup' && (
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-primary/10 rounded-full">
+                        <Download className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-medium text-sm">Exportar todos os dados</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Gera uma planilha Excel contendo Clientes, Agendamentos e Transações Financeiras.
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={exportToExcel} 
+                      disabled={exporting} 
+                      className="w-full mt-4"
+                    >
+                      {exporting ? 'Exportando...' : 'Fazer Download do Backup (.xlsx)'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };
