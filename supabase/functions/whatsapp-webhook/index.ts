@@ -35,6 +35,20 @@ function pickContent(msg: any): { type: string; content: string | null; caption?
   return { type: "text", content: null };
 }
 
+async function loadEvoConfig(userId: string) {
+  const { data } = await admin
+    .from("evolution_config")
+    .select("api_url, instance_name, api_key")
+    .eq("user_id", userId)
+    .maybeSingle();
+  
+  return {
+    url: (data?.api_url || EVOLUTION_API_URL || "").replace(/\/$/, ""),
+    instance: data?.instance_name || EVOLUTION_INSTANCE,
+    key: data?.api_key || EVOLUTION_API_KEY,
+  };
+}
+
 // Processa um evento de reação recebido (alguém reagiu a uma mensagem nossa, ou a uma do grupo)
 async function processReaction(userId: string, m: any, chatId: string) {
   const r = m?.message?.reactionMessage;
@@ -71,12 +85,13 @@ async function processReaction(userId: string, m: any, chatId: string) {
     );
 }
 
-async function downloadMediaFromEvolution(messageId: string): Promise<{ base64: string; mimetype: string } | null> {
+async function downloadMediaFromEvolution(userId: string, messageId: string): Promise<{ base64: string; mimetype: string } | null> {
   try {
-    const url = `${EVOLUTION_API_URL.replace(/\/$/, "")}/chat/getBase64FromMediaMessage/${EVOLUTION_INSTANCE}`;
+    const config = await loadEvoConfig(userId);
+    const url = `${config.url}/chat/getBase64FromMediaMessage/${config.instance}`;
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+      headers: { "Content-Type": "application/json", apikey: config.key },
       body: JSON.stringify({ message: { key: { id: messageId } }, convertToMp4: false }),
     });
     if (!resp.ok) {
@@ -126,23 +141,23 @@ async function uploadMedia(userId: string, messageId: string, base64: string, mi
   } catch (e) { console.error("Upload erro:", e); return null; }
 }
 
-async function findUserByInstance(): Promise<string | null> {
-  // Estratégia: prioriza chats existentes (mais confiável), depois clientes.
-  const { data: chat } = await admin
-    .from("whatsapp_chats")
+async function findUserByInstance(instance: string): Promise<string | null> {
+  if (!instance) return null;
+  const { data } = await admin
+    .from("evolution_config")
     .select("user_id")
-    .not("user_id", "is", null)
-    .limit(1)
+    .eq("instance_name", instance)
     .maybeSingle();
-  if (chat?.user_id) return chat.user_id;
+  
+  if (data?.user_id) return data.user_id;
 
-  const { data: cli } = await admin
-    .from("clientes")
-    .select("user_id")
-    .not("user_id", "is", null)
-    .limit(1)
-    .maybeSingle();
-  return cli?.user_id ?? null;
+  // Fallback para o primeiro usuário se a instância for a global (retrocompatibilidade)
+  if (instance === EVOLUTION_INSTANCE) {
+    const { data: first } = await admin.from("profiles").select("id").limit(1).maybeSingle();
+    return first?.id ?? null;
+  }
+  
+  return null;
 }
 
 async function ensureChat(userId: string, remoteJid: string, pushName?: string): Promise<string | null> {
@@ -187,10 +202,18 @@ async function ensureChat(userId: string, remoteJid: string, pushName?: string):
 }
 
 async function processMessageUpsert(payload: any) {
-  const userId = await findUserByInstance();
-  if (!userId) { console.error("Sem user_id mapeado"); return; }
+  const instanceName = payload?.instance || payload?.instanceName;
+  const userId = await findUserByInstance(instanceName);
+  if (!userId) { 
+    console.error("Sem user_id mapeado para instância:", instanceName); 
+    return; 
+  }
 
   const messages = Array.isArray(payload?.data) ? payload.data : [payload?.data];
+  if (payload.data?.message) { // Formato Evolution v2 às vezes traz direto no data
+    messages[0] = payload.data;
+  }
+
   for (const m of messages) {
     if (!m) continue;
     const key = m.key || {};
@@ -229,7 +252,7 @@ async function processMessageUpsert(payload: any) {
       duration = m.message?.audioMessage?.seconds || m.message?.videoMessage?.seconds || null;
       filename = m.message?.documentMessage?.fileName || null;
       if (messageId) {
-        const dl = await downloadMediaFromEvolution(messageId);
+        const dl = await downloadMediaFromEvolution(userId, messageId);
         if (dl) {
           mediaUrl = await uploadMedia(userId, messageId, dl.base64, dl.mimetype || mimetype || "application/octet-stream");
           if (!mimetype) mimetype = dl.mimetype;
@@ -253,8 +276,6 @@ async function processMessageUpsert(payload: any) {
     }).eq("id", chatId);
 
     if (!fromMe) {
-      await admin.rpc as any; // noop placeholder
-      // incrementar manualmente
       const { data: c } = await admin.from("whatsapp_chats").select("unread_count").eq("id", chatId).single();
       await admin.from("whatsapp_chats").update({ unread_count: (c?.unread_count || 0) + 1 }).eq("id", chatId);
     }
@@ -266,13 +287,14 @@ Deno.serve(async (req) => {
 
   try {
     const payload = await req.json();
-    console.log("Webhook event:", payload?.event || payload?.type);
-
     const eventType: string = payload?.event || payload?.type || "";
+    console.log(`Webhook received: ${eventType} for instance: ${payload?.instance}`);
+
     if (eventType === "messages.upsert" || eventType === "MESSAGES_UPSERT") {
       await processMessageUpsert(payload);
+    } else if (eventType === "chats.upsert" || eventType === "CHATS_UPSERT") {
+      // Opcional: tratar aqui também
     }
-    // Outros eventos (chats.upsert, contacts.upsert) podem ser tratados aqui
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
