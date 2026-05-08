@@ -506,6 +506,7 @@ export type Database = {
           created_at: string
           id: string
           instance_name: string
+          last_cleanup_at: string | null
           updated_at: string
           user_id: string
         }
@@ -517,6 +518,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_name: string
+          last_cleanup_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -528,6 +530,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_name?: string
+          last_cleanup_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1219,7 +1222,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      run_whatsapp_cleanup: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
