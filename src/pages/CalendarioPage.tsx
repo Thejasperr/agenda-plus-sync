@@ -805,13 +805,16 @@ const CalendarioPage = () => {
       telefone
     });
 
-    // Buscar cliente existente
+    // Buscar cliente existente e pacotes
     const clienteExistente = clientes.find(c => c.telefone === telefone);
     if (clienteExistente) {
       setFormData(prev => ({
         ...prev,
         nome: clienteExistente.nome
       }));
+      fetchActivePackages(telefone);
+    } else {
+      setActivePackages([]);
     }
   };
   const handleNomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
