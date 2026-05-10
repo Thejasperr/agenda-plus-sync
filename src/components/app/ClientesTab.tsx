@@ -47,7 +47,44 @@ const ClientesTab = () => {
   const [clienteAgendamentos, setClienteAgendamentos] = useState<{[key: string]: Agendamento[]}>({});
   const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
   const [historicoDialogOpen, setHistoricoDialogOpen] = useState(false);
+  const [pacotesDialogOpen, setPacotesDialogOpen] = useState(false);
+  const [availablePacotes, setServicoPacotes] = useState<any[]>([]);
+  const [venderPacoteDialogOpen, setVenderPacoteDialogOpen] = useState(false);
+  const [selectedPacoteId, setSelectedPacoteId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const fetchAvailablePacotes = async () => {
+    const { data } = await supabase.from('pacotes').select('*').eq('ativo', true);
+    setServicoPacotes(data || []);
+  };
+
+  useEffect(() => {
+    fetchAvailablePacotes();
+  }, []);
+
+  const handleVenderPacote = async (pacoteId: string) => {
+    if (!selectedClienteId) return;
+    const pacote = availablePacotes.find(p => p.id === pacoteId);
+    if (!pacote) return;
+
+    try {
+      const { error } = await supabase.from('cliente_pacotes').insert({
+        cliente_id: selectedClienteId,
+        pacote_id: pacoteId,
+        valor_pago: pacote.valor_total,
+        sessoes_totais: pacote.quantidade_sessoes,
+        sessoes_restantes: pacote.quantidade_sessoes,
+        status: 'ativo'
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Sucesso", description: "Pacote vendido ao cliente!" });
+      setVenderPacoteDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
 
   const formatPhoneForDisplay = (phone: string) => {
     let digits = phone.replace(/\D/g, '');
