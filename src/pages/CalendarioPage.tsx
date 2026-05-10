@@ -1021,9 +1021,22 @@ const CalendarioPage = () => {
                       </SelectContent>
                     </Select>
                     {selectedPackageId && sessionNumber && (
-                      <p className="text-xs font-medium text-primary-foreground bg-primary px-2 py-1 rounded w-fit">
-                        Esta será a sessão {sessionNumber} de {activePackages.find(p => p.id === selectedPackageId)?.sessoes_totais}
-                      </p>
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-primary-foreground bg-primary px-2 py-1 rounded w-fit">
+                          Esta será a sessão {sessionNumber} de {activePackages.find(p => p.id === selectedPackageId)?.sessoes_totais}
+                        </p>
+                        {selectedDate && (() => {
+                          const result = checkInterval(selectedPackageId, selectedDate);
+                          if (!result.valid) {
+                            return (
+                              <p className="text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 p-2 rounded">
+                                {result.message}
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     )}
                   </div>
                 </div>
