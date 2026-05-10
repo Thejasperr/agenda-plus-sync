@@ -160,11 +160,35 @@ const CalendarioPage = () => {
       const {
         data,
         error
-      } = await supabase.from('clientes').select('telefone, nome');
+      } = await supabase.from('clientes').select('id, telefone, nome');
       if (error) throw error;
       setClientes(data || []);
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
+    }
+  };
+
+  const fetchActivePackages = async (telefone: string) => {
+    try {
+      const { data: cliente } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('telefone', telefone)
+        .maybeSingle();
+
+      if (cliente) {
+        const { data } = await supabase
+          .from('cliente_pacotes')
+          .select('*, pacotes(nome, intervalo_dias, quantidade_sessoes)')
+          .eq('cliente_id', cliente.id)
+          .eq('status', 'ativo')
+          .gt('sessoes_restantes', 0);
+        setActivePackages(data || []);
+      } else {
+        setActivePackages([]);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar pacotes ativos:', error);
     }
   };
 
