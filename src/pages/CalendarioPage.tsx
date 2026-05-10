@@ -698,6 +698,9 @@ const CalendarioPage = () => {
     });
     setEditingAgendamento(null);
     setSelectedTimeSlot('');
+    setSelectedPackageId(null);
+    setSessionNumber(null);
+    setActivePackages([]);
     setDialogOpen(false);
   };
   const handleEdit = async (agendamento: Agendamento) => {
