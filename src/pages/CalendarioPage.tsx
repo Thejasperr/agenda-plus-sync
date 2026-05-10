@@ -192,22 +192,6 @@ const CalendarioPage = () => {
             : null;
           return { ...cp, last_session_date: lastAgendamento?.data_agendamento };
         });
-  const checkInterval = (packageId: string, date: Date) => {
-    const pkg = activePackages.find(p => p.id === packageId);
-    if (!pkg || !pkg.last_session_date || !pkg.pacotes?.intervalo_dias) return { valid: true };
-
-    const lastDate = new Date(pkg.last_session_date + 'T00:00:00');
-    const minDate = addDays(lastDate, pkg.pacotes.intervalo_dias);
-    
-    if (date < minDate) {
-      return { 
-        valid: false, 
-        minDate: format(minDate, 'dd/MM/yyyy'),
-        message: `Intervalo de ${pkg.pacotes.intervalo_dias} dias não atingido. Próxima data sugerida: após ${format(minDate, 'dd/MM/yyyy')}`
-      };
-    }
-    return { valid: true };
-  };
 
         setActivePackages(processedPkgs);
       } else {
