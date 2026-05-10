@@ -1406,6 +1406,16 @@ const CalendarioPage = () => {
                       </div>
                     </div>
                     
+                    {/* Sessão de Pacote */}
+                    {(agendamento as any).sessao_numero && (
+                      <div className="bg-primary/10 border border-primary/20 rounded p-2 text-sm mb-3">
+                        <div className="flex items-center gap-2 font-semibold text-primary">
+                          <Package className="h-4 w-4" />
+                          <span>Sessão de Pacote {(agendamento as any).sessao_numero}</span>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Mostrar todos os procedimentos */}
                     {(agendamento as any).agendamento_procedimentos && (agendamento as any).agendamento_procedimentos.length > 0 && (
                       <div className="text-sm text-muted-foreground mb-3">
