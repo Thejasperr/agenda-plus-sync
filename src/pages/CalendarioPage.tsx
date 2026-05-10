@@ -841,6 +841,7 @@ const CalendarioPage = () => {
       nome: cliente.nome,
       telefone: cliente.telefone
     });
+    fetchActivePackages(cliente.telefone);
     setShowSuggestions(false);
     setFilteredClientes([]);
   };
