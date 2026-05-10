@@ -340,7 +340,31 @@ const ClientesTab = () => {
                       <Button variant="outline" size="sm" onClick={() => openWhatsApp(cliente.telefone, cliente.nome)} className="flex-1 text-green-600" title="WhatsApp"><MessageCircle className="h-3 w-3" /></Button>
                       <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id)} className="flex-1 text-red-600" title="Excluir"><X className="h-3 w-3" /></Button>
                     </div>
+      <Dialog open={venderPacoteDialogOpen} onOpenChange={setVenderPacoteDialogOpen}>
+        <DialogContent className="w-[90%] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Vender Pacote</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">Escolha um pacote para atribuir ao cliente <strong>{clientes.find(c => c.id === selectedClienteId)?.nome}</strong></p>
+            <div className="space-y-2">
+              {availablePacotes.map(pacote => (
+                <div key={pacote.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleVenderPacote(pacote.id)}>
+                  <div>
+                    <div className="font-medium">{pacote.nome}</div>
+                    <div className="text-xs text-muted-foreground">{pacote.quantidade_sessoes} sessões • R$ {pacote.valor_total.toFixed(2)}</div>
                   </div>
+                  <Button size="sm">Vender</Button>
+                </div>
+              ))}
+              {availablePacotes.length === 0 && (
+                <p className="text-center py-4 text-sm text-muted-foreground">Nenhum pacote ativo cadastrado.</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
                 </CardContent>
               </Card>
             );
