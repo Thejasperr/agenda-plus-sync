@@ -537,7 +537,7 @@ const CalendarioPage = () => {
         }
       }
 
-      const agendamentoData = {
+      const agendamentoData: any = {
         nome: formData.nome,
         telefone: formData.telefone,
         preco: formData.preco,
@@ -552,7 +552,9 @@ const CalendarioPage = () => {
         porcentagem_pagamento_antecipado: formData.pagamento_antecipado ? formData.porcentagem_pagamento_antecipado : null,
         data_retorno: formData.tem_retorno ? formData.data_retorno : null,
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
-        observacoes: formData.observacoes || null
+        observacoes: formData.observacoes || null,
+        cliente_pacote_id: selectedPackageId,
+        sessao_numero: sessionNumber
       };
 
       // Criar cliente se não existir
