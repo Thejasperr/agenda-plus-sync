@@ -75,7 +75,7 @@ const PacotesTab = () => {
         return { ...pacote, servicos: servicosDoPacote };
       });
 
-      setPacotes(pacotesComServicos);
+      setPacotes(pacotesComServicos as Pacote[]);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -182,7 +182,7 @@ const PacotesTab = () => {
     });
     setDialogOpen(true);
   };
-...
+
   const resetForm = () => {
     setFormData({ 
       nome: '', 
@@ -248,6 +248,36 @@ const PacotesTab = () => {
               <div>
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea id="descricao" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} placeholder="Descrição do pacote..." rows={2} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="quantidade_sessoes">Qtd. de Sessões *</Label>
+                  <Input 
+                    id="quantidade_sessoes" 
+                    type="number" 
+                    min="1" 
+                    value={formData.quantidade_sessoes} 
+                    onChange={(e) => setFormData({ ...formData, quantidade_sessoes: parseInt(e.target.value) || 1 })} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="intervalo_dias">Intervalo (dias)</Label>
+                  <Select 
+                    value={formData.intervalo_dias.toString()} 
+                    onValueChange={(v) => setFormData({ ...formData, intervalo_dias: parseInt(v) })}
+                  >
+                    <SelectTrigger id="intervalo_dias">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sem intervalo</SelectItem>
+                      <SelectItem value="7">7 dias (Semanal)</SelectItem>
+                      <SelectItem value="15">15 dias (Quinzenal)</SelectItem>
+                      <SelectItem value="30">30 dias (Mensal)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Serviços para selecionar */}
@@ -332,6 +362,12 @@ const PacotesTab = () => {
                       {!pacote.ativo && <Badge variant="outline" className="text-xs">Inativo</Badge>}
                     </div>
                     {pacote.descricao && <p className="text-sm text-muted-foreground mt-1">{pacote.descricao}</p>}
+                    <div className="flex gap-2 mt-2">
+                      <Badge variant="outline" className="text-[10px]">{pacote.quantidade_sessoes} sessões</Badge>
+                      {pacote.intervalo_dias > 0 && (
+                        <Badge variant="outline" className="text-[10px]">Intervalo {pacote.intervalo_dias} dias</Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-primary">R$ {pacote.valor_total.toFixed(2)}</div>
