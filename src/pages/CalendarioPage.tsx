@@ -935,6 +935,54 @@ const CalendarioPage = () => {
                 </div>
               </div>
 
+              {activePackages.length > 0 && (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-3 mb-2">
+                  <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                    <Package className="h-4 w-4" />
+                    <span>Pacote Ativo Encontrado</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pacote">Selecione o Pacote para usar uma sessão</Label>
+                    <Select 
+                      value={selectedPackageId || 'none'} 
+                      onValueChange={(v) => {
+                        setSelectedPackageId(v === 'none' ? null : v);
+                        if (v !== 'none') {
+                          const pkg = activePackages.find(p => p.id === v);
+                          setSessionNumber(pkg.sessoes_totais - pkg.sessoes_restantes + 1);
+                          setFormData(prev => ({ ...prev, preco: 0, tem_desconto: true, porcentagem_desconto: 100 }));
+                        } else {
+                          setSessionNumber(null);
+                          // Recalcular preço normal
+                          const total = formData.procedimento_ids.reduce((sum, procId) => {
+                            const servico = servicos.find(s => s.id === procId);
+                            return sum + (servico?.valor || 0);
+                          }, 0);
+                          setFormData(prev => ({ ...prev, preco: total, tem_desconto: false, porcentagem_desconto: 0 }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="pacote">
+                        <SelectValue placeholder="Não usar pacote" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não usar pacote (Cobrança normal)</SelectItem>
+                        {activePackages.map(pkg => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.pacotes?.nome} ({pkg.sessoes_restantes}/{pkg.sessoes_totais} sessões restantes)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedPackageId && sessionNumber && (
+                      <p className="text-xs font-medium text-primary-foreground bg-primary px-2 py-1 rounded w-fit">
+                        Esta será a sessão {sessionNumber} de {activePackages.find(p => p.id === selectedPackageId)?.sessoes_totais}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="procedimentos">Procedimentos</Label>
                 <div className="space-y-2">
