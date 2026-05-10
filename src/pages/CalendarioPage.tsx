@@ -650,6 +650,21 @@ const CalendarioPage = () => {
         }
       }
 
+      // Se estiver usando um pacote, deduzir sessão
+      if (selectedPackageId && !editingAgendamento) {
+        const pkg = activePackages.find(p => p.id === selectedPackageId);
+        if (pkg) {
+          const novasSessoes = pkg.sessoes_restantes - 1;
+          await supabase
+            .from('cliente_pacotes')
+            .update({ 
+              sessoes_restantes: novasSessoes,
+              status: novasSessoes === 0 ? 'concluido' : 'ativo'
+            })
+            .eq('id', selectedPackageId);
+        }
+      }
+
       resetForm();
       fetchAgendamentos();
     } catch (error) {
