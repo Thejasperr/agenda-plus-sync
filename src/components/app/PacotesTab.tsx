@@ -116,7 +116,13 @@ const PacotesTab = () => {
       } else {
         const { data: newPacote, error } = await supabase
           .from('pacotes')
-          .insert({ nome: formData.nome, descricao: formData.descricao || null, valor_total: formData.valor_total })
+          .insert({ 
+            nome: formData.nome, 
+            descricao: formData.descricao || null, 
+            valor_total: formData.valor_total,
+            quantidade_sessoes: formData.quantidade_sessoes,
+            intervalo_dias: formData.intervalo_dias
+          })
           .select()
           .single();
         if (error) throw error;
