@@ -200,6 +200,7 @@ const CalendarioPage = () => {
     } catch (error) {
       console.error('Erro ao buscar pacotes ativos:', error);
     }
+  };
   const checkInterval = (packageId: string, date: Date) => {
     const pkg = activePackages.find(p => p.id === packageId);
     if (!pkg || !pkg.last_session_date || !pkg.pacotes?.intervalo_dias) return { valid: true };
