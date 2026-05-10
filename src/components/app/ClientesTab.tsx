@@ -334,10 +334,11 @@ const ClientesTab = () => {
                     <Separator />
 
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="flex-1"><Edit2 className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setHistoricoDialogOpen(true); }} className="flex-1"><History className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => openWhatsApp(cliente.telefone, cliente.nome)} className="flex-1 text-green-600"><MessageCircle className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id)} className="flex-1 text-red-600"><X className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="flex-1" title="Editar"><Edit2 className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setHistoricoDialogOpen(true); }} className="flex-1" title="Histórico"><History className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setVenderPacoteDialogOpen(true); }} className="flex-1 text-primary" title="Vender Pacote"><Package className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => openWhatsApp(cliente.telefone, cliente.nome)} className="flex-1 text-green-600" title="WhatsApp"><MessageCircle className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id)} className="flex-1 text-red-600" title="Excluir"><X className="h-3 w-3" /></Button>
                     </div>
                   </div>
                 </CardContent>
