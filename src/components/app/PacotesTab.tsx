@@ -46,6 +46,8 @@ const PacotesTab = () => {
     nome: '',
     descricao: '',
     valor_total: 0,
+    quantidade_sessoes: 1,
+    intervalo_dias: 0,
     servico_ids: [] as string[],
   });
 
