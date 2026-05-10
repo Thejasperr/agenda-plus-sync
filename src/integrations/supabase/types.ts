@@ -58,6 +58,7 @@ export type Database = {
       }
       agendamentos: {
         Row: {
+          cliente_pacote_id: string | null
           confirm_atendi: boolean | null
           created_at: string
           data_agendamento: string
@@ -76,6 +77,7 @@ export type Database = {
           preco: number
           preco_retorno: number | null
           procedimento_id: string | null
+          sessao_numero: number | null
           status: string
           telefone: string
           tem_desconto: boolean | null
@@ -84,6 +86,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          cliente_pacote_id?: string | null
           confirm_atendi?: boolean | null
           created_at?: string
           data_agendamento: string
@@ -102,6 +105,7 @@ export type Database = {
           preco: number
           preco_retorno?: number | null
           procedimento_id?: string | null
+          sessao_numero?: number | null
           status?: string
           telefone: string
           tem_desconto?: boolean | null
@@ -110,6 +114,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          cliente_pacote_id?: string | null
           confirm_atendi?: boolean | null
           created_at?: string
           data_agendamento?: string
@@ -128,6 +133,7 @@ export type Database = {
           preco?: number
           preco_retorno?: number | null
           procedimento_id?: string | null
+          sessao_numero?: number | null
           status?: string
           telefone?: string
           tem_desconto?: boolean | null
@@ -137,10 +143,74 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "agendamentos_cliente_pacote_id_fkey"
+            columns: ["cliente_pacote_id"]
+            isOneToOne: false
+            referencedRelation: "cliente_pacotes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "agendamentos_procedimento_id_fkey"
             columns: ["procedimento_id"]
             isOneToOne: false
             referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cliente_pacotes: {
+        Row: {
+          cliente_id: string | null
+          created_at: string | null
+          data_compra: string | null
+          id: string
+          pacote_id: string | null
+          sessoes_restantes: number
+          sessoes_totais: number
+          status: string
+          updated_at: string | null
+          user_id: string | null
+          valor_pago: number
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string | null
+          data_compra?: string | null
+          id?: string
+          pacote_id?: string | null
+          sessoes_restantes?: number
+          sessoes_totais?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+          valor_pago?: number
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string | null
+          data_compra?: string | null
+          id?: string
+          pacote_id?: string | null
+          sessoes_restantes?: number
+          sessoes_totais?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_pacotes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_pacotes_pacote_id_fkey"
+            columns: ["pacote_id"]
+            isOneToOne: false
+            referencedRelation: "pacotes"
             referencedColumns: ["id"]
           },
         ]
@@ -724,7 +794,9 @@ export type Database = {
           created_at: string
           descricao: string | null
           id: string
+          intervalo_dias: number | null
           nome: string
+          quantidade_sessoes: number | null
           updated_at: string
           user_id: string | null
           valor_total: number
@@ -734,7 +806,9 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          intervalo_dias?: number | null
           nome: string
+          quantidade_sessoes?: number | null
           updated_at?: string
           user_id?: string | null
           valor_total: number
@@ -744,7 +818,9 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          intervalo_dias?: number | null
           nome?: string
+          quantidade_sessoes?: number | null
           updated_at?: string
           user_id?: string | null
           valor_total?: number
