@@ -27,6 +27,8 @@ interface Pacote {
   descricao: string | null;
   valor_total: number;
   ativo: boolean;
+  quantidade_sessoes: number;
+  intervalo_dias: number;
   created_at: string;
   servicos?: Servico[];
 }
