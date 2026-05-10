@@ -175,13 +175,22 @@ const PacotesTab = () => {
       nome: pacote.nome,
       descricao: pacote.descricao || '',
       valor_total: pacote.valor_total,
+      quantidade_sessoes: pacote.quantidade_sessoes,
+      intervalo_dias: pacote.intervalo_dias,
       servico_ids: pacote.servicos?.map(s => s.id) || [],
     });
     setDialogOpen(true);
   };
-
+...
   const resetForm = () => {
-    setFormData({ nome: '', descricao: '', valor_total: 0, servico_ids: [] });
+    setFormData({ 
+      nome: '', 
+      descricao: '', 
+      valor_total: 0, 
+      quantidade_sessoes: 1, 
+      intervalo_dias: 0, 
+      servico_ids: [] 
+    });
     setEditingPacote(null);
     setDialogOpen(false);
   };
