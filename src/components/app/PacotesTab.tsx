@@ -93,7 +93,13 @@ const PacotesTab = () => {
       if (editingPacote) {
         const { error } = await supabase
           .from('pacotes')
-          .update({ nome: formData.nome, descricao: formData.descricao || null, valor_total: formData.valor_total })
+          .update({ 
+            nome: formData.nome, 
+            descricao: formData.descricao || null, 
+            valor_total: formData.valor_total,
+            quantidade_sessoes: formData.quantidade_sessoes,
+            intervalo_dias: formData.intervalo_dias
+          })
           .eq('id', editingPacote.id);
         if (error) throw error;
 
