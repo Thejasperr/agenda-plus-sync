@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, MessageCircle, Check, X, Clock4, CalendarIcon, Clock, DollarSign, Trash2, Plus, Wallet, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +72,9 @@ const CalendarioPage = () => {
     nome: string;
     ativa: boolean;
   }[]>([]);
+  const [activePackages, setActivePackages] = useState<any[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [sessionNumber, setSessionNumber] = useState<number | null>(null);
   
   
   const { toast } = useToast();
@@ -157,13 +160,64 @@ const CalendarioPage = () => {
       const {
         data,
         error
-      } = await supabase.from('clientes').select('telefone, nome');
+      } = await supabase.from('clientes').select('id, telefone, nome');
       if (error) throw error;
       setClientes(data || []);
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
     }
   };
+
+  const fetchActivePackages = async (telefone: string) => {
+    try {
+      const { data: cliente } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('telefone', telefone)
+        .maybeSingle();
+
+      if (cliente) {
+        // Buscar pacotes e o último agendamento vinculado a cada um
+        const { data: pkgs } = await supabase
+          .from('cliente_pacotes')
+          .select('*, pacotes(nome, intervalo_dias, quantidade_sessoes), agendamentos(data_agendamento)')
+          .eq('cliente_id', cliente.id)
+          .eq('status', 'ativo')
+          .gt('sessoes_restantes', 0);
+        
+        // Processar para pegar a data do último agendamento de cada pacote
+        const processedPkgs = (pkgs || []).map(cp => {
+          const lastAgendamento = cp.agendamentos && cp.agendamentos.length > 0 
+            ? cp.agendamentos.sort((a: any, b: any) => new Date(b.data_agendamento).getTime() - new Date(a.data_agendamento).getTime())[0]
+            : null;
+          return { ...cp, last_session_date: lastAgendamento?.data_agendamento };
+        });
+
+        setActivePackages(processedPkgs);
+      } else {
+        setActivePackages([]);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar pacotes ativos:', error);
+    }
+  };
+  const checkInterval = (packageId: string, date: Date) => {
+    const pkg = activePackages.find(p => p.id === packageId);
+    if (!pkg || !pkg.last_session_date || !pkg.pacotes?.intervalo_dias) return { valid: true };
+
+    const lastDate = new Date(pkg.last_session_date + 'T00:00:00');
+    const minDate = addDays(lastDate, pkg.pacotes.intervalo_dias);
+    
+    if (date < minDate) {
+      return { 
+        valid: false, 
+        minDate: format(minDate, 'dd/MM/yyyy'),
+        message: `Intervalo de ${pkg.pacotes.intervalo_dias} dias não atingido. Próxima data sugerida: após ${format(minDate, 'dd/MM/yyyy')}`
+      };
+    }
+    return { valid: true };
+  };
+
 
   useEffect(() => {
     fetchAgendamentos();
@@ -510,7 +564,7 @@ const CalendarioPage = () => {
         }
       }
 
-      const agendamentoData = {
+      const agendamentoData: any = {
         nome: formData.nome,
         telefone: formData.telefone,
         preco: formData.preco,
@@ -525,7 +579,9 @@ const CalendarioPage = () => {
         porcentagem_pagamento_antecipado: formData.pagamento_antecipado ? formData.porcentagem_pagamento_antecipado : null,
         data_retorno: formData.tem_retorno ? formData.data_retorno : null,
         preco_retorno: formData.tem_retorno ? formData.preco_retorno : null,
-        observacoes: formData.observacoes || null
+        observacoes: formData.observacoes || null,
+        cliente_pacote_id: selectedPackageId,
+        sessao_numero: sessionNumber
       };
 
       // Criar cliente se não existir
@@ -621,6 +677,21 @@ const CalendarioPage = () => {
         }
       }
 
+      // Se estiver usando um pacote, deduzir sessão
+      if (selectedPackageId && !editingAgendamento) {
+        const pkg = activePackages.find(p => p.id === selectedPackageId);
+        if (pkg) {
+          const novasSessoes = pkg.sessoes_restantes - 1;
+          await supabase
+            .from('cliente_pacotes')
+            .update({ 
+              sessoes_restantes: novasSessoes,
+              status: novasSessoes === 0 ? 'concluido' : 'ativo'
+            })
+            .eq('id', selectedPackageId);
+        }
+      }
+
       resetForm();
       fetchAgendamentos();
     } catch (error) {
@@ -654,6 +725,9 @@ const CalendarioPage = () => {
     });
     setEditingAgendamento(null);
     setSelectedTimeSlot('');
+    setSelectedPackageId(null);
+    setSessionNumber(null);
+    setActivePackages([]);
     setDialogOpen(false);
   };
   const handleEdit = async (agendamento: Agendamento) => {
@@ -778,13 +852,16 @@ const CalendarioPage = () => {
       telefone
     });
 
-    // Buscar cliente existente
+    // Buscar cliente existente e pacotes
     const clienteExistente = clientes.find(c => c.telefone === telefone);
     if (clienteExistente) {
       setFormData(prev => ({
         ...prev,
         nome: clienteExistente.nome
       }));
+      fetchActivePackages(telefone);
+    } else {
+      setActivePackages([]);
     }
   };
   const handleNomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -811,6 +888,7 @@ const CalendarioPage = () => {
       nome: cliente.nome,
       telefone: cliente.telefone
     });
+    fetchActivePackages(cliente.telefone);
     setShowSuggestions(false);
     setFilteredClientes([]);
   };
@@ -903,6 +981,67 @@ const CalendarioPage = () => {
                   </Select>
                 </div>
               </div>
+
+              {activePackages.length > 0 && (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-3 mb-2">
+                  <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                    <Package className="h-4 w-4" />
+                    <span>Pacote Ativo Encontrado</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pacote">Selecione o Pacote para usar uma sessão</Label>
+                    <Select 
+                      value={selectedPackageId || 'none'} 
+                      onValueChange={(v) => {
+                        setSelectedPackageId(v === 'none' ? null : v);
+                        if (v !== 'none') {
+                          const pkg = activePackages.find(p => p.id === v);
+                          setSessionNumber(pkg.sessoes_totais - pkg.sessoes_restantes + 1);
+                          setFormData(prev => ({ ...prev, preco: 0, tem_desconto: true, porcentagem_desconto: 100 }));
+                        } else {
+                          setSessionNumber(null);
+                          // Recalcular preço normal
+                          const total = formData.procedimento_ids.reduce((sum, procId) => {
+                            const servico = servicos.find(s => s.id === procId);
+                            return sum + (servico?.valor || 0);
+                          }, 0);
+                          setFormData(prev => ({ ...prev, preco: total, tem_desconto: false, porcentagem_desconto: 0 }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="pacote">
+                        <SelectValue placeholder="Não usar pacote" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não usar pacote (Cobrança normal)</SelectItem>
+                        {activePackages.map(pkg => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.pacotes?.nome} ({pkg.sessoes_restantes}/{pkg.sessoes_totais} sessões restantes)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedPackageId && sessionNumber && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-primary-foreground bg-primary px-2 py-1 rounded w-fit">
+                          Esta será a sessão {sessionNumber} de {activePackages.find(p => p.id === selectedPackageId)?.sessoes_totais}
+                        </p>
+                        {selectedDate && (() => {
+                          const result = checkInterval(selectedPackageId, selectedDate);
+                          if (!result.valid) {
+                            return (
+                              <p className="text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 p-2 rounded">
+                                {result.message}
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="procedimentos">Procedimentos</Label>
@@ -1306,6 +1445,16 @@ const CalendarioPage = () => {
                           </span>}
                       </div>
                     </div>
+                    
+                    {/* Sessão de Pacote */}
+                    {(agendamento as any).sessao_numero && (
+                      <div className="bg-primary/10 border border-primary/20 rounded p-2 text-sm mb-3">
+                        <div className="flex items-center gap-2 font-semibold text-primary">
+                          <Package className="h-4 w-4" />
+                          <span>Sessão de Pacote {(agendamento as any).sessao_numero}</span>
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Mostrar todos os procedimentos */}
                     {(agendamento as any).agendamento_procedimentos && (agendamento as any).agendamento_procedimentos.length > 0 && (

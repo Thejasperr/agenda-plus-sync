@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +28,8 @@ interface Pacote {
   descricao: string | null;
   valor_total: number;
   ativo: boolean;
+  quantidade_sessoes: number;
+  intervalo_dias: number;
   created_at: string;
   servicos?: Servico[];
 }
@@ -44,6 +47,8 @@ const PacotesTab = () => {
     nome: '',
     descricao: '',
     valor_total: 0,
+    quantidade_sessoes: 1,
+    intervalo_dias: 0,
     servico_ids: [] as string[],
   });
 
@@ -70,7 +75,7 @@ const PacotesTab = () => {
         return { ...pacote, servicos: servicosDoPacote };
       });
 
-      setPacotes(pacotesComServicos);
+      setPacotes(pacotesComServicos as Pacote[]);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -89,7 +94,13 @@ const PacotesTab = () => {
       if (editingPacote) {
         const { error } = await supabase
           .from('pacotes')
-          .update({ nome: formData.nome, descricao: formData.descricao || null, valor_total: formData.valor_total })
+          .update({ 
+            nome: formData.nome, 
+            descricao: formData.descricao || null, 
+            valor_total: formData.valor_total,
+            quantidade_sessoes: formData.quantidade_sessoes,
+            intervalo_dias: formData.intervalo_dias
+          })
           .eq('id', editingPacote.id);
         if (error) throw error;
 
@@ -106,7 +117,13 @@ const PacotesTab = () => {
       } else {
         const { data: newPacote, error } = await supabase
           .from('pacotes')
-          .insert({ nome: formData.nome, descricao: formData.descricao || null, valor_total: formData.valor_total })
+          .insert({ 
+            nome: formData.nome, 
+            descricao: formData.descricao || null, 
+            valor_total: formData.valor_total,
+            quantidade_sessoes: formData.quantidade_sessoes,
+            intervalo_dias: formData.intervalo_dias
+          })
           .select()
           .single();
         if (error) throw error;
@@ -159,13 +176,22 @@ const PacotesTab = () => {
       nome: pacote.nome,
       descricao: pacote.descricao || '',
       valor_total: pacote.valor_total,
+      quantidade_sessoes: pacote.quantidade_sessoes,
+      intervalo_dias: pacote.intervalo_dias,
       servico_ids: pacote.servicos?.map(s => s.id) || [],
     });
     setDialogOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', descricao: '', valor_total: 0, servico_ids: [] });
+    setFormData({ 
+      nome: '', 
+      descricao: '', 
+      valor_total: 0, 
+      quantidade_sessoes: 1, 
+      intervalo_dias: 0, 
+      servico_ids: [] 
+    });
     setEditingPacote(null);
     setDialogOpen(false);
   };
@@ -222,6 +248,36 @@ const PacotesTab = () => {
               <div>
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea id="descricao" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} placeholder="Descrição do pacote..." rows={2} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="quantidade_sessoes">Qtd. de Sessões *</Label>
+                  <Input 
+                    id="quantidade_sessoes" 
+                    type="number" 
+                    min="1" 
+                    value={formData.quantidade_sessoes} 
+                    onChange={(e) => setFormData({ ...formData, quantidade_sessoes: parseInt(e.target.value) || 1 })} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="intervalo_dias">Intervalo (dias)</Label>
+                  <Select 
+                    value={formData.intervalo_dias.toString()} 
+                    onValueChange={(v) => setFormData({ ...formData, intervalo_dias: parseInt(v) })}
+                  >
+                    <SelectTrigger id="intervalo_dias">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sem intervalo</SelectItem>
+                      <SelectItem value="7">7 dias (Semanal)</SelectItem>
+                      <SelectItem value="15">15 dias (Quinzenal)</SelectItem>
+                      <SelectItem value="30">30 dias (Mensal)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Serviços para selecionar */}
@@ -306,6 +362,12 @@ const PacotesTab = () => {
                       {!pacote.ativo && <Badge variant="outline" className="text-xs">Inativo</Badge>}
                     </div>
                     {pacote.descricao && <p className="text-sm text-muted-foreground mt-1">{pacote.descricao}</p>}
+                    <div className="flex gap-2 mt-2">
+                      <Badge variant="outline" className="text-[10px]">{pacote.quantidade_sessoes} sessões</Badge>
+                      {pacote.intervalo_dias > 0 && (
+                        <Badge variant="outline" className="text-[10px]">Intervalo {pacote.intervalo_dias} dias</Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-primary">R$ {pacote.valor_total.toFixed(2)}</div>

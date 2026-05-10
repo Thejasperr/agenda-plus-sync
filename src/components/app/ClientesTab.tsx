@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X, AlertCircle } from 'lucide-react';
+import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X, AlertCircle, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +47,44 @@ const ClientesTab = () => {
   const [clienteAgendamentos, setClienteAgendamentos] = useState<{[key: string]: Agendamento[]}>({});
   const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
   const [historicoDialogOpen, setHistoricoDialogOpen] = useState(false);
+  const [pacotesDialogOpen, setPacotesDialogOpen] = useState(false);
+  const [availablePacotes, setServicoPacotes] = useState<any[]>([]);
+  const [venderPacoteDialogOpen, setVenderPacoteDialogOpen] = useState(false);
+  const [selectedPacoteId, setSelectedPacoteId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const fetchAvailablePacotes = async () => {
+    const { data } = await supabase.from('pacotes').select('*').eq('ativo', true);
+    setServicoPacotes(data || []);
+  };
+
+  useEffect(() => {
+    fetchAvailablePacotes();
+  }, []);
+
+  const handleVenderPacote = async (pacoteId: string) => {
+    if (!selectedClienteId) return;
+    const pacote = availablePacotes.find(p => p.id === pacoteId);
+    if (!pacote) return;
+
+    try {
+      const { error } = await supabase.from('cliente_pacotes').insert({
+        cliente_id: selectedClienteId,
+        pacote_id: pacoteId,
+        valor_pago: pacote.valor_total,
+        sessoes_totais: pacote.quantidade_sessoes,
+        sessoes_restantes: pacote.quantidade_sessoes,
+        status: 'ativo'
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Sucesso", description: "Pacote vendido ao cliente!" });
+      setVenderPacoteDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
 
   const formatPhoneForDisplay = (phone: string) => {
     let digits = phone.replace(/\D/g, '');
@@ -297,12 +334,37 @@ const ClientesTab = () => {
                     <Separator />
 
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="flex-1"><Edit2 className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setHistoricoDialogOpen(true); }} className="flex-1"><History className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => openWhatsApp(cliente.telefone, cliente.nome)} className="flex-1 text-green-600"><MessageCircle className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id)} className="flex-1 text-red-600"><X className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="flex-1" title="Editar"><Edit2 className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setHistoricoDialogOpen(true); }} className="flex-1" title="Histórico"><History className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setVenderPacoteDialogOpen(true); }} className="flex-1 text-primary" title="Vender Pacote"><Package className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => openWhatsApp(cliente.telefone, cliente.nome)} className="flex-1 text-green-600" title="WhatsApp"><MessageCircle className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id)} className="flex-1 text-red-600" title="Excluir"><X className="h-3 w-3" /></Button>
                     </div>
+      <Dialog open={venderPacoteDialogOpen} onOpenChange={setVenderPacoteDialogOpen}>
+        <DialogContent className="w-[90%] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Vender Pacote</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">Escolha um pacote para atribuir ao cliente <strong>{clientes.find(c => c.id === selectedClienteId)?.nome}</strong></p>
+            <div className="space-y-2">
+              {availablePacotes.map(pacote => (
+                <div key={pacote.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleVenderPacote(pacote.id)}>
+                  <div>
+                    <div className="font-medium">{pacote.nome}</div>
+                    <div className="text-xs text-muted-foreground">{pacote.quantidade_sessoes} sessões • R$ {pacote.valor_total.toFixed(2)}</div>
                   </div>
+                  <Button size="sm">Vender</Button>
+                </div>
+              ))}
+              {availablePacotes.length === 0 && (
+                <p className="text-center py-4 text-sm text-muted-foreground">Nenhum pacote ativo cadastrado.</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
                 </CardContent>
               </Card>
             );
