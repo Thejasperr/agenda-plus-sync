@@ -177,13 +177,23 @@ const CalendarioPage = () => {
         .maybeSingle();
 
       if (cliente) {
-        const { data } = await supabase
+        // Buscar pacotes e o último agendamento vinculado a cada um
+        const { data: pkgs } = await supabase
           .from('cliente_pacotes')
-          .select('*, pacotes(nome, intervalo_dias, quantidade_sessoes)')
+          .select('*, pacotes(nome, intervalo_dias, quantidade_sessoes), agendamentos(data_agendamento)')
           .eq('cliente_id', cliente.id)
           .eq('status', 'ativo')
           .gt('sessoes_restantes', 0);
-        setActivePackages(data || []);
+        
+        // Processar para pegar a data do último agendamento de cada pacote
+        const processedPkgs = (pkgs || []).map(cp => {
+          const lastAgendamento = cp.agendamentos && cp.agendamentos.length > 0 
+            ? cp.agendamentos.sort((a: any, b: any) => new Date(b.data_agendamento).getTime() - new Date(a.data_agendamento).getTime())[0]
+            : null;
+          return { ...cp, last_session_date: lastAgendamento?.data_agendamento };
+        });
+
+        setActivePackages(processedPkgs);
       } else {
         setActivePackages([]);
       }
