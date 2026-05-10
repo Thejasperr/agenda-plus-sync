@@ -72,6 +72,9 @@ const CalendarioPage = () => {
     nome: string;
     ativa: boolean;
   }[]>([]);
+  const [activePackages, setActivePackages] = useState<any[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [sessionNumber, setSessionNumber] = useState<number | null>(null);
   
   
   const { toast } = useToast();
