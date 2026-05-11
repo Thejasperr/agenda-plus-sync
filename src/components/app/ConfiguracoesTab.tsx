@@ -10,6 +10,7 @@ import FormasPagamentoTab from './FormasPagamentoTab';
 import ConfiguracaoPixTab from './ConfiguracaoPixTab';
 import PacotesTab from './PacotesTab';
 import DisparosMassaTab from './DisparosMassaTab';
+import TransacoesTab from './TransacoesTab';
 import GruposConfigTab from './GruposConfigTab';
 import EvolutionConfigTab from './EvolutionConfigTab';
 import { supabase } from '@/integrations/supabase/client';
@@ -108,6 +109,7 @@ const ConfiguracoesTab = () => {
     { id: 'disparos', label: 'Mensagens em Massa', icon: Megaphone, category: 'Marketing' },
     { id: 'grupos', label: 'Grupos WhatsApp', icon: Sparkles, category: 'Marketing' },
     { id: 'pagamentos', label: 'Formas de Pagamento', icon: CreditCard, category: 'Financeiro' },
+    { id: 'caixa', label: 'Fluxo de Caixa', icon: TrendingUp, category: 'Financeiro' },
     { id: 'pix', label: 'Configuração PIX', icon: QrCode, category: 'Financeiro' },
     { id: 'backup', label: 'Backup e Exportação', icon: Database, category: 'Sistema' },
   ];
@@ -172,6 +174,7 @@ const ConfiguracoesTab = () => {
                     {activeTab === 'disparos' && 'Crie campanhas de mensagens.'}
                     {activeTab === 'grupos' && 'Gerencie disparos para grupos.'}
                     {activeTab === 'pagamentos' && 'Configure métodos aceitos.'}
+                    {activeTab === 'caixa' && 'Gerencie o fluxo de caixa e transações.'}
                     {activeTab === 'pix' && 'Configure as chaves para recebimento.'}
                     {activeTab === 'backup' && 'Exporte seus dados para segurança.'}
                   </CardDescription>
@@ -186,6 +189,7 @@ const ConfiguracoesTab = () => {
               {activeTab === 'disparos' && <DisparosMassaTab />}
               {activeTab === 'grupos' && <GruposConfigTab />}
               {activeTab === 'pagamentos' && <FormasPagamentoTab />}
+              {activeTab === 'caixa' && <TransacoesTab />}
               {activeTab === 'pix' && <ConfiguracaoPixTab />}
               {activeTab === 'backup' && (
                 <div className="space-y-4">

@@ -302,7 +302,7 @@ const TransacoesTab = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       {/* Cards de resumo */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="mobile-card">
