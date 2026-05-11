@@ -996,11 +996,11 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
           {/* Preço */}
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-success" />
-            {agendamento.pacote_id ? (
+            {agendamento.cliente_pacote_id ? (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                   <Package className="h-3 w-3 mr-1" />
-                  Sessão {agendamento.numero_sessao || '?'}
+                  Sessão {agendamento.sessao_numero || '?'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">(Incluso no pacote)</span>
               </div>
