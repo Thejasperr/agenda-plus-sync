@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Clock, Wrench, Download, QrCode, Package, Megaphone, Sparkles, Plug, CreditCard, LayoutGrid, Database } from 'lucide-react';
+import { Settings, Clock, Wrench, Download, QrCode, Package, Megaphone, Sparkles, Plug, CreditCard, LayoutGrid, Database, TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
