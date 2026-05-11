@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2, AlertCircle, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,8 @@ interface Agendamento {
   status: string;
   observacoes: string | null;
   created_at: string;
+  pacote_id?: string | null;
+  numero_sessao?: number | null;
 }
 
 interface Servico {
@@ -47,6 +49,7 @@ const AgendamentosTab = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [clientes, setClientes] = useState<{id: string, telefone: string, nome: string}[]>([]);
+  const [clientePacotes, setClientePacotes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [loading, setLoading] = useState(true);
@@ -74,7 +77,9 @@ const AgendamentosTab = () => {
     data_retorno: '',
     preco_retorno: 0,
     status: 'Agendado',
-    observacoes: ''
+    observacoes: '',
+    pacote_id: '' as string,
+    numero_sessao: null as number | null
   });
 
   // Calcular automaticamente o preço total quando os procedimentos mudam
@@ -93,6 +98,44 @@ const AgendamentosTab = () => {
     fetchServicos();
     fetchClientes();
   }, []);
+
+  const fetchClientePacotes = async (telefone: string) => {
+    try {
+      const { data: cliente } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('telefone', telefone)
+        .maybeSingle();
+
+      if (cliente) {
+        const { data, error } = await supabase
+          .from('cliente_pacotes')
+          .select(`
+            *,
+            pacotes (
+              nome
+            )
+          `)
+          .eq('cliente_id', cliente.id)
+          .eq('status', 'ativo');
+        
+        if (error) throw error;
+        setClientePacotes(data || []);
+      } else {
+        setClientePacotes([]);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar pacotes do cliente:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.telefone && formData.telefone.length >= 10) {
+      fetchClientePacotes(formData.telefone);
+    } else {
+      setClientePacotes([]);
+    }
+  }, [formData.telefone]);
 
   // Sincronização em tempo real entre telas
   useAgendamentosRealtime(() => {
@@ -202,7 +245,9 @@ const AgendamentosTab = () => {
         porcentagem_pagamento_antecipado: sanitizedData.pagamento_antecipado ? sanitizedData.porcentagem_pagamento_antecipado : null,
         data_retorno: sanitizedData.tem_retorno ? sanitizedData.data_retorno : null,
         preco_retorno: sanitizedData.tem_retorno ? sanitizedData.preco_retorno : null,
-        observacoes: sanitizedData.observacoes || null
+        observacoes: sanitizedData.observacoes || null,
+        pacote_id: sanitizedData.pacote_id || null,
+        numero_sessao: sanitizedData.numero_sessao || null
       };
 
       // Criar cliente se não existir
@@ -303,7 +348,9 @@ const AgendamentosTab = () => {
       data_retorno: '',
       preco_retorno: 0,
       status: 'Agendado',
-      observacoes: ''
+      observacoes: '',
+      pacote_id: '',
+      numero_sessao: null
     });
     setFormErrors({ nome: '', telefone: '', preco: '', data_agendamento: '', hora_agendamento: '' });
     setEditingAgendamento(null);
@@ -336,7 +383,9 @@ const AgendamentosTab = () => {
       data_retorno: agendamento.data_retorno || '',
       preco_retorno: agendamento.preco_retorno || 0,
       status: agendamento.status,
-      observacoes: agendamento.observacoes || ''
+      observacoes: agendamento.observacoes || '',
+      pacote_id: agendamento.pacote_id || '',
+      numero_sessao: agendamento.numero_sessao || null
     });
     setEditingAgendamento(agendamento);
     setShowSuggestions(false);
@@ -666,6 +715,65 @@ const AgendamentosTab = () => {
                   </div>
                 </div>
 
+                {clientePacotes.length > 0 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-3">
+                    <div className="flex items-center gap-2 text-primary font-medium text-sm">
+                      <Package className="h-4 w-4" />
+                      Pacotes Ativos
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="pacote_id" className="text-xs">Vincular a um pacote</Label>
+                        <Select 
+                          value={formData.pacote_id || "nenhum"} 
+                          onValueChange={(value) => {
+                            const pacoteId = value === "nenhum" ? "" : value;
+                            setFormData({ 
+                              ...formData, 
+                              pacote_id: pacoteId,
+                              preco: pacoteId ? 0 : formData.preco,
+                              numero_sessao: pacoteId ? (formData.numero_sessao || 1) : null
+                            });
+                          }}
+                        >
+                          <SelectTrigger id="pacote_id" className="h-9">
+                            <SelectValue placeholder="Selecione um pacote" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Nenhum pacote</SelectItem>
+                            {clientePacotes.map((cp) => (
+                              <SelectItem key={cp.id} value={cp.id}>
+                                {cp.pacotes?.nome} ({cp.sessoes_restantes}/{cp.sessoes_totais} sessões)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {formData.pacote_id && (
+                        <div>
+                          <Label htmlFor="numero_sessao" className="text-xs">Número da Sessão</Label>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              id="numero_sessao"
+                              type="number"
+                              min="1"
+                              max={clientePacotes.find(cp => cp.id === formData.pacote_id)?.sessoes_totais || 10}
+                              value={formData.numero_sessao || 1}
+                              onChange={(e) => setFormData({ ...formData, numero_sessao: parseInt(e.target.value) || 1 })}
+                              className="h-9 w-24"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              de {clientePacotes.find(cp => cp.id === formData.pacote_id)?.sessoes_totais} sessões
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <Label htmlFor="preco">Preço Total (R$) *</Label>
                   <Input
@@ -888,7 +996,15 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
           {/* Preço */}
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-success" />
-            {agendamento.tem_desconto && agendamento.porcentagem_desconto ? (
+            {agendamento.pacote_id ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                  <Package className="h-3 w-3 mr-1" />
+                  Sessão {agendamento.numero_sessao || '?'}
+                </Badge>
+                <span className="text-xs text-muted-foreground">(Incluso no pacote)</span>
+              </div>
+            ) : agendamento.tem_desconto && agendamento.porcentagem_desconto ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground line-through">
                   R$ {agendamento.preco.toFixed(2)}
