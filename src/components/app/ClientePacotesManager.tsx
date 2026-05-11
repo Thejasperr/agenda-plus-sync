@@ -239,22 +239,30 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               {cp.status === 'ativo' && cp.sessoes_restantes > 0 && (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex-1 h-8 text-xs gap-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10"
+                  className="flex-1 h-8 text-[10px] gap-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 px-1"
                   onClick={() => setLinkingPacote(cp)}
                 >
-                  <Plus className="h-3 w-3" /> Vincular Agendamento
+                  <Plus className="h-3 w-3" /> Vincular
                 </Button>
               )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className={`flex-1 h-8 text-[10px] gap-1 px-1 ${cp.pago ? 'text-blue-600 border-blue-200 bg-blue-50/50' : 'text-orange-600 border-orange-200 bg-orange-50/50'}`}
+                onClick={() => handleTogglePago(cp.id, cp.pago)}
+              >
+                <DollarSign className="h-3 w-3" /> {cp.pago ? 'Pago' : 'Pagar'}
+              </Button>
               {cp.status === 'ativo' && (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex-1 h-8 text-xs gap-1"
+                  className="flex-1 h-8 text-[10px] gap-1 px-1"
                   onClick={() => handleFinalizar(cp.id)}
                 >
                   <CheckCircle2 className="h-3 w-3" /> Finalizar
