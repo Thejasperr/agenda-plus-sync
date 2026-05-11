@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Settings, TrendingUp, CalendarDays, LogOut, User, BarChart3, MessageCircle } from 'lucide-react';
+import { Users, Settings, Package, CalendarDays, LogOut, User, BarChart3, MessageCircle } from 'lucide-react';
 import ClientesTab from '@/components/app/ClientesTab';
 import CalendarioPage from '@/pages/CalendarioPage';
 import ConfiguracoesTab from '@/components/app/ConfiguracoesTab';
 import TransacoesTab from '@/components/app/TransacoesTab';
+import PacotesGerenciamentoTab from '@/components/app/PacotesGerenciamentoTab';
 import DashboardTab from '@/components/app/DashboardTab';
 import WhatsAppPage from '@/pages/WhatsAppPage';
 import InstallPwaPrompt from '@/components/InstallPwaPrompt';
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useWhatsAppNotifications } from '@/hooks/useWhatsAppNotifications';
 
-type TabType = 'dashboard' | 'calendario' | 'whatsapp' | 'clientes' | 'transacoes' | 'configuracoes';
+type TabType = 'dashboard' | 'calendario' | 'whatsapp' | 'clientes' | 'pacotes' | 'configuracoes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -45,7 +46,7 @@ const Index = () => {
     { id: 'calendario' as TabType, label: 'Agenda', icon: CalendarDays },
     { id: 'whatsapp' as TabType, label: 'WhatsApp', icon: MessageCircle },
     { id: 'clientes' as TabType, label: 'Clientes', icon: Users },
-    { id: 'transacoes' as TabType, label: 'Caixa', icon: TrendingUp },
+    { id: 'pacotes' as TabType, label: 'Pacotes', icon: Package },
     { id: 'configuracoes' as TabType, label: 'Config', icon: Settings },
   ];
 
@@ -90,7 +91,7 @@ const Index = () => {
       >
         <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}><DashboardTab /></div>
         <div style={{ display: activeTab === 'clientes' ? 'block' : 'none' }}><ClientesTab /></div>
-        <div style={{ display: activeTab === 'transacoes' ? 'block' : 'none' }}><TransacoesTab /></div>
+        <div style={{ display: activeTab === 'pacotes' ? 'block' : 'none' }}><PacotesGerenciamentoTab /></div>
         <div style={{ display: activeTab === 'configuracoes' ? 'block' : 'none' }}><ConfiguracoesTab /></div>
         <div style={{ display: activeTab === 'whatsapp' ? 'block' : 'none', height: '100%' }}><WhatsAppPage /></div>
         <div style={{ display: activeTab === 'calendario' ? 'block' : 'none' }}><CalendarioPage /></div>

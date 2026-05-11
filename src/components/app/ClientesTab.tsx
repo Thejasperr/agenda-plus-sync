@@ -15,6 +15,7 @@ import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, clienteSc
 import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 import { useAuth } from '@/hooks/useAuth';
 import { ClientePacotesManager } from './ClientePacotesManager';
+import { ClientePerfilDialog } from './ClientePerfilDialog';
 
 interface Cliente {
   id: string;
@@ -368,54 +369,11 @@ const ClientesTab = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={historicoDialogOpen} onOpenChange={setHistoricoDialogOpen}>
-        <DialogContent className="w-[95%] max-w-2xl mx-auto max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle>Perfil do Cliente - {selectedClienteId ? clientes.find(c => c.id === selectedClienteId)?.nome : ''}</DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            {selectedClienteId && (
-              <Tabs defaultValue="agendamentos" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="agendamentos" className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" /> Agendamentos
-                  </TabsTrigger>
-                  <TabsTrigger value="pacotes" className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" /> Pacotes
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="agendamentos" className="space-y-3 mt-0">
-                  {(() => {
-                    const cliente = clientes.find(c => c.id === selectedClienteId);
-                    const agendamentos = cliente ? getClienteAgendamentos(cliente.telefone) : [];
-                    if (agendamentos.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum agendamento</div>;
-                    return agendamentos.map((ag) => (
-                      <Card key={ag.id} className="mobile-card border-l-4 border-l-blue-500">
-                        <CardContent className="p-3">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <div className="font-medium">{formatDate(ag.data_agendamento)} às {ag.hora_agendamento}</div>
-                              <div className="text-sm text-success font-medium">R$ {ag.preco.toFixed(2)}</div>
-                            </div>
-                            <Badge variant="outline" className={ag.status === 'Concluído' ? 'bg-green-500/10 text-green-700 border-green-200' : ag.status === 'Cancelado' ? 'bg-red-500/10 text-red-700 border-red-200' : 'bg-blue-500/10 text-blue-700 border-blue-200'}>{ag.status}</Badge>
-                          </div>
-                          {ag.observacoes && <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded"><strong>Obs:</strong> {ag.observacoes}</div>}
-                        </CardContent>
-                      </Card>
-                    ));
-                  })()}
-                </TabsContent>
-
-                <TabsContent value="pacotes" className="space-y-3 mt-0">
-                  <ClientePacotesManager clienteId={selectedClienteId} onUpdate={fetchClientes} />
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ClientePerfilDialog 
+        clienteId={selectedClienteId || ''} 
+        open={historicoDialogOpen} 
+        onOpenChange={setHistoricoDialogOpen} 
+      />
     </div>
   );
 };
