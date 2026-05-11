@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, Clock, DollarSign, Filter, Edit2, MessageCircle, ChevronLeft, ChevronRight, Check, X, Clock4, Trash2, AlertCircle, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
