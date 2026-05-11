@@ -246,8 +246,8 @@ const AgendamentosTab = () => {
         data_retorno: sanitizedData.tem_retorno ? sanitizedData.data_retorno : null,
         preco_retorno: sanitizedData.tem_retorno ? sanitizedData.preco_retorno : null,
         observacoes: sanitizedData.observacoes || null,
-        pacote_id: sanitizedData.pacote_id || null,
-        numero_sessao: sanitizedData.numero_sessao || null
+        cliente_pacote_id: sanitizedData.cliente_pacote_id || null,
+        sessao_numero: sanitizedData.sessao_numero || null
       };
 
       // Criar cliente se não existir
