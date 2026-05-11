@@ -35,8 +35,8 @@ interface Agendamento {
   status: string;
   observacoes: string | null;
   created_at: string;
-  pacote_id?: string | null;
-  numero_sessao?: number | null;
+  cliente_pacote_id?: string | null;
+  sessao_numero?: number | null;
 }
 
 interface Servico {
