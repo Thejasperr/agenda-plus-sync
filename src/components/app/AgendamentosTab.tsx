@@ -726,14 +726,14 @@ const AgendamentosTab = () => {
                       <div>
                         <Label htmlFor="pacote_id" className="text-xs">Vincular a um pacote</Label>
                         <Select 
-                          value={formData.pacote_id || "nenhum"} 
+                          value={formData.cliente_pacote_id || "nenhum"} 
                           onValueChange={(value) => {
                             const pacoteId = value === "nenhum" ? "" : value;
                             setFormData({ 
                               ...formData, 
-                              pacote_id: pacoteId,
+                              cliente_pacote_id: pacoteId,
                               preco: pacoteId ? 0 : formData.preco,
-                              numero_sessao: pacoteId ? (formData.numero_sessao || 1) : null
+                              sessao_numero: pacoteId ? (formData.sessao_numero || 1) : null
                             });
                           }}
                         >
@@ -751,21 +751,21 @@ const AgendamentosTab = () => {
                         </Select>
                       </div>
 
-                      {formData.pacote_id && (
+                      {formData.cliente_pacote_id && (
                         <div>
-                          <Label htmlFor="numero_sessao" className="text-xs">Número da Sessão</Label>
+                          <Label htmlFor="sessao_numero" className="text-xs">Número da Sessão</Label>
                           <div className="flex items-center gap-3">
                             <Input
-                              id="numero_sessao"
+                              id="sessao_numero"
                               type="number"
                               min="1"
-                              max={clientePacotes.find(cp => cp.id === formData.pacote_id)?.sessoes_totais || 10}
-                              value={formData.numero_sessao || 1}
-                              onChange={(e) => setFormData({ ...formData, numero_sessao: parseInt(e.target.value) || 1 })}
+                              max={clientePacotes.find(cp => cp.id === formData.cliente_pacote_id)?.sessoes_totais || 10}
+                              value={formData.sessao_numero || 1}
+                              onChange={(e) => setFormData({ ...formData, sessao_numero: parseInt(e.target.value) || 1 })}
                               className="h-9 w-24"
                             />
                             <span className="text-xs text-muted-foreground">
-                              de {clientePacotes.find(cp => cp.id === formData.pacote_id)?.sessoes_totais} sessões
+                              de {clientePacotes.find(cp => cp.id === formData.cliente_pacote_id)?.sessoes_totais} sessões
                             </span>
                           </div>
                         </div>
