@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Package, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Package, Trash2, CheckCircle2, AlertCircle, Calendar, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ClientePacote {
@@ -20,6 +21,15 @@ interface ClientePacote {
   };
 }
 
+interface Agendamento {
+  id: string;
+  data_agendamento: string;
+  hora_agendamento: string;
+  preco: number;
+  status: string;
+  cliente_pacote_id: string | null;
+}
+
 interface ClientePacotesManagerProps {
   clienteId: string;
   onUpdate?: () => void;
@@ -27,7 +37,9 @@ interface ClientePacotesManagerProps {
 
 export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesManagerProps) => {
   const [pacotes, setPacotes] = useState<ClientePacote[]>([]);
+  const [agendamentosSemPacote, setAgendamentosSemPacote] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [linkingPacote, setLinkingPacote] = useState<ClientePacote | null>(null);
   const { toast } = useToast();
 
   const fetchPacotes = async () => {
@@ -42,13 +54,42 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
       setPacotes(data || []);
     } catch (error: any) {
       console.error('Erro ao buscar pacotes do cliente:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
+  const fetchAgendamentosSemPacote = async () => {
+    try {
+      // Primeiro buscamos o telefone do cliente
+      const { data: cliente } = await supabase
+        .from('clientes')
+        .select('telefone')
+        .eq('id', clienteId)
+        .single();
+
+      if (!cliente) return;
+
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('id, data_agendamento, hora_agendamento, preco, status, cliente_pacote_id')
+        .eq('telefone', cliente.telefone)
+        .is('cliente_pacote_id', null)
+        .order('data_agendamento', { ascending: false });
+
+      if (error) throw error;
+      setAgendamentosSemPacote(data || []);
+    } catch (error: any) {
+      console.error('Erro ao buscar agendamentos sem pacote:', error);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([fetchPacotes(), fetchAgendamentosSemPacote()]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    if (clienteId) fetchPacotes();
+    if (clienteId) fetchData();
   }, [clienteId]);
 
   const handleDelete = async (id: string) => {
@@ -63,7 +104,7 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
       if (error) throw error;
       
       toast({ title: "Sucesso", description: "Pacote removido com sucesso." });
-      fetchPacotes();
+      fetchData();
       if (onUpdate) onUpdate();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -80,11 +121,54 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
       if (error) throw error;
       
       toast({ title: "Sucesso", description: "Pacote finalizado." });
-      fetchPacotes();
+      fetchData();
       if (onUpdate) onUpdate();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
+  };
+
+  const vincularAgendamentoAoPacote = async (agendamento: Agendamento, pacote: ClientePacote) => {
+    if (pacote.sessoes_restantes <= 0) {
+      toast({ title: "Erro", description: "Este pacote não possui sessões restantes.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // 1. Atualizar agendamento
+      const { error: agError } = await supabase
+        .from('agendamentos')
+        .update({
+          cliente_pacote_id: pacote.id,
+          sessao_numero: (pacote.sessoes_totais - pacote.sessoes_restantes) + 1,
+          preco: 0 // Preço é zerado quando faz parte do pacote
+        })
+        .eq('id', agendamento.id);
+
+      if (agError) throw agError;
+
+      // 2. Deduzir sessão do pacote
+      const { error: pacError } = await supabase
+        .from('cliente_pacotes')
+        .update({
+          sessoes_restantes: pacote.sessoes_restantes - 1
+        })
+        .eq('id', pacote.id);
+
+      if (pacError) throw pacError;
+
+      toast({ title: "Sucesso", description: "Agendamento vinculado ao pacote e sessão descontada!" });
+      setLinkingPacote(null);
+      fetchData();
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
   };
 
   if (loading) return <div className="text-center py-4 text-sm text-muted-foreground">Carregando pacotes...</div>;
@@ -133,6 +217,16 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
             </div>
 
             <div className="flex gap-2">
+              {cp.status === 'ativo' && cp.sessoes_restantes > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 h-8 text-xs gap-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10"
+                  onClick={() => setLinkingPacote(cp)}
+                >
+                  <Plus className="h-3 w-3" /> Vincular Agendamento
+                </Button>
+              )}
               {cp.status === 'ativo' && (
                 <Button 
                   variant="outline" 
@@ -155,6 +249,48 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
           </CardContent>
         </Card>
       ))}
+
+      <Dialog open={!!linkingPacote} onOpenChange={() => setLinkingPacote(null)}>
+        <DialogContent className="w-[90%] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Vincular Agendamento ao Pacote</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Selecione um agendamento já realizado para descontar deste pacote.
+              O preço do agendamento será zerado e o saldo do pacote atualizado.
+            </p>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              {agendamentosSemPacote.length > 0 ? (
+                agendamentosSemPacote.map(ag => (
+                  <div 
+                    key={ag.id} 
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => linkingPacote && vincularAgendamentoAoPacote(ag, linkingPacote)}
+                  >
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(ag.data_agendamento)} às {ag.hora_agendamento}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Valor original: R$ {ag.preco.toFixed(2)} • Status: {ag.status}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost" className="text-primary h-8 w-8 p-0">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  Nenhum agendamento sem pacote encontrado para este cliente.
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

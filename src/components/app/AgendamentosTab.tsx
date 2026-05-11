@@ -35,8 +35,8 @@ interface Agendamento {
   status: string;
   observacoes: string | null;
   created_at: string;
-  pacote_id?: string | null;
-  numero_sessao?: number | null;
+  cliente_pacote_id?: string | null;
+  sessao_numero?: number | null;
 }
 
 interface Servico {
@@ -78,8 +78,8 @@ const AgendamentosTab = () => {
     preco_retorno: 0,
     status: 'Agendado',
     observacoes: '',
-    pacote_id: '' as string,
-    numero_sessao: null as number | null
+    cliente_pacote_id: '' as string,
+    sessao_numero: null as number | null
   });
 
   // Calcular automaticamente o preço total quando os procedimentos mudam
@@ -246,8 +246,8 @@ const AgendamentosTab = () => {
         data_retorno: sanitizedData.tem_retorno ? sanitizedData.data_retorno : null,
         preco_retorno: sanitizedData.tem_retorno ? sanitizedData.preco_retorno : null,
         observacoes: sanitizedData.observacoes || null,
-        pacote_id: sanitizedData.pacote_id || null,
-        numero_sessao: sanitizedData.numero_sessao || null
+        cliente_pacote_id: sanitizedData.cliente_pacote_id || null,
+        sessao_numero: sanitizedData.sessao_numero || null
       };
 
       // Criar cliente se não existir
@@ -349,8 +349,8 @@ const AgendamentosTab = () => {
       preco_retorno: 0,
       status: 'Agendado',
       observacoes: '',
-      pacote_id: '',
-      numero_sessao: null
+      cliente_pacote_id: '',
+      sessao_numero: null
     });
     setFormErrors({ nome: '', telefone: '', preco: '', data_agendamento: '', hora_agendamento: '' });
     setEditingAgendamento(null);
@@ -384,8 +384,8 @@ const AgendamentosTab = () => {
       preco_retorno: agendamento.preco_retorno || 0,
       status: agendamento.status,
       observacoes: agendamento.observacoes || '',
-      pacote_id: agendamento.pacote_id || '',
-      numero_sessao: agendamento.numero_sessao || null
+      cliente_pacote_id: agendamento.cliente_pacote_id || '',
+      sessao_numero: agendamento.sessao_numero || null
     });
     setEditingAgendamento(agendamento);
     setShowSuggestions(false);
@@ -726,14 +726,14 @@ const AgendamentosTab = () => {
                       <div>
                         <Label htmlFor="pacote_id" className="text-xs">Vincular a um pacote</Label>
                         <Select 
-                          value={formData.pacote_id || "nenhum"} 
+                          value={formData.cliente_pacote_id || "nenhum"} 
                           onValueChange={(value) => {
                             const pacoteId = value === "nenhum" ? "" : value;
                             setFormData({ 
                               ...formData, 
-                              pacote_id: pacoteId,
+                              cliente_pacote_id: pacoteId,
                               preco: pacoteId ? 0 : formData.preco,
-                              numero_sessao: pacoteId ? (formData.numero_sessao || 1) : null
+                              sessao_numero: pacoteId ? (formData.sessao_numero || 1) : null
                             });
                           }}
                         >
@@ -751,21 +751,21 @@ const AgendamentosTab = () => {
                         </Select>
                       </div>
 
-                      {formData.pacote_id && (
+                      {formData.cliente_pacote_id && (
                         <div>
-                          <Label htmlFor="numero_sessao" className="text-xs">Número da Sessão</Label>
+                          <Label htmlFor="sessao_numero" className="text-xs">Número da Sessão</Label>
                           <div className="flex items-center gap-3">
                             <Input
-                              id="numero_sessao"
+                              id="sessao_numero"
                               type="number"
                               min="1"
-                              max={clientePacotes.find(cp => cp.id === formData.pacote_id)?.sessoes_totais || 10}
-                              value={formData.numero_sessao || 1}
-                              onChange={(e) => setFormData({ ...formData, numero_sessao: parseInt(e.target.value) || 1 })}
+                              max={clientePacotes.find(cp => cp.id === formData.cliente_pacote_id)?.sessoes_totais || 10}
+                              value={formData.sessao_numero || 1}
+                              onChange={(e) => setFormData({ ...formData, sessao_numero: parseInt(e.target.value) || 1 })}
                               className="h-9 w-24"
                             />
                             <span className="text-xs text-muted-foreground">
-                              de {clientePacotes.find(cp => cp.id === formData.pacote_id)?.sessoes_totais} sessões
+                              de {clientePacotes.find(cp => cp.id === formData.cliente_pacote_id)?.sessoes_totais} sessões
                             </span>
                           </div>
                         </div>
@@ -996,11 +996,11 @@ const AgendamentoCard = ({ agendamento, onEdit, onOpenWhatsApp, onUpdateStatus, 
           {/* Preço */}
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-success" />
-            {agendamento.pacote_id ? (
+            {agendamento.cliente_pacote_id ? (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                   <Package className="h-3 w-3 mr-1" />
-                  Sessão {agendamento.numero_sessao || '?'}
+                  Sessão {agendamento.sessao_numero || '?'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">(Incluso no pacote)</span>
               </div>
