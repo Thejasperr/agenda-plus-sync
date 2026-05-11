@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, clienteSchema } from '@/lib/security';
 import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Cliente {
   id: string;
@@ -51,6 +52,7 @@ const ClientesTab = () => {
   const [availablePacotes, setServicoPacotes] = useState<any[]>([]);
   const [venderPacoteDialogOpen, setVenderPacoteDialogOpen] = useState(false);
   const [selectedPacoteId, setSelectedPacoteId] = useState<string | null>(null);
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchAvailablePacotes = async () => {
@@ -63,13 +65,14 @@ const ClientesTab = () => {
   }, []);
 
   const handleVenderPacote = async (pacoteId: string) => {
-    if (!selectedClienteId) return;
+    if (!selectedClienteId || !user) return;
     const pacote = availablePacotes.find(p => p.id === pacoteId);
     if (!pacote) return;
 
     try {
       const { error } = await supabase.from('cliente_pacotes').insert({
         cliente_id: selectedClienteId,
+        user_id: user.id,
         pacote_id: pacoteId,
         valor_pago: pacote.valor_total,
         sessoes_totais: pacote.quantidade_sessoes,
