@@ -349,8 +349,8 @@ const AgendamentosTab = () => {
       preco_retorno: 0,
       status: 'Agendado',
       observacoes: '',
-      pacote_id: '',
-      numero_sessao: null
+      cliente_pacote_id: '',
+      sessao_numero: null
     });
     setFormErrors({ nome: '', telefone: '', preco: '', data_agendamento: '', hora_agendamento: '' });
     setEditingAgendamento(null);
