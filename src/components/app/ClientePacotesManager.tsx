@@ -139,8 +139,8 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
       const { error: agError } = await supabase
         .from('agendamentos')
         .update({
-          pacote_id: pacote.id,
-          numero_sessao: (pacote.sessoes_totais - pacote.sessoes_restantes) + 1,
+          cliente_pacote_id: pacote.id,
+          sessao_numero: (pacote.sessoes_totais - pacote.sessoes_restantes) + 1,
           preco: 0 // Preço é zerado quando faz parte do pacote
         })
         .eq('id', agendamento.id);
