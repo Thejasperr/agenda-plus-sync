@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X, AlertCircle, Package } from 'lucide-react';
+import { Plus, Search, Phone, Edit2, MessageCircle, History, Gift, X, AlertCircle, Package, User, Calendar, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, clienteSchema } from '@/lib/security';
 import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
 import { useAuth } from '@/hooks/useAuth';
 import { ClientePacotesManager } from './ClientePacotesManager';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, CreditCard, User } from 'lucide-react';
-
 
 interface Cliente {
   id: string;
@@ -52,10 +50,8 @@ const ClientesTab = () => {
   const [clienteAgendamentos, setClienteAgendamentos] = useState<{[key: string]: Agendamento[]}>({});
   const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
   const [historicoDialogOpen, setHistoricoDialogOpen] = useState(false);
-  const [pacotesDialogOpen, setPacotesDialogOpen] = useState(false);
   const [availablePacotes, setServicoPacotes] = useState<any[]>([]);
   const [venderPacoteDialogOpen, setVenderPacoteDialogOpen] = useState(false);
-  const [selectedPacoteId, setSelectedPacoteId] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -66,50 +62,10 @@ const ClientesTab = () => {
 
   useEffect(() => {
     fetchAvailablePacotes();
-  }, []);
-
-  const handleVenderPacote = async (pacoteId: string) => {
-    if (!selectedClienteId || !user) return;
-    const pacote = availablePacotes.find(p => p.id === pacoteId);
-    if (!pacote) return;
-
-    try {
-      const { error } = await supabase.from('cliente_pacotes').insert({
-        cliente_id: selectedClienteId,
-        user_id: user.id,
-        pacote_id: pacoteId,
-        valor_pago: pacote.valor_total,
-        sessoes_totais: pacote.quantidade_sessoes,
-        sessoes_restantes: pacote.quantidade_sessoes,
-        status: 'ativo'
-      });
-
-      if (error) throw error;
-
-      toast({ title: "Sucesso", description: "Pacote vendido ao cliente!" });
-      setVenderPacoteDialogOpen(false);
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const formatPhoneForDisplay = (phone: string) => {
-    let digits = phone.replace(/\D/g, '');
-    // Strip 55 country code for display
-    if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
-      digits = digits.slice(2);
-    }
-    if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-    if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    return phone;
-  };
-
-  useEffect(() => {
     fetchClientes();
     fetchAgendamentos();
   }, []);
 
-  // Sincronização em tempo real entre telas
   useAgendamentosRealtime(() => {
     fetchClientes();
     fetchAgendamentos();
@@ -142,6 +98,42 @@ const ClientesTab = () => {
     }
   };
 
+  const handleVenderPacote = async (pacoteId: string) => {
+    if (!selectedClienteId || !user) return;
+    const pacote = availablePacotes.find(p => p.id === pacoteId);
+    if (!pacote) return;
+
+    try {
+      const { error } = await supabase.from('cliente_pacotes').insert({
+        cliente_id: selectedClienteId,
+        user_id: user.id,
+        pacote_id: pacoteId,
+        valor_pago: pacote.valor_total,
+        sessoes_totais: pacote.quantidade_sessoes,
+        sessoes_restantes: pacote.quantidade_sessoes,
+        status: 'ativo'
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Sucesso", description: "Pacote vendido ao cliente!" });
+      setVenderPacoteDialogOpen(false);
+      fetchClientes();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const formatPhoneForDisplay = (phone: string) => {
+    let digits = phone.replace(/\D/g, '');
+    if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+      digits = digits.slice(2);
+    }
+    if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return phone;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({ nome: '', telefone: '', observacoes: '' });
@@ -150,7 +142,7 @@ const ClientesTab = () => {
     if (!phoneValidation.isValid) { setFormErrors({ ...formErrors, telefone: phoneValidation.error || 'Telefone inválido' }); return; }
     sanitizedData.telefone = phoneValidation.formatted;
     try { clienteSchema.parse(sanitizedData); } catch (error: any) {
-      if (error.errors?.[0]) { const field = error.errors[0].path[0]; setFormErrors({ ...formErrors, [field]: error.errors[0].message }); }
+      if (error.errors?.[0]) { const field = error.errors[0].path[0]; setFormErrors({ ...formErrors, [field as any]: error.errors[0].message }); }
       return;
     }
     try {
@@ -342,16 +334,22 @@ const ClientesTab = () => {
 
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="flex-1" title="Editar"><Edit2 className="h-3 w-3" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setHistoricoDialogOpen(true); }} className="flex-1" title="Histórico"><History className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setHistoricoDialogOpen(true); }} className="flex-1 text-primary" title="Ver Perfil"><User className="h-3 w-3" /></Button>
                       <Button variant="outline" size="sm" onClick={() => { setSelectedClienteId(cliente.id); setVenderPacoteDialogOpen(true); }} className="flex-1 text-primary" title="Vender Pacote"><Package className="h-3 w-3" /></Button>
                       <Button variant="outline" size="sm" onClick={() => openWhatsApp(cliente.telefone, cliente.nome)} className="flex-1 text-green-600" title="WhatsApp"><MessageCircle className="h-3 w-3" /></Button>
                       <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id)} className="flex-1 text-red-600" title="Excluir"><X className="h-3 w-3" /></Button>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       <Dialog open={venderPacoteDialogOpen} onOpenChange={setVenderPacoteDialogOpen}>
         <DialogContent className="w-[90%] max-w-md mx-auto">
-          <DialogHeader>
-            <DialogTitle>Vender Pacote</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Vender Pacote</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">Escolha um pacote para atribuir ao cliente <strong>{clientes.find(c => c.id === selectedClienteId)?.nome}</strong></p>
             <div className="space-y-2">
@@ -364,46 +362,57 @@ const ClientesTab = () => {
                   <Button size="sm">Vender</Button>
                 </div>
               ))}
-              {availablePacotes.length === 0 && (
-                <p className="text-center py-4 text-sm text-muted-foreground">Nenhum pacote ativo cadastrado.</p>
-              )}
+              {availablePacotes.length === 0 && <p className="text-center py-4 text-sm text-muted-foreground">Nenhum pacote ativo cadastrado.</p>}
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
 
       <Dialog open={historicoDialogOpen} onOpenChange={setHistoricoDialogOpen}>
-        <DialogContent className="w-[95%] max-w-2xl mx-auto max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Histórico - {selectedClienteId ? clientes.find(c => c.id === selectedClienteId)?.nome : ''}</DialogTitle>
+        <DialogContent className="w-[95%] max-w-2xl mx-auto max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle>Perfil do Cliente - {selectedClienteId ? clientes.find(c => c.id === selectedClienteId)?.nome : ''}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            {selectedClienteId && (() => {
-              const cliente = clientes.find(c => c.id === selectedClienteId);
-              const agendamentos = cliente ? getClienteAgendamentos(cliente.telefone) : [];
-              if (agendamentos.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum agendamento</div>;
-              return agendamentos.map((ag) => (
-                <Card key={ag.id} className="mobile-card">
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <div className="font-medium">{formatDate(ag.data_agendamento)} às {ag.hora_agendamento}</div>
-                        <div className="text-sm text-success font-medium">R$ {ag.preco.toFixed(2)}</div>
-                      </div>
-                      <Badge variant="outline" className={ag.status === 'Concluído' ? 'bg-green-500/10 text-green-700' : ag.status === 'Cancelado' ? 'bg-red-500/10 text-red-700' : 'bg-blue-500/10 text-blue-700'}>{ag.status}</Badge>
-                    </div>
-                    {ag.observacoes && <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded"><strong>Obs:</strong> {ag.observacoes}</div>}
-                  </CardContent>
-                </Card>
-              ));
-            })()}
+          
+          <div className="flex-1 overflow-y-auto p-4">
+            {selectedClienteId && (
+              <Tabs defaultValue="agendamentos" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="agendamentos" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" /> Agendamentos
+                  </TabsTrigger>
+                  <TabsTrigger value="pacotes" className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" /> Pacotes
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="agendamentos" className="space-y-3 mt-0">
+                  {(() => {
+                    const cliente = clientes.find(c => c.id === selectedClienteId);
+                    const agendamentos = cliente ? getClienteAgendamentos(cliente.telefone) : [];
+                    if (agendamentos.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum agendamento</div>;
+                    return agendamentos.map((ag) => (
+                      <Card key={ag.id} className="mobile-card border-l-4 border-l-blue-500">
+                        <CardContent className="p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="font-medium">{formatDate(ag.data_agendamento)} às {ag.hora_agendamento}</div>
+                              <div className="text-sm text-success font-medium">R$ {ag.preco.toFixed(2)}</div>
+                            </div>
+                            <Badge variant="outline" className={ag.status === 'Concluído' ? 'bg-green-500/10 text-green-700 border-green-200' : ag.status === 'Cancelado' ? 'bg-red-500/10 text-red-700 border-red-200' : 'bg-blue-500/10 text-blue-700 border-blue-200'}>{ag.status}</Badge>
+                          </div>
+                          {ag.observacoes && <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded"><strong>Obs:</strong> {ag.observacoes}</div>}
+                        </CardContent>
+                      </Card>
+                    ));
+                  })()}
+                </TabsContent>
+
+                <TabsContent value="pacotes" className="space-y-3 mt-0">
+                  <ClientePacotesManager clienteId={selectedClienteId} onUpdate={fetchClientes} />
+                </TabsContent>
+              </Tabs>
+            )}
           </div>
         </DialogContent>
       </Dialog>
