@@ -70,9 +70,9 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
 
       const { data, error } = await supabase
         .from('agendamentos')
-        .select('id, data_agendamento, hora_agendamento, preco, status, pacote_id')
+        .select('id, data_agendamento, hora_agendamento, preco, status, cliente_pacote_id')
         .eq('telefone', cliente.telefone)
-        .is('pacote_id', null)
+        .is('cliente_pacote_id', null)
         .order('data_agendamento', { ascending: false });
 
       if (error) throw error;
