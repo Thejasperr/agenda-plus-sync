@@ -562,6 +562,12 @@ const CalendarioPage = () => {
             description: `R$ ${valorDesconto.toFixed(2)} de crédito foi aplicado como desconto`,
           });
         }
+      } else {
+        // Se estiver editando, manter os valores do agendamento se o cliente não mudou
+        // Se mudou de cliente (telefone), a lógica de crédito precisaria de revisão cuidadosa
+        // Para simplificar e evitar erros de recalculo, preservamos o estado atual ao editar
+        descontoAutomatico = formData.tem_desconto;
+        porcentagemDescontoAutomatica = formData.porcentagem_desconto;
       }
 
       const agendamentoData: any = {
@@ -730,7 +736,7 @@ const CalendarioPage = () => {
     setActivePackages([]);
     setDialogOpen(false);
   };
-  const handleEdit = async (agendamento: Agendamento) => {
+  const handleEdit = async (agendamento: any) => {
     // Buscar procedimentos do agendamento
     const { data: procs } = await supabase
       .from('agendamento_procedimentos')
@@ -739,6 +745,17 @@ const CalendarioPage = () => {
       .order('ordem');
     
     const procedimentoIds = procs?.map(p => p.procedimento_id) || [];
+
+    // Se o agendamento tem um pacote vinculado, buscar informações dele
+    if (agendamento.cliente_pacote_id) {
+      await fetchActivePackages(agendamento.telefone);
+      setSelectedPackageId(agendamento.cliente_pacote_id);
+      setSessionNumber(agendamento.sessao_numero);
+    } else {
+      setSelectedPackageId(null);
+      setSessionNumber(null);
+      setActivePackages([]);
+    }
 
     setFormData({
       nome: agendamento.nome,
