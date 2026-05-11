@@ -384,8 +384,8 @@ const AgendamentosTab = () => {
       preco_retorno: agendamento.preco_retorno || 0,
       status: agendamento.status,
       observacoes: agendamento.observacoes || '',
-      pacote_id: agendamento.pacote_id || '',
-      numero_sessao: agendamento.numero_sessao || null
+      cliente_pacote_id: agendamento.cliente_pacote_id || '',
+      sessao_numero: agendamento.sessao_numero || null
     });
     setEditingAgendamento(agendamento);
     setShowSuggestions(false);
