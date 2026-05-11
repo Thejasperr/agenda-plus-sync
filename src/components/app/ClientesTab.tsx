@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput, validateAndFormatPhone, getSecureErrorMessage, clienteSchema } from '@/lib/security';
 import { useAgendamentosRealtime } from '@/hooks/useAgendamentosRealtime';
+import { useAuth } from '@/hooks/useAuth';
 import { ClientePacotesManager } from './ClientePacotesManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, CreditCard, User } from 'lucide-react';
