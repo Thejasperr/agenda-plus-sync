@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Trash2, CheckCircle2, AlertCircle, Calendar, Plus } from 'lucide-react';
+import { Package, Trash2, CheckCircle2, AlertCircle, Calendar, Plus, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ClientePacote {
@@ -15,6 +15,7 @@ interface ClientePacote {
   sessoes_restantes: number;
   valor_pago: number;
   status: string;
+  pago: boolean;
   created_at: string;
   pacote?: {
     nome: string;
@@ -128,6 +129,23 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
     }
   };
 
+  const handleTogglePago = async (id: string, currentPago: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('cliente_pacotes')
+        .update({ pago: !currentPago })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast({ title: "Sucesso", description: !currentPago ? "Pacote marcado como pago." : "Pagamento removido." });
+      fetchData();
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
   const vincularAgendamentoAoPacote = async (agendamento: Agendamento, pacote: ClientePacote) => {
     if (pacote.sessoes_restantes <= 0) {
       toast({ title: "Erro", description: "Este pacote não possui sessões restantes.", variant: "destructive" });
@@ -196,6 +214,11 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
                   ) : (
                     <Badge variant="secondary">Finalizado</Badge>
                   )}
+                  {cp.pago ? (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-200">Pago</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-700 border-red-200">Pendente</Badge>
+                  )}
                 </h4>
                 <p className="text-xs text-muted-foreground">Comprado em {new Date(cp.created_at).toLocaleDateString('pt-BR')}</p>
               </div>
@@ -216,22 +239,30 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               {cp.status === 'ativo' && cp.sessoes_restantes > 0 && (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex-1 h-8 text-xs gap-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10"
+                  className="flex-1 h-8 text-[10px] gap-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 px-1"
                   onClick={() => setLinkingPacote(cp)}
                 >
-                  <Plus className="h-3 w-3" /> Vincular Agendamento
+                  <Plus className="h-3 w-3" /> Vincular
                 </Button>
               )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className={`flex-1 h-8 text-[10px] gap-1 px-1 ${cp.pago ? 'text-blue-600 border-blue-200 bg-blue-50/50' : 'text-orange-600 border-orange-200 bg-orange-50/50'}`}
+                onClick={() => handleTogglePago(cp.id, cp.pago)}
+              >
+                <DollarSign className="h-3 w-3" /> {cp.pago ? 'Pago' : 'Pagar'}
+              </Button>
               {cp.status === 'ativo' && (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex-1 h-8 text-xs gap-1"
+                  className="flex-1 h-8 text-[10px] gap-1 px-1"
                   onClick={() => handleFinalizar(cp.id)}
                 >
                   <CheckCircle2 className="h-3 w-3" /> Finalizar
