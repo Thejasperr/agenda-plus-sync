@@ -27,7 +27,7 @@ interface Agendamento {
   hora_agendamento: string;
   preco: number;
   status: string;
-  pacote_id: string | null;
+  cliente_pacote_id: string | null;
 }
 
 interface ClientePacotesManagerProps {
