@@ -78,8 +78,8 @@ const AgendamentosTab = () => {
     preco_retorno: 0,
     status: 'Agendado',
     observacoes: '',
-    pacote_id: '' as string,
-    numero_sessao: null as number | null
+    cliente_pacote_id: '' as string,
+    sessao_numero: null as number | null
   });
 
   // Calcular automaticamente o preço total quando os procedimentos mudam
