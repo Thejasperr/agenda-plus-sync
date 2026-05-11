@@ -165,6 +165,7 @@ export type Database = {
           data_compra: string | null
           id: string
           pacote_id: string | null
+          pago: boolean | null
           sessoes_restantes: number
           sessoes_totais: number
           status: string
@@ -178,6 +179,7 @@ export type Database = {
           data_compra?: string | null
           id?: string
           pacote_id?: string | null
+          pago?: boolean | null
           sessoes_restantes?: number
           sessoes_totais?: number
           status?: string
@@ -191,6 +193,7 @@ export type Database = {
           data_compra?: string | null
           id?: string
           pacote_id?: string | null
+          pago?: boolean | null
           sessoes_restantes?: number
           sessoes_totais?: number
           status?: string

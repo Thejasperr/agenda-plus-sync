@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Trash2, CheckCircle2, AlertCircle, Calendar, Plus } from 'lucide-react';
+import { Package, Trash2, CheckCircle2, AlertCircle, Calendar, Plus, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ClientePacote {
@@ -15,6 +15,7 @@ interface ClientePacote {
   sessoes_restantes: number;
   valor_pago: number;
   status: string;
+  pago: boolean;
   created_at: string;
   pacote?: {
     nome: string;
@@ -128,6 +129,23 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
     }
   };
 
+  const handleTogglePago = async (id: string, currentPago: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('cliente_pacotes')
+        .update({ pago: !currentPago })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast({ title: "Sucesso", description: !currentPago ? "Pacote marcado como pago." : "Pagamento removido." });
+      fetchData();
+      if (onUpdate) onUpdate();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
   const vincularAgendamentoAoPacote = async (agendamento: Agendamento, pacote: ClientePacote) => {
     if (pacote.sessoes_restantes <= 0) {
       toast({ title: "Erro", description: "Este pacote não possui sessões restantes.", variant: "destructive" });
@@ -195,6 +213,11 @@ export const ClientePacotesManager = ({ clienteId, onUpdate }: ClientePacotesMan
                     <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-200">Ativo</Badge>
                   ) : (
                     <Badge variant="secondary">Finalizado</Badge>
+                  )}
+                  {cp.pago ? (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-200">Pago</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-700 border-red-200">Pendente</Badge>
                   )}
                 </h4>
                 <p className="text-xs text-muted-foreground">Comprado em {new Date(cp.created_at).toLocaleDateString('pt-BR')}</p>

@@ -15,6 +15,7 @@ interface ClientePacoteAtivo {
   sessoes_restantes: number;
   valor_pago: number;
   status: string;
+  pago: boolean;
   created_at: string;
   clientes: {
     id: string;
@@ -110,6 +111,15 @@ const PacotesGerenciamentoTab = () => {
                   <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-200">
                     Ativo
                   </Badge>
+                  {item.pago ? (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-200">
+                      Pago
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-700 border-red-200">
+                      Pendente
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
